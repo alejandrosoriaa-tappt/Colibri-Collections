@@ -35,9 +35,9 @@ export async function sendOperationalNotification(tenantId, type, vars = {}) {
     // 3. Send via WhatsApp
     const sendResult = await sendWhatsAppMessage(adminPhone, messageText)
 
-    // 4. Insert into system_notifications
+    // 4. Insert into tenant_notifications
     const { error: insertError } = await supabase
-      .from('system_notifications')
+      .from('tenant_notifications')
       .insert({
         tenant_id: tenantId,
         type,

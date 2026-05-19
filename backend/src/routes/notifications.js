@@ -19,7 +19,7 @@ router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
     // Get unread count
     const { count } = await supabase
-      .from('system_notifications')
+      .from('tenant_notifications')
       .select('*', { count: 'exact', head: true })
       .eq('tenant_id', req.tenantId)
       .eq('read', false)
@@ -36,7 +36,7 @@ router.patch('/:id/read', authMiddleware, inferTenantGuard, async (req, res) => 
   try {
     // Verify notification belongs to tenant
     const { data: notif, error: fetchError } = await supabase
-      .from('system_notifications')
+      .from('tenant_notifications')
       .select('*')
       .eq('id', req.params.id)
       .single()
@@ -61,7 +61,7 @@ router.patch('/:id/read', authMiddleware, inferTenantGuard, async (req, res) => 
 router.post('/mark-all-read', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { error } = await supabase
-      .from('system_notifications')
+      .from('tenant_notifications')
       .update({ read: true, read_at: new Date().toISOString() })
       .eq('tenant_id', req.tenantId)
       .eq('read', false)

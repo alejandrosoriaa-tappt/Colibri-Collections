@@ -240,7 +240,7 @@ export async function isAdminUser(userId) {
 
 export async function getSystemNotifications(tenantId, { limit = 20, offset = 0 } = {}) {
   const { data, error } = await supabase
-    .from('system_notifications')
+    .from('tenant_notifications')
     .select('*')
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
@@ -251,7 +251,7 @@ export async function getSystemNotifications(tenantId, { limit = 20, offset = 0 
 
 export async function markNotificationRead(id) {
   const { data, error } = await supabase
-    .from('system_notifications')
+    .from('tenant_notifications')
     .update({ read: true, read_at: new Date().toISOString() })
     .eq('id', id)
     .select()

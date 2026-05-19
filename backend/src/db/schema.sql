@@ -170,7 +170,7 @@ CREATE TABLE IF NOT EXISTS file_uploads (
 -- ================================================================
 -- SYSTEM NOTIFICATIONS
 -- ================================================================
-CREATE TABLE IF NOT EXISTS system_notifications (
+CREATE TABLE IF NOT EXISTS tenant_notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
   type TEXT NOT NULL,
@@ -210,8 +210,8 @@ CREATE INDEX IF NOT EXISTS idx_message_logs_sent_at ON message_logs(sent_at);
 CREATE INDEX IF NOT EXISTS idx_file_uploads_tenant_id ON file_uploads(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_file_uploads_campaign_id ON file_uploads(campaign_id);
 
-CREATE INDEX IF NOT EXISTS idx_system_notifications_tenant_id ON system_notifications(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_system_notifications_read ON system_notifications(read);
+CREATE INDEX IF NOT EXISTS idx_tenant_notifications_tenant_id ON tenant_notifications(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_tenant_notifications_read ON tenant_notifications(read);
 
 CREATE INDEX IF NOT EXISTS idx_tenant_users_user_id ON tenant_users(user_id);
 CREATE INDEX IF NOT EXISTS idx_tenant_users_tenant_id ON tenant_users(tenant_id);
@@ -227,7 +227,7 @@ ALTER TABLE campaign_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE invoices ENABLE ROW LEVEL SECURITY;
 ALTER TABLE message_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE file_uploads ENABLE ROW LEVEL SECURITY;
-ALTER TABLE system_notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tenant_notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenant_users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
@@ -292,7 +292,7 @@ CREATE POLICY "file_uploads_tenant_member" ON file_uploads
     )
   );
 
-CREATE POLICY "system_notifications_tenant_member" ON system_notifications
+CREATE POLICY "tenant_notifications_tenant_member" ON tenant_notifications
   FOR ALL USING (
     tenant_id IN (
       SELECT tenant_id FROM tenant_users WHERE user_id = auth.uid()
