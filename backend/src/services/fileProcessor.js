@@ -11,13 +11,15 @@ import { sendOperationalNotification } from './notifier.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
-  nombre: ['nombre', 'name', 'first_name', 'primer_nombre'],
-  apellido: ['apellido', 'apellidos', 'last_name', 'surname'],
-  telefono: ['telefono', 'telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
-  monto: ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
-  grupo: ['grupo', 'group', 'grado', 'seccion', 'edificio', 'clase', 'salon'],
-  id_externo: ['id_externo', 'external_id', 'id', 'clave', 'matricula', 'expediente'],
-  liga_pago: ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url']
+  nombre:     ['nombre', 'name', 'first_name', 'primer_nombre'],
+  telefono:   ['telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
+  id_externo: ['matricula', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
+  mensaje:    ['mensaje', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
+  liga_pago:  ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url'],
+  // Opcionales — se aceptan si están presentes pero no se muestran en el layout
+  monto:      ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
+  apellido:   ['apellido', 'apellidos', 'last_name', 'surname'],
+  grupo:      ['grupo', 'group', 'grado', 'seccion', 'salon']
 }
 
 function detectColumns(headers) {
@@ -133,14 +135,11 @@ export async function processFile({
     const headers = Object.keys(rawRows[0])
     const colMap = detectColumns(headers)
 
-    if (!colMap.telefono) {
-      throw new Error('Could not detect phone column. Expected: telefono, phone, celular, tel')
-    }
-    if (!colMap.monto) {
-      throw new Error('Could not detect amount column. Expected: monto, amount, importe, cuota')
-    }
     if (!colMap.nombre) {
-      throw new Error('Could not detect name column. Expected: nombre, name, first_name')
+      throw new Error('No se detectó la columna de nombre. Se esperaba: nombre, name')
+    }
+    if (!colMap.telefono) {
+      throw new Error('No se detectó la columna de teléfono. Se esperaba: telefono, celular, whatsapp')
     }
 
     // Process each row
@@ -149,13 +148,15 @@ export async function processFile({
       const rowNum = i + 2 // 1-indexed + header row
       const rowErrors = []
 
-      const rawNombre = colMap.nombre ? row[colMap.nombre] : ''
-      const rawTelefono = colMap.telefono ? row[colMap.telefono] : ''
-      const rawMonto = colMap.monto ? row[colMap.monto] : ''
-      const rawApellido = colMap.apellido ? row[colMap.apellido] : ''
-      const rawGrupo = colMap.grupo ? row[colMap.grupo] : ''
+      const rawNombre    = colMap.nombre     ? row[colMap.nombre]     : ''
+      const rawTelefono  = colMap.telefono   ? row[colMap.telefono]   : ''
       const rawIdExterno = colMap.id_externo ? row[colMap.id_externo] : ''
-      const rawLigaPago = colMap.liga_pago ? row[colMap.liga_pago] : ''
+      const rawMensaje   = colMap.mensaje    ? row[colMap.mensaje]    : ''
+      const rawLigaPago  = colMap.liga_pago  ? row[colMap.liga_pago]  : ''
+      // Campos opcionales de compatibilidad
+      const rawMonto     = colMap.monto      ? row[colMap.monto]      : ''
+      const rawApellido  = colMap.apellido   ? row[colMap.apellido]   : ''
+      const rawGrupo     = colMap.grupo      ? row[colMap.grupo]      : ''
 
       // Validate nombre
       const nombre = (rawNombre || '').toString().trim()
@@ -173,32 +174,26 @@ export async function processFile({
         })
       }
 
-      // Validate monto
-      const monto = normalizeMonto(rawMonto)
-      if (monto === null) {
-        rowErrors.push({
-          row: rowNum,
-          field: 'monto',
-          error: `Monto inválido: "${rawMonto}". Debe ser un número positivo.`
-        })
-      }
-
       if (rowErrors.length > 0) {
         errorDetails.push(...rowErrors)
         continue
       }
 
-      // Use tenant general payment link if not provided
+      // monto es opcional; si no viene en el archivo se usa 0
+      const monto = normalizeMonto(rawMonto) ?? 0
+
+      // Usar liga de pago del tenant si no se proporcionó en el archivo
       const ligaPago = (rawLigaPago || '').toString().trim() || tenant.payment_link_general || ''
 
       validRows.push({
         nombre,
-        apellido: (rawApellido || '').toString().trim(),
+        apellido:   (rawApellido  || '').toString().trim(),
         telefono,
         monto,
-        grupo: (rawGrupo || '').toString().trim(),
+        grupo:      (rawGrupo     || '').toString().trim(),
         id_externo: (rawIdExterno || '').toString().trim(),
-        liga_pago: ligaPago
+        mensaje:    (rawMensaje   || '').toString().trim(),
+        liga_pago:  ligaPago
       })
     }
 
@@ -217,9 +212,10 @@ export async function processFile({
         const contact = await upsertContact(tenantId, contactData)
 
         await upsertInvoice(campaignId, contact.id, tenantId, {
-          monto: rowData.monto,
+          monto:     rowData.monto,
           liga_pago: rowData.liga_pago,
-          status: 'pending'
+          notes:     rowData.mensaje || null,
+          status:    'pending'
         })
 
         insertedCount++
@@ -289,10 +285,10 @@ export async function processFile({
 
 export function generateLayoutBuffer() {
   const ws_data = [
-    ['nombre', 'apellido', 'telefono', 'monto', 'grupo', 'id_externo', 'liga_pago'],
-    ['Juan', 'García López', '5512345678', '2500', '3A', 'EXP001', 'https://pago.ejemplo.com/001'],
-    ['María', 'Rodríguez', '5587654321', '2500', '3B', 'EXP002', ''],
-    ['Carlos', 'Martínez', '5511223344', '3000', '4A', 'EXP003', '']
+    ['nombre', 'telefono', 'matricula', 'mensaje', 'liga_pago'],
+    ['Juan García', '5512345678', 'ALU-001', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
+    ['María López', '5587654321', 'ALU-002', '', 'https://pago.ejemplo.com/002'],
+    ['Carlos Martínez', '5511223344', 'CONT-003', '', '']
   ]
 
   const wb = XLSX.utils.book_new()
@@ -300,8 +296,7 @@ export function generateLayoutBuffer() {
 
   // Column widths
   ws['!cols'] = [
-    { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 10 },
-    { wch: 12 }, { wch: 15 }, { wch: 40 }
+    { wch: 25 }, { wch: 15 }, { wch: 18 }, { wch: 45 }, { wch: 40 }
   ]
 
   XLSX.utils.book_append_sheet(wb, ws, 'Contactos')

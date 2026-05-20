@@ -12,12 +12,44 @@ const STATUS_FILTERS = [
   { value: 'completed', label: 'Completadas' }
 ]
 
+const CONCEPTOS = [
+  'Colegiatura',
+  'Mensualidad',
+  'Membresía',
+  'Cuota',
+  'Renta',
+  'Servicio',
+  'Inscripción',
+  'Otro'
+]
+
+const MESES = [
+  { value: '1',  label: 'Enero'      },
+  { value: '2',  label: 'Febrero'    },
+  { value: '3',  label: 'Marzo'      },
+  { value: '4',  label: 'Abril'      },
+  { value: '5',  label: 'Mayo'       },
+  { value: '6',  label: 'Junio'      },
+  { value: '7',  label: 'Julio'      },
+  { value: '8',  label: 'Agosto'     },
+  { value: '9',  label: 'Septiembre' },
+  { value: '10', label: 'Octubre'    },
+  { value: '11', label: 'Noviembre'  },
+  { value: '12', label: 'Diciembre'  }
+]
+
+const currentYear = new Date().getFullYear()
+const AÑOS = [currentYear - 1, currentYear, currentYear + 1].map(y => String(y))
+
+function lastDayOfMonth(year, month) {
+  return new Date(year, month, 0).getDate()
+}
+
 const EMPTY_FORM = {
   name: '',
   concept: '',
-  cycle_start_date: '',
-  due_date: '',
-  cycle_end_date: '',
+  billing_month: String(new Date().getMonth() + 1),
+  billing_year: String(currentYear),
   late_fee_pct: ''
 }
 
@@ -48,13 +80,17 @@ export default function CampaignsPage() {
     setFormError(null)
     setIsSaving(true)
     try {
+      const y = Number(form.billing_year)
+      const m = Number(form.billing_month)
+      const mm = String(m).padStart(2, '0')
+      const last = lastDayOfMonth(y, m)
       const payload = {
-        name: form.name.trim(),
-        concept: form.concept.trim(),
-        cycle_start_date: form.cycle_start_date,
-        due_date: form.due_date || null,
-        cycle_end_date: form.cycle_end_date || null,
-        late_fee_pct: form.late_fee_pct ? Number(form.late_fee_pct) : 0
+        name:             form.name.trim(),
+        concept:          form.concept,
+        cycle_start_date: `${y}-${mm}-01`,
+        due_date:         `${y}-${mm}-${last}`,
+        cycle_end_date:   `${y}-${mm}-${last}`,
+        late_fee_pct:     form.late_fee_pct ? Number(form.late_fee_pct) : 0
       }
       await campaignsAPI.create(payload)
       setShowForm(false)
@@ -162,60 +198,60 @@ export default function CampaignsPage() {
 
               <div>
                 <label className="label">Concepto de cobro *</label>
-                <input
+                <select
                   className="input"
-                  placeholder="Ej. mensualidad, colegiatura, cuota"
                   value={form.concept}
                   onChange={e => setForm(f => ({ ...f, concept: e.target.value }))}
                   required
-                />
+                >
+                  <option value="">-- Selecciona un concepto --</option>
+                  {CONCEPTOS.map(c => (
+                    <option key={c} value={c.toLowerCase()}>{c}</option>
+                  ))}
+                </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Inicio de ciclo *</label>
-                  <input
-                    type="date"
+              <div>
+                <label className="label">Mes de cobro *</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
                     className="input"
-                    value={form.cycle_start_date}
-                    onChange={e => setForm(f => ({ ...f, cycle_start_date: e.target.value }))}
+                    value={form.billing_month}
+                    onChange={e => setForm(f => ({ ...f, billing_month: e.target.value }))}
                     required
-                  />
-                </div>
-                <div>
-                  <label className="label">Fecha límite de pago</label>
-                  <input
-                    type="date"
+                  >
+                    {MESES.map(m => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                  <select
                     className="input"
-                    value={form.due_date}
-                    onChange={e => setForm(f => ({ ...f, due_date: e.target.value }))}
-                  />
+                    value={form.billing_year}
+                    onChange={e => setForm(f => ({ ...f, billing_year: e.target.value }))}
+                    required
+                  >
+                    {AÑOS.map(y => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  El ciclo abarcará del 1 al último día del mes seleccionado.
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Fin de ciclo</label>
-                  <input
-                    type="date"
-                    className="input"
-                    value={form.cycle_end_date}
-                    onChange={e => setForm(f => ({ ...f, cycle_end_date: e.target.value }))}
-                  />
-                </div>
-                <div>
-                  <label className="label">Recargo por mora (%)</label>
-                  <input
-                    type="number"
-                    className="input"
-                    placeholder="0"
-                    min="0"
-                    max="100"
-                    step="0.5"
-                    value={form.late_fee_pct}
-                    onChange={e => setForm(f => ({ ...f, late_fee_pct: e.target.value }))}
-                  />
-                </div>
+              <div>
+                <label className="label">Recargo por mora (%)</label>
+                <input
+                  type="number"
+                  className="input"
+                  placeholder="0"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  value={form.late_fee_pct}
+                  onChange={e => setForm(f => ({ ...f, late_fee_pct: e.target.value }))}
+                />
               </div>
 
               <p className="text-xs text-gray-400">
