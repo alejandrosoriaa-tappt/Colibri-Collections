@@ -260,20 +260,21 @@ export async function markNotificationRead(id) {
   return data
 }
 
-export async function getMessageLogs({ tenantId, campaignId, contactId, limit = 50, offset = 0 } = {}) {
+export async function getMessageLogs({ tenantId, campaignId, contactId, phone, limit = 50, offset = 0 } = {}) {
   let query = supabase
     .from('message_logs')
-    .select('*, contacts(id, nombre, apellido, telefono), campaigns(id, name)')
+    .select('*, contacts(id, nombre, apellido, telefono), campaigns(id, name)', { count: 'exact' })
     .order('sent_at', { ascending: false })
     .range(offset, offset + limit - 1)
 
   if (tenantId) query = query.eq('tenant_id', tenantId)
   if (campaignId) query = query.eq('campaign_id', campaignId)
   if (contactId) query = query.eq('contact_id', contactId)
+  if (phone) query = query.ilike('phone', `%${phone}%`)
 
-  const { data, error } = await query
+  const { data, error, count } = await query
   if (error) throw error
-  return data
+  return { data, count }
 }
 
 export async function getAllTenants() {

@@ -75,7 +75,6 @@ app.use('/api/auth', authLimiter, authRouter)
 app.use('/api/campaigns', campaignsRouter)
 app.use('/api/contacts', contactsRouter)
 app.use('/api/invoices', invoicesRouter)
-app.use('/api/campaigns', invoicesRouter) // also mount invoice sub-routes under campaigns
 app.use('/api/upload', uploadRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/notifications', notificationsRouter)

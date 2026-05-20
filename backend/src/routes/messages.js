@@ -12,26 +12,25 @@ router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
       campaign_id,
       contact_id,
       status,
+      phone,
       page = 1,
       limit = 50
     } = req.query
 
     const offset = (Number(page) - 1) * Number(limit)
 
-    const messages = await getMessageLogs({
+    const { data: messages, count } = await getMessageLogs({
       tenantId: req.tenantId,
       campaignId: campaign_id || null,
       contactId: contact_id || null,
+      phone: phone || null,
       limit: Number(limit),
       offset
     })
 
-    // Apply status filter in memory if needed
-    const filtered = status
-      ? messages.filter(m => m.status === status)
-      : messages
+    const filtered = status ? messages.filter(m => m.status === status) : messages
 
-    return res.json({ messages: filtered })
+    return res.json({ messages: filtered, total: count })
   } catch (err) {
     console.error('GET /messages error:', err)
     return res.status(500).json({ error: err.message })

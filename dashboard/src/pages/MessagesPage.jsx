@@ -19,6 +19,8 @@ export default function MessagesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [campaignFilter, setCampaignFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
@@ -27,12 +29,20 @@ export default function MessagesPage() {
       .catch(console.error)
   }, [])
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 350)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => { setPage(0) }, [debouncedSearch, campaignFilter])
+
   const load = useCallback(() => {
     setIsLoading(true)
     const params = {
       limit: PAGE_SIZE,
       page: page + 1,
-      ...(campaignFilter ? { campaign_id: campaignFilter } : {})
+      ...(campaignFilter ? { campaign_id: campaignFilter } : {}),
+      ...(debouncedSearch ? { phone: debouncedSearch } : {})
     }
     messagesAPI.list(params)
       .then(res => {
@@ -41,7 +51,7 @@ export default function MessagesPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [page, campaignFilter])
+  }, [page, campaignFilter, debouncedSearch])
 
   useEffect(() => { load() }, [load])
 
@@ -66,6 +76,15 @@ export default function MessagesPage() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="input pl-8 w-52"
+            placeholder="Buscar teléfono..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="card p-0 overflow-hidden">

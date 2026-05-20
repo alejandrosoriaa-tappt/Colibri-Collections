@@ -116,11 +116,21 @@ export default function CampaignDetailPage() {
   const [campaign, setCampaign] = useState(null)
   const [messages, setMessages] = useState([])
   const [invoices, setInvoices] = useState([])
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isActing, setIsActing] = useState(false)
   const [activeTab, setActiveTab] = useState('mensajes')
   const [markingInvoice, setMarkingInvoice] = useState(null)
   const [payRef, setPayRef] = useState('')
+
+  const loadInvoices = async (status = '') => {
+    try {
+      const invoicesRes = await campaignsAPI.getInvoices(id, status ? { status } : {})
+      setInvoices(invoicesRes.data.invoices || [])
+    } catch (err) {
+      console.error(err)
+    }
+  }
 
   const load = async () => {
     try {
@@ -312,17 +322,45 @@ export default function CampaignDetailPage() {
       )}
 
       {activeTab === 'facturas' && (
+        <>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { value: '', label: 'Todos' },
+              { value: 'pending', label: 'Pendientes' },
+              { value: 'paid', label: 'Pagados' },
+              { value: 'suspended', label: 'Suspendidos' }
+            ].map(f => (
+              <button
+                key={f.value}
+                onClick={() => { setInvoiceStatusFilter(f.value); loadInvoices(f.value) }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                  invoiceStatusFilter === f.value
+                    ? 'bg-colibri text-white border-colibri'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
         <div className="card p-0 overflow-hidden">
           {invoices.length === 0 ? (
             <div className="text-center py-12">
               <Users size={36} className="text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">Aún no hay contactos en esta campaña</p>
-              <Link
-                to={`/upload?campaign=${id}`}
-                className="btn-primary inline-flex items-center gap-2 mt-4 text-sm"
-              >
-                <Upload size={14} /> Subir archivo
-              </Link>
+              {invoiceStatusFilter ? (
+                <p className="text-gray-500 text-sm">No hay contactos con este estado</p>
+              ) : (
+                <>
+                  <p className="text-gray-500 text-sm">Aún no hay contactos en esta campaña</p>
+                  <Link
+                    to={`/upload?campaign=${id}`}
+                    className="btn-primary inline-flex items-center gap-2 mt-4 text-sm"
+                  >
+                    <Upload size={14} /> Subir archivo
+                  </Link>
+                </>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -347,6 +385,7 @@ export default function CampaignDetailPage() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* Mark paid modal */}
