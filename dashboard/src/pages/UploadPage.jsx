@@ -35,17 +35,16 @@ export default function UploadPage() {
 
   const handleDownloadLayout = () => {
     const rows = [
-      ['nombre',      'telefono',   'matricula', 'mensaje',                                    'liga_pago'],
-      ['Juan García', '5512345678', 'ALU-001',   'Tu colegiatura de junio está pendiente.',    'https://pago.ejemplo.com/001'],
-      ['María López', '5587654321', 'ALU-002',   '',                                           'https://pago.ejemplo.com/002'],
-      ['Carlos Mtz',  '5511223344', 'CONT-003',  '',                                           ''],
+      ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'SECCION O SALON', 'MENSAJE O RECORDATORIO', 'LIGA_PAGO'],
+      ['Garcia Franco',  '5512345678', 'Raul Garcia Franco',    '1-B',  'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
+      ['Lopez Ramirez',  '5587654321', 'Maria Lopez Ramirez',   '6-C',  'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/002'],
+      ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo','K1-A', 'Tu colegiatura de junio está pendiente.', ''],
     ]
 
     const wb = XLSX.utils.book_new()
     const ws = XLSX.utils.aoa_to_sheet(rows)
 
-    // Anchos de columna
-    ws['!cols'] = [{ wch: 25 }, { wch: 15 }, { wch: 18 }, { wch: 48 }, { wch: 40 }]
+    ws['!cols'] = [{ wch: 20 }, { wch: 15 }, { wch: 28 }, { wch: 18 }, { wch: 45 }, { wch: 35 }]
 
     // Estilo de encabezado (fila 1 en negrita — xlsx básico no soporta estilos sin pro,
     // pero los anchos y datos de ejemplo ya orientan al usuario)
@@ -138,11 +137,12 @@ export default function UploadPage() {
             </thead>
             <tbody className="text-colibri-600">
               {[
-                ['nombre',    '✓', 'Nombre completo del contacto',                   'Juan García'],
-                ['telefono',  '✓', 'WhatsApp con 10 dígitos (sin +52)',              '5512345678'],
-                ['matricula', '',  'Matrícula, número de contrato o cliente',         'ALU-001'],
-                ['mensaje',   '',  'Mensaje personalizado para este contacto',        'Tu colegiatura de junio está pendiente.'],
-                ['liga_pago', '',  'Link de pago individual (si no se llena, se usa el general)', 'https://pago.app/xxx'],
+                ['FAMILIA',                '✓', 'Apellido o nombre de la familia',                      'Garcia Franco'],
+                ['TELÉFONO',               '✓', 'WhatsApp con 10 dígitos (sin +52)',                    '5512345678'],
+                ['ALUMNO',                 '✓', 'Nombre completo del alumno',                           'Raul Garcia Franco'],
+                ['SECCION O SALON',        '',  'Sección o salón del alumno',                           '1-B'],
+                ['MENSAJE O RECORDATORIO', '',  'Mensaje personalizado para este contacto',              'Tu colegiatura de junio está pendiente.'],
+                ['LIGA_PAGO',              '',  'Link de pago individual (si no se llena, se usa el general)', 'https://pago.app/xxx'],
               ].map(([col, req, desc, ex]) => (
                 <tr key={col} className="border-b border-colibri-100">
                   <td className="py-1.5 px-2 font-mono font-medium">{col}</td>
