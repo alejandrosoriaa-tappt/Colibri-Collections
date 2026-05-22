@@ -20,6 +20,7 @@ const CONCEPTOS = [
   'Renta',
   'Servicio',
   'Inscripción',
+  'Comunicado',
   'Otro'
 ]
 
@@ -197,7 +198,7 @@ export default function CampaignsPage() {
               </div>
 
               <div>
-                <label className="label">Concepto de cobro *</label>
+                <label className="label">Concepto de mensaje *</label>
                 <select
                   className="input"
                   value={form.concept}
@@ -212,7 +213,7 @@ export default function CampaignsPage() {
               </div>
 
               <div>
-                <label className="label">Mes de cobro *</label>
+                <label className="label">Mes *</label>
                 <div className="grid grid-cols-2 gap-3">
                   <select
                     className="input"
@@ -240,21 +241,7 @@ export default function CampaignsPage() {
                 </p>
               </div>
 
-              <div>
-                <label className="label">Recargo por mora (%)</label>
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="0"
-                  min="0"
-                  max="100"
-                  step="0.5"
-                  value={form.late_fee_pct}
-                  onChange={e => setForm(f => ({ ...f, late_fee_pct: e.target.value }))}
-                />
-              </div>
-
-              <p className="text-xs text-gray-400">
+<p className="text-xs text-gray-400">
                 Se crearán automáticamente 4 mensajes de WhatsApp con plantillas predeterminadas. Podrás editarlos después.
               </p>
 
