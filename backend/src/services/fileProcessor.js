@@ -11,15 +11,15 @@ import { sendOperationalNotification } from './notifier.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
-  nombre:     ['nombre', 'name', 'first_name', 'primer_nombre'],
-  telefono:   ['telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
-  id_externo: ['matricula', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
-  mensaje:    ['mensaje', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
+  nombre:     ['alumno', 'nombre', 'name', 'first_name', 'primer_nombre'],
+  apellido:   ['familia', 'apellido', 'apellidos', 'last_name', 'surname'],
+  telefono:   ['teléfono', 'telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
+  grupo:      ['seccion o salon', 'seccion_salon', 'seccion', 'salon', 'grupo', 'group', 'grado'],
+  mensaje:    ['mensaje o recordatorio', 'mensaje', 'recordatorio', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
   liga_pago:  ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url'],
-  // Opcionales — se aceptan si están presentes pero no se muestran en el layout
-  monto:      ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
-  apellido:   ['apellido', 'apellidos', 'last_name', 'surname'],
-  grupo:      ['grupo', 'group', 'grado', 'seccion', 'salon']
+  // Opcionales
+  id_externo: ['matricula', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
+  monto:      ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio']
 }
 
 function detectColumns(headers) {
@@ -285,18 +285,17 @@ export async function processFile({
 
 export function generateLayoutBuffer() {
   const ws_data = [
-    ['nombre', 'telefono', 'matricula', 'mensaje', 'liga_pago'],
-    ['Juan García', '5512345678', 'ALU-001', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
-    ['María López', '5587654321', 'ALU-002', '', 'https://pago.ejemplo.com/002'],
-    ['Carlos Martínez', '5511223344', 'CONT-003', '', '']
+    ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'SECCION O SALON', 'MENSAJE O RECORDATORIO', 'LIGA_PAGO'],
+    ['Garcia Franco', '5512345678', 'Raul Garcia Franco', '1-B', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
+    ['Lopez Ramirez', '5587654321', 'Maria Lopez Ramirez', '6-C', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/002'],
+    ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo', 'K1-A', 'Tu colegiatura de junio está pendiente.', '']
   ]
 
   const wb = XLSX.utils.book_new()
   const ws = XLSX.utils.aoa_to_sheet(ws_data)
 
-  // Column widths
   ws['!cols'] = [
-    { wch: 25 }, { wch: 15 }, { wch: 18 }, { wch: 45 }, { wch: 40 }
+    { wch: 20 }, { wch: 15 }, { wch: 28 }, { wch: 18 }, { wch: 45 }, { wch: 35 }
   ]
 
   XLSX.utils.book_append_sheet(wb, ws, 'Contactos')
