@@ -341,7 +341,28 @@ export async function getCampaignsByTenant(tenantId) {
     .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
   if (error) throw error
-  return data
+
+  if (!data || data.length === 0) return data
+
+  const campaignIds = data.map(c => c.id)
+  const { data: logs } = await supabase
+    .from('message_logs')
+    .select('campaign_id, status')
+    .in('campaign_id', campaignIds)
+
+  const statsByCampaign = {}
+  for (const log of logs || []) {
+    if (!statsByCampaign[log.campaign_id]) {
+      statsByCampaign[log.campaign_id] = { sent: 0, delivered: 0, read: 0, failed: 0 }
+    }
+    const s = statsByCampaign[log.campaign_id]
+    if (['sent', 'delivered', 'read'].includes(log.status)) s.sent++
+    if (['delivered', 'read'].includes(log.status)) s.delivered++
+    if (log.status === 'read') s.read++
+    if (log.status === 'failed') s.failed++
+  }
+
+  return data.map(c => ({ ...c, msg_stats: statsByCampaign[c.id] || { sent: 0, delivered: 0, read: 0, failed: 0 } }))
 }
 
 export async function getInvoicesByContact(contactId) {

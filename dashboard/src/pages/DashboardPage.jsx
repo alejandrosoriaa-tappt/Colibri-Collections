@@ -1,17 +1,23 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone, Users, CheckCircle2, Clock, ArrowRight, Loader2 } from 'lucide-react'
-import KPICard from '../components/shared/KPICard.jsx'
+import { Megaphone, Users, Send, CheckCheck, BookOpen, ArrowRight, Loader2 } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import { campaignsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'MXN',
-    minimumFractionDigits: 0
-  }).format(Number(amount) || 0).replace('MX$', '$')
+function StatBar({ label, value, total, color }) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0
+  return (
+    <div>
+      <div className="flex justify-between text-xs mb-1">
+        <span className="text-gray-500">{label}</span>
+        <span className="font-semibold text-gray-800">{value.toLocaleString('es-MX')} <span className="text-gray-400 font-normal">({pct}%)</span></span>
+      </div>
+      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
 }
 
 export default function DashboardPage() {
@@ -26,12 +32,10 @@ export default function DashboardPage() {
       .finally(() => setIsLoading(false))
   }, [])
 
+  const latestCampaign = campaigns[0] || null
   const activeCampaigns = campaigns.filter(c => c.status === 'active')
-  const totalContacts = campaigns.reduce((s, c) => s + (c.total_contacts || 0), 0)
-  const totalPaid = campaigns.reduce((s, c) => s + (c.paid_count || 0), 0)
-  const totalAmount = campaigns.reduce((s, c) => s + Number(c.total_amount || 0), 0)
-  const paidAmount = campaigns.reduce((s, c) => s + Number(c.paid_amount || 0), 0)
-  const pendingAmount = totalAmount - paidAmount
+  const stats = latestCampaign?.msg_stats || { sent: 0, delivered: 0, read: 0, failed: 0 }
+  const totalContacts = latestCampaign?.total_contacts || 0
 
   if (isLoading) {
     return (
@@ -49,7 +53,7 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-gray-900">
             Hola{tenant ? `, ${tenant.display_name || tenant.name}` : ''} 👋
           </h1>
-          <p className="text-gray-500 text-sm mt-1">Resumen de cobranza</p>
+          <p className="text-gray-500 text-sm mt-1">Resumen de comunicación</p>
         </div>
         <Link to="/campaigns" className="btn-primary flex items-center gap-2 text-sm">
           <Megaphone size={16} />
@@ -57,66 +61,83 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard
-          title="Campañas activas"
-          value={activeCampaigns.length}
-          subtitle={`${campaigns.length} total`}
-          icon={Megaphone}
-          color="green"
-        />
-        <KPICard
-          title="Contactos"
-          value={totalContacts.toLocaleString('es-MX')}
-          subtitle={`${totalPaid} pagaron`}
-          icon={Users}
-          color="blue"
-        />
-        <KPICard
-          title="Cobrado"
-          value={formatCurrency(paidAmount)}
-          subtitle="este ciclo"
-          icon={CheckCircle2}
-          color="green"
-        />
-        <KPICard
-          title="Por cobrar"
-          value={formatCurrency(pendingAmount)}
-          subtitle="pendiente"
-          icon={Clock}
-          color="orange"
-        />
-      </div>
-
-      {/* Active campaigns */}
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-base font-semibold text-gray-900">Campañas activas</h2>
-          <Link to="/campaigns" className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1">
-            Ver todas <ArrowRight size={14} />
-          </Link>
-        </div>
-
-        {activeCampaigns.length === 0 ? (
-          <div className="card text-center py-12">
-            <Megaphone size={40} className="text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 font-medium">No tienes campañas activas</p>
-            <p className="text-gray-400 text-sm mt-1">Crea una campaña y sube tu lista de contactos</p>
-            <Link to="/campaigns" className="btn-primary inline-flex items-center gap-2 mt-4 text-sm">
-              Crear campaña
+      {/* Latest campaign stats */}
+      {latestCampaign ? (
+        <div className="card space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Campaña más reciente</p>
+              <h2 className="text-base font-semibold text-gray-900 mt-0.5">{latestCampaign.name}</h2>
+            </div>
+            <Link
+              to={`/campaigns/${latestCampaign.id}`}
+              className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1"
+            >
+              Ver detalle <ArrowRight size={14} />
             </Link>
           </div>
-        ) : (
+
+          {/* KPI row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <Users size={16} className="text-gray-400 mx-auto mb-1" />
+              <p className="text-xl font-bold text-gray-900">{totalContacts.toLocaleString('es-MX')}</p>
+              <p className="text-xs text-gray-500">Contactos</p>
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3 text-center">
+              <Send size={16} className="text-blue-400 mx-auto mb-1" />
+              <p className="text-xl font-bold text-gray-900">{stats.sent.toLocaleString('es-MX')}</p>
+              <p className="text-xs text-gray-500">Enviados</p>
+            </div>
+            <div className="bg-green-50 rounded-xl p-3 text-center">
+              <CheckCheck size={16} className="text-green-400 mx-auto mb-1" />
+              <p className="text-xl font-bold text-gray-900">{stats.delivered.toLocaleString('es-MX')}</p>
+              <p className="text-xs text-gray-500">Entregados</p>
+            </div>
+            <div className="bg-colibri-50 rounded-xl p-3 text-center">
+              <BookOpen size={16} className="text-colibri mx-auto mb-1" />
+              <p className="text-xl font-bold text-gray-900">{stats.read.toLocaleString('es-MX')}</p>
+              <p className="text-xs text-gray-500">Leídos</p>
+            </div>
+          </div>
+
+          {/* Progress bars */}
+          {stats.sent > 0 && (
+            <div className="space-y-2.5 pt-1">
+              <StatBar label="Entregados" value={stats.delivered} total={stats.sent} color="bg-green-400" />
+              <StatBar label="Leídos" value={stats.read} total={stats.sent} color="bg-colibri" />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card text-center py-10">
+          <Megaphone size={36} className="text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">No tienes campañas aún</p>
+          <p className="text-gray-400 text-sm mt-1">Crea tu primera campaña y sube tu lista de contactos</p>
+          <Link to="/campaigns" className="btn-primary inline-flex items-center gap-2 mt-4 text-sm">
+            Crear campaña
+          </Link>
+        </div>
+      )}
+
+      {/* Active campaigns list */}
+      {activeCampaigns.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Campañas activas</h2>
+            <Link to="/campaigns" className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1">
+              Ver todas <ArrowRight size={14} />
+            </Link>
+          </div>
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeCampaigns.map(c => (
               <CampaignCard key={c.id} campaign={c} />
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      {/* Recent campaigns (non-active) */}
+      {/* Other campaigns */}
       {campaigns.filter(c => c.status !== 'active').length > 0 && (
         <div>
           <h2 className="text-base font-semibold text-gray-900 mb-4">Otras campañas</h2>
