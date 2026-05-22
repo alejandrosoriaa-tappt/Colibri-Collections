@@ -7,6 +7,13 @@ export function tenantGuard(paramName = 'tenantId') {
         return res.status(401).json({ error: 'Unauthorized' })
       }
 
+      // Dev bypass
+      if (req.devBypassTenantId) {
+        req.tenantId = req.devBypassTenantId
+        req.isAdmin = false
+        return next()
+      }
+
       const tenantId =
         req.params[paramName] ||
         req.params.id ||
@@ -62,6 +69,13 @@ export async function inferTenantGuard(req, res, next) {
   try {
     if (!req.user) {
       return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    // Dev bypass: tenant already known from auth middleware
+    if (req.devBypassTenantId) {
+      req.tenantId = req.devBypassTenantId
+      req.isAdmin = false
+      return next()
     }
 
     // Check if admin

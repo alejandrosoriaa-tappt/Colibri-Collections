@@ -8,6 +8,15 @@ const supabaseAnon = createClient(
 export async function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization
+    const bypassTenantId = process.env.DEV_BYPASS_TENANT_ID
+
+    // Dev bypass: if env var is set and no real token, skip Supabase auth
+    if (bypassTenantId && (!authHeader || authHeader === 'Bearer ')) {
+      req.user = { id: 'dev-bypass', email: 'dev@colibri.local' }
+      req.devBypassTenantId = bypassTenantId
+      return next()
+    }
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid authorization header' })
     }
