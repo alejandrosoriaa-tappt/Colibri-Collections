@@ -1,8 +1,9 @@
 import axios from 'axios'
 import supabase from './supabase.js'
 
+const env = window.__env__ || {}
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
