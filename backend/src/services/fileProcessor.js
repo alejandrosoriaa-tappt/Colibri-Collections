@@ -285,7 +285,7 @@ export async function processFile({
 
 export function generateLayoutBuffer() {
   const ws_data = [
-    ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'SECCION O SALON', 'MENSAJE O RECORDATORIO', 'LIGA_PAGO'],
+    ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'Seccion o Salon', 'MENSAJE O RECORDATORIO', 'Liga_Pago'],
     ['Garcia Franco', '5512345678', 'Raul Garcia Franco', '1-B', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
     ['Lopez Ramirez', '5587654321', 'Maria Lopez Ramirez', '6-C', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/002'],
     ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo', 'K1-A', 'Tu colegiatura de junio está pendiente.', '']

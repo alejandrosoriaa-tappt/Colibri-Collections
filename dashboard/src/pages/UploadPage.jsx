@@ -35,7 +35,7 @@ export default function UploadPage() {
 
   const handleDownloadLayout = () => {
     const rows = [
-      ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'SECCION O SALON', 'MENSAJE O RECORDATORIO', 'LIGA_PAGO'],
+      ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'Seccion o Salon', 'MENSAJE O RECORDATORIO', 'Liga_Pago'],
       ['Garcia Franco',  '5512345678', 'Raul Garcia Franco',    '1-B',  'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
       ['Lopez Ramirez',  '5587654321', 'Maria Lopez Ramirez',   '6-C',  'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/002'],
       ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo','K1-A', 'Tu colegiatura de junio está pendiente.', ''],
@@ -140,9 +140,9 @@ export default function UploadPage() {
                 ['FAMILIA',                '✓', 'Apellido o nombre de la familia',                      'Garcia Franco'],
                 ['TELÉFONO',               '✓', 'WhatsApp con 10 dígitos (sin +52)',                    '5512345678'],
                 ['ALUMNO',                 '✓', 'Nombre completo del alumno',                           'Raul Garcia Franco'],
-                ['SECCION O SALON',        '',  'Sección o salón del alumno',                           '1-B'],
+                ['Seccion o Salon',         '',  'Sección o salón del alumno',                           '1-B'],
                 ['MENSAJE O RECORDATORIO', '',  'Mensaje personalizado para este contacto',              'Tu colegiatura de junio está pendiente.'],
-                ['LIGA_PAGO',              '',  'Link de pago individual (si no se llena, se usa el general)', 'https://pago.app/xxx'],
+                ['Liga_Pago',              '',  'Link de pago individual (si no se llena, se usa el general)', 'https://pago.app/xxx'],
               ].map(([col, req, desc, ex]) => (
                 <tr key={col} className="border-b border-colibri-100">
                   <td className="py-1.5 px-2 font-mono font-medium">{col}</td>
