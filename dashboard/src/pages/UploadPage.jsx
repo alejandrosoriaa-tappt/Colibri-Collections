@@ -124,31 +124,27 @@ export default function UploadPage() {
 
       {/* Format guide */}
       <div className="card bg-colibri-50 border-colibri-100">
-        <h3 className="text-sm font-semibold text-colibri-700 mb-2">Formato requerido del archivo</h3>
-        <p className="text-xs text-colibri-600 mb-3">El archivo debe tener exactamente estas columnas (en cualquier orden):</p>
+        <h3 className="text-sm font-semibold text-colibri-700 mb-2">Ejemplo de plantilla</h3>
+        <p className="text-xs text-colibri-600 mb-3">Tu archivo debe verse así (descarga la plantilla para comenzar):</p>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table className="text-xs border-collapse w-full">
             <thead>
-              <tr className="border-b border-colibri-200">
-                {['Columna', 'Requerida', 'Descripción', 'Ejemplo'].map(h => (
-                  <th key={h} className="py-1.5 px-2 text-left font-semibold text-colibri-700">{h}</th>
+              <tr className="bg-colibri-100">
+                {['FAMILIA','TELÉFONO','ALUMNO','Seccion o Salon','MENSAJE O RECORDATORIO','Liga_Pago'].map(h => (
+                  <th key={h} className="border border-colibri-200 px-2 py-1.5 text-left font-bold text-colibri-800 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="text-colibri-600">
               {[
-                ['FAMILIA',                '✓', 'Apellido o nombre de la familia',                      'Garcia Franco'],
-                ['TELÉFONO',               '✓', 'WhatsApp con 10 dígitos (sin +52)',                    '5512345678'],
-                ['ALUMNO',                 '✓', 'Nombre completo del alumno',                           'Raul Garcia Franco'],
-                ['Seccion o Salon',         '',  'Sección o salón del alumno',                           '1-B'],
-                ['MENSAJE O RECORDATORIO', '',  'Mensaje personalizado para este contacto',              'Tu colegiatura de junio está pendiente.'],
-                ['Liga_Pago',              '',  'Link de pago individual (si no se llena, se usa el general)', 'https://pago.app/xxx'],
-              ].map(([col, req, desc, ex]) => (
-                <tr key={col} className="border-b border-colibri-100">
-                  <td className="py-1.5 px-2 font-mono font-medium">{col}</td>
-                  <td className="py-1.5 px-2 text-center">{req}</td>
-                  <td className="py-1.5 px-2">{desc}</td>
-                  <td className="py-1.5 px-2 text-colibri-400">{ex}</td>
+                ['Garcia Franco',  '5512345678', 'Raul Garcia Franco',    '1-B',  'Tu colegiatura de junio está pendiente.', 'https://pago.app/001'],
+                ['Lopez Ramirez',  '5587654321', 'Maria Lopez Ramirez',   '6-C',  'Tu colegiatura de junio está pendiente.', 'https://pago.app/002'],
+                ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo','K1-A', 'Tu colegiatura de junio está pendiente.', ''],
+              ].map((row, i) => (
+                <tr key={i} className="bg-white">
+                  {row.map((cell, j) => (
+                    <td key={j} className="border border-colibri-200 px-2 py-1.5 whitespace-nowrap">{cell}</td>
+                  ))}
                 </tr>
               ))}
             </tbody>
