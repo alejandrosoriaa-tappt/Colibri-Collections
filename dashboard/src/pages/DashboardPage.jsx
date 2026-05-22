@@ -61,55 +61,53 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Latest campaign stats */}
-      {latestCampaign ? (
-        <div className="card space-y-4">
+      {/* KPIs — siempre visibles */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="bg-gray-50 rounded-xl p-3 text-center">
+          <Users size={16} className="text-gray-400 mx-auto mb-1" />
+          <p className="text-xl font-bold text-gray-900">{totalContacts.toLocaleString('es-MX')}</p>
+          <p className="text-xs text-gray-500">Contactos</p>
+        </div>
+        <div className="bg-blue-50 rounded-xl p-3 text-center">
+          <Send size={16} className="text-blue-400 mx-auto mb-1" />
+          <p className="text-xl font-bold text-gray-900">{stats.sent.toLocaleString('es-MX')}</p>
+          <p className="text-xs text-gray-500">Enviados</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-3 text-center">
+          <CheckCheck size={16} className="text-green-400 mx-auto mb-1" />
+          <p className="text-xl font-bold text-gray-900">{stats.delivered.toLocaleString('es-MX')}</p>
+          <p className="text-xs text-gray-500">Entregados</p>
+        </div>
+        <div className="bg-colibri-50 rounded-xl p-3 text-center">
+          <BookOpen size={16} className="text-colibri mx-auto mb-1" />
+          <p className="text-xl font-bold text-gray-900">{stats.read.toLocaleString('es-MX')}</p>
+          <p className="text-xs text-gray-500">Leídos</p>
+        </div>
+      </div>
+
+      {/* Campaña más reciente */}
+      {latestCampaign && (
+        <div className="card space-y-3">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Campaña más reciente</p>
               <h2 className="text-base font-semibold text-gray-900 mt-0.5">{latestCampaign.name}</h2>
             </div>
-            <Link
-              to={`/campaigns/${latestCampaign.id}`}
-              className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1"
-            >
+            <Link to={`/campaigns/${latestCampaign.id}`} className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1">
               Ver detalle <ArrowRight size={14} />
             </Link>
           </div>
-
-          {/* KPI row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-gray-50 rounded-xl p-3 text-center">
-              <Users size={16} className="text-gray-400 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{totalContacts.toLocaleString('es-MX')}</p>
-              <p className="text-xs text-gray-500">Contactos</p>
-            </div>
-            <div className="bg-blue-50 rounded-xl p-3 text-center">
-              <Send size={16} className="text-blue-400 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{stats.sent.toLocaleString('es-MX')}</p>
-              <p className="text-xs text-gray-500">Enviados</p>
-            </div>
-            <div className="bg-green-50 rounded-xl p-3 text-center">
-              <CheckCheck size={16} className="text-green-400 mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{stats.delivered.toLocaleString('es-MX')}</p>
-              <p className="text-xs text-gray-500">Entregados</p>
-            </div>
-            <div className="bg-colibri-50 rounded-xl p-3 text-center">
-              <BookOpen size={16} className="text-colibri mx-auto mb-1" />
-              <p className="text-xl font-bold text-gray-900">{stats.read.toLocaleString('es-MX')}</p>
-              <p className="text-xs text-gray-500">Leídos</p>
-            </div>
-          </div>
-
-          {/* Progress bars */}
           {stats.sent > 0 && (
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-2.5">
               <StatBar label="Entregados" value={stats.delivered} total={stats.sent} color="bg-green-400" />
               <StatBar label="Leídos" value={stats.read} total={stats.sent} color="bg-colibri" />
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {/* Empty state */}
+      {campaigns.length === 0 && (
         <div className="card text-center py-10">
           <Megaphone size={36} className="text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">No tienes campañas aún</p>
