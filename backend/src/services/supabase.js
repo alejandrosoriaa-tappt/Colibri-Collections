@@ -374,3 +374,69 @@ export async function getInvoicesByContact(contactId) {
   if (error) throw error
   return data
 }
+
+// ================================================================
+// BROADCASTS
+// ================================================================
+
+export async function getBroadcastsByTenant(tenantId, { limit = 50, offset = 0 } = {}) {
+  const { data, count, error } = await supabase
+    .from('broadcasts')
+    .select('*', { count: 'exact' })
+    .eq('tenant_id', tenantId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1)
+  if (error) throw error
+  return { data, count }
+}
+
+export async function createBroadcast(data) {
+  const { data: broadcast, error } = await supabase
+    .from('broadcasts')
+    .insert(data)
+    .select()
+    .single()
+  if (error) throw error
+  return broadcast
+}
+
+export async function updateBroadcast(id, updates) {
+  const { data, error } = await supabase
+    .from('broadcasts')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function getContactGroupsByTenant(tenantId) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('grupo')
+    .eq('tenant_id', tenantId)
+    .not('grupo', 'is', null)
+    .neq('grupo', '')
+  if (error) throw error
+  const groups = [...new Set(data.map(c => c.grupo).filter(Boolean))].sort()
+  return groups
+}
+
+export async function getContactsForBroadcast(tenantId, groupFilter = null) {
+  let query = supabase
+    .from('contacts')
+    .select('id, nombre, telefono, grupo')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .not('telefono', 'is', null)
+    .neq('telefono', '')
+
+  if (groupFilter) {
+    query = query.eq('grupo', groupFilter)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}

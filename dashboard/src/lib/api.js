@@ -107,6 +107,16 @@ export const messagesAPI = {
 }
 
 // ================================================================
+// BROADCASTS
+// ================================================================
+export const broadcastsAPI = {
+  list: (params) => api.get('/api/broadcasts', { params }),
+  groups: () => api.get('/api/broadcasts/groups'),
+  preview: (group) => api.get('/api/broadcasts/preview', { params: { group } }),
+  send: (data) => api.post('/api/broadcasts', data)
+}
+
+// ================================================================
 // NOTIFICATIONS
 // ================================================================
 export const notificationsAPI = {

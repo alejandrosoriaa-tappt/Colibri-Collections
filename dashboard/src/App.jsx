@@ -11,6 +11,7 @@ import UploadPage from './pages/UploadPage.jsx'
 import ContactsPage from './pages/ContactsPage.jsx'
 import MessagesPage from './pages/MessagesPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
+import BroadcastsPage from './pages/BroadcastsPage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import TenantsPage from './pages/admin/TenantsPage.jsx'
 
@@ -33,6 +34,7 @@ export default function App() {
           <Route path="/upload" element={<UploadPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/messages" element={<MessagesPage />} />
+          <Route path="/broadcasts" element={<BroadcastsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
 

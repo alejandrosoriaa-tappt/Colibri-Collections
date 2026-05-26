@@ -9,14 +9,16 @@ import {
   Shield,
   Building2,
   LogOut,
-  X
+  X,
+  Radio
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore.js'
 
 const navLinks = [
   { to: '/', icon: LayoutDashboard, label: 'Inicio', exact: true },
-  { to: '/campaigns', icon: Megaphone, label: 'Campañas' },
-  { to: '/upload', icon: Upload, label: 'Subir archivo', highlight: true },
+  { to: '/campaigns', icon: Megaphone, label: 'Cobros' },
+  { to: '/broadcasts', icon: Radio, label: 'Comunicados' },
+  { to: '/upload', icon: Upload, label: 'Subir contactos', highlight: true },
   { to: '/contacts', icon: Users, label: 'Contactos' },
   { to: '/messages', icon: MessageSquare, label: 'Mensajes' },
   { to: '/settings', icon: Settings, label: 'Configuración' }

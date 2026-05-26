@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone, Users, Send, CheckCheck, BookOpen, ArrowRight, Loader2 } from 'lucide-react'
+import { Megaphone, Users, Send, CheckCheck, BookOpen, ArrowRight, Loader2, Radio } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
-import { campaignsAPI } from '../lib/api.js'
+import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 
 function StatBar({ label, value, total, color }) {
@@ -23,11 +23,18 @@ function StatBar({ label, value, total, color }) {
 export default function DashboardPage() {
   const { tenant } = useAuthStore()
   const [campaigns, setCampaigns] = useState([])
+  const [broadcasts, setBroadcasts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    campaignsAPI.list()
-      .then(res => setCampaigns(res.data.campaigns || []))
+    Promise.all([
+      campaignsAPI.list(),
+      broadcastsAPI.list({ limit: 3 }).catch(() => ({ data: { broadcasts: [] } }))
+    ])
+      .then(([cRes, bRes]) => {
+        setCampaigns(cRes.data.campaigns || [])
+        setBroadcasts(bRes.data.broadcasts || [])
+      })
       .catch(console.error)
       .finally(() => setIsLoading(false))
   }, [])
@@ -36,6 +43,7 @@ export default function DashboardPage() {
   const activeCampaigns = campaigns.filter(c => c.status === 'active')
   const stats = latestCampaign?.msg_stats || { sent: 0, delivered: 0, read: 0, failed: 0 }
   const totalContacts = latestCampaign?.total_contacts || 0
+  const totalBroadcastsSent = broadcasts.reduce((acc, b) => acc + (b.sent_count || 0), 0)
 
   if (isLoading) {
     return (
@@ -71,17 +79,17 @@ export default function DashboardPage() {
         <div className="bg-blue-50 rounded-xl p-3 text-center">
           <Send size={16} className="text-blue-400 mx-auto mb-1" />
           <p className="text-xl font-bold text-gray-900">{stats.sent.toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Enviados</p>
+          <p className="text-xs text-gray-500">Mensajes cobro</p>
+        </div>
+        <div className="bg-colibri-50 rounded-xl p-3 text-center">
+          <Radio size={16} className="text-colibri mx-auto mb-1" />
+          <p className="text-xl font-bold text-gray-900">{broadcasts.length}</p>
+          <p className="text-xs text-gray-500">Comunicados</p>
         </div>
         <div className="bg-green-50 rounded-xl p-3 text-center">
           <CheckCheck size={16} className="text-green-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{stats.delivered.toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Entregados</p>
-        </div>
-        <div className="bg-colibri-50 rounded-xl p-3 text-center">
-          <BookOpen size={16} className="text-colibri mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{stats.read.toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Leídos</p>
+          <p className="text-xl font-bold text-gray-900">{(stats.sent + totalBroadcastsSent).toLocaleString('es-MX')}</p>
+          <p className="text-xs text-gray-500">Total enviados</p>
         </div>
       </div>
 
@@ -144,6 +152,52 @@ export default function DashboardPage() {
               <CampaignCard key={c.id} campaign={c} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Recent broadcasts */}
+      {broadcasts.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-gray-900">Comunicados recientes</h2>
+            <Link to="/broadcasts" className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1">
+              Ver todos <ArrowRight size={14} />
+            </Link>
+          </div>
+          <div className="grid gap-3">
+            {broadcasts.map(b => (
+              <div key={b.id} className="card flex items-center gap-4 py-3">
+                <div className="w-9 h-9 rounded-xl bg-colibri-50 flex items-center justify-center flex-shrink-0">
+                  <Radio size={16} className="text-colibri" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 text-sm truncate">{b.title}</p>
+                  <p className="text-xs text-gray-400">
+                    {b.group_filter || 'Todos'} · {b.sent_count} enviados
+                  </p>
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">
+                  {new Date(b.sent_at || b.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Quick actions when empty */}
+      {campaigns.length === 0 && broadcasts.length === 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Link to="/campaigns" className="card text-center py-8 hover:shadow-md transition-shadow group">
+            <Megaphone size={32} className="text-gray-300 group-hover:text-colibri mx-auto mb-3 transition-colors" />
+            <p className="text-gray-700 font-medium">Cobros automáticos</p>
+            <p className="text-gray-400 text-sm mt-1">Crea tu primera campaña de cobro</p>
+          </Link>
+          <Link to="/broadcasts" className="card text-center py-8 hover:shadow-md transition-shadow group">
+            <Radio size={32} className="text-gray-300 group-hover:text-colibri mx-auto mb-3 transition-colors" />
+            <p className="text-gray-700 font-medium">Comunicados</p>
+            <p className="text-gray-400 text-sm mt-1">Envía avisos a grupos específicos</p>
+          </Link>
         </div>
       )}
     </div>
