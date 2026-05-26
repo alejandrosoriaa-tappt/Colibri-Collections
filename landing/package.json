@@ -1,0 +1,11 @@
+{
+  "name": "colybiz-landing-condominios",
+  "version": "1.0.0",
+  "description": "ColYbiz landing page for condominium administrators",
+  "scripts": {
+    "start": "serve . -p $PORT --single"
+  },
+  "dependencies": {
+    "serve": "^14.2.6"
+  }
+}
