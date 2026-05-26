@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bird, Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 
 export default function LoginPage() {
@@ -23,8 +23,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-white bg-opacity-20 rounded-2xl mb-4">
-            <Bird size={32} className="text-white" />
+          <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-3xl shadow-lg mb-5">
+            <img src="/logo.png" alt="Colibrí Collections" className="w-20 h-20 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">Colibrí Collections</h1>
           <p className="text-white text-opacity-70 text-sm mt-1">Gestión de cobranza por WhatsApp</p>
