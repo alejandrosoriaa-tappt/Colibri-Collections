@@ -15,8 +15,8 @@ export const SYSTEM_MESSAGES = {
     `📨 Mensajes enviados - ${vars.nombre_org}\n\nSe enviaron los mensajes del ${vars.message_label} del ciclo ${vars.campaign_name}:\n\n• Enviados exitosamente: ${vars.sent}\n• Fallidos: ${vars.failed || 0}\n• Tipo: ${vars.send_to === 'all' ? 'Todos los contactos' : 'Contactos pendientes de pago'}\n\nPuedes ver el detalle en tu panel de Colibrí.`,
 
   subscription_due: (vars) =>
-    `💳 Recordatorio de pago - Colibrí Communications\n\nHola ${vars.nombre_org}, tu suscripción mensual de Colibrí Communications por $${vars.amount} MXN vence el ${vars.due_date}.\n\nPara continuar usando el servicio sin interrupciones, realiza tu pago antes de la fecha límite.\n\nPaga aquí: ${vars.payment_link}`,
+    `💳 Recordatorio de pago - ColYbiz\n\nHola ${vars.nombre_org}, tu suscripción mensual de ColYbiz por $${vars.amount} MXN vence el ${vars.due_date}.\n\nPara continuar usando el servicio sin interrupciones, realiza tu pago antes de la fecha límite.\n\nPaga aquí: ${vars.payment_link}`,
 
   trial_ending: (vars) =>
-    `⏰ Tu período de prueba termina pronto - Colibrí Communications\n\nHola ${vars.nombre_org}, tu período de prueba gratuito termina en ${vars.days_remaining} días (${vars.end_date}).\n\nPara continuar automatizando tus cobros, activa tu suscripción.\n\nPlan mensual: $${vars.plan_price} MXN/mes\n\nContáctanos para activar: ${vars.contact_link || 'hola@colibricollections.mx'}`
+    `⏰ Tu período de prueba termina pronto - ColYbiz\n\nHola ${vars.nombre_org}, tu período de prueba gratuito termina en ${vars.days_remaining} días (${vars.end_date}).\n\nPara continuar automatizando tus cobros, activa tu suscripción.\n\nPlan mensual: $${vars.plan_price} MXN/mes\n\nContáctanos para activar: ${vars.contact_link || 'hola@colybiz.com'}`
 }

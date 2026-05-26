@@ -21,7 +21,7 @@ function getTitle(pathname) {
   // Dynamic routes
   if (pathname.startsWith('/campaigns/')) return 'Detalle de campaña'
   if (pathname.startsWith('/contacts/')) return 'Detalle de contacto'
-  return 'Colibrí Communications'
+  return 'ColYbiz'
 }
 
 export default function Header({ onMenuClick }) {
