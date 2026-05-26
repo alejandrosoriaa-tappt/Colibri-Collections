@@ -27,7 +27,7 @@ export default function LoginPage() {
             <img src="/logo.png" alt="ColYbiz" className="w-20 h-20 object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white">ColYbiz</h1>
-          <p className="text-white text-opacity-70 text-sm mt-1">Gestión de cobranza por WhatsApp</p>
+          <p className="text-white text-opacity-70 text-sm mt-1">Comunicación automática por WhatsApp</p>
         </div>
 
         {/* Card */}
@@ -77,7 +77,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-white text-opacity-50 text-xs mt-6">
-          ¿Problemas? Contacta a soporte@colibricollections.mx
+          ¿Problemas? Contacta a soporte@colybiz.com
         </p>
       </div>
     </div>

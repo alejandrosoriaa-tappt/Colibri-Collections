@@ -138,7 +138,7 @@ export default function SettingsPage() {
 
           <div className="mt-4 pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400">
-              Para cambios de plan o consultas de facturación: <span className="text-colibri font-medium">hola@colibricollections.mx</span>
+              Para cambios de plan o consultas de facturación: <span className="text-colibri font-medium">hola@colybiz.com</span>
             </p>
           </div>
         </div>
