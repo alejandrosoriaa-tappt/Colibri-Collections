@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <img src="/logo.png" alt="Colibrí" className="w-10 h-10 object-contain" />
           <div>
             <h1 className="text-lg font-bold text-white leading-tight">Colibrí</h1>
-            <p className="text-xs text-white text-opacity-70 leading-tight">Collections</p>
+            <p className="text-xs text-white text-opacity-70 leading-tight">Communications</p>
           </div>
         </div>
         <button

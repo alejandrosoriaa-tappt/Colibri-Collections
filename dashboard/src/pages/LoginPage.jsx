@@ -24,9 +24,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-3xl shadow-lg mb-5">
-            <img src="/logo.png" alt="Colibrí Collections" className="w-20 h-20 object-contain" />
+            <img src="/logo.png" alt="Colibrí Communications" className="w-20 h-20 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Colibrí Collections</h1>
+          <h1 className="text-2xl font-bold text-white">Colibrí Communications</h1>
           <p className="text-white text-opacity-70 text-sm mt-1">Gestión de cobranza por WhatsApp</p>
         </div>
 
