@@ -72,7 +72,7 @@ export default function SettingsPage() {
                 className="input"
                 value={form.display_name}
                 onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
-                placeholder="Ej. Colegio San José"
+                placeholder="Ej. Club Deportivo Azteca"
                 disabled={!isAdmin}
               />
             </div>

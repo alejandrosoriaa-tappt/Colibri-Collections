@@ -26,7 +26,7 @@ export async function sendOperationalNotification(tenantId, type, vars = {}) {
     }
 
     const enrichedVars = {
-      nombre_escuela: tenant.display_name || tenant.name,
+      nombre_org: tenant.display_name || tenant.name,
       ...vars
     }
 

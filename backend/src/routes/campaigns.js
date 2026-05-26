@@ -17,7 +17,7 @@ const defaultMessages = [
     trigger_day: 1,
     send_to: 'all',
     message_template:
-      'Hola {nombre} 👋, {nombre_escuela} te recuerda que tu {concept} del mes es de ${monto}. Tienes hasta el {fecha_limite} sin recargo. Paga aquí: {liga_pago}'
+      'Hola {nombre} 👋, {nombre_org} te recuerda que tu {concept} del mes es de ${monto}. Tienes hasta el {fecha_limite} sin recargo. Paga aquí: {liga_pago}'
   },
   {
     message_number: 2,
@@ -38,7 +38,7 @@ const defaultMessages = [
     trigger_day: 28,
     send_to: 'unpaid',
     message_template:
-      'Aviso importante de {nombre_escuela}: tu {concept} de este mes (${monto_con_recargo}) sigue sin pagarse. Los adeudos no regularizados al cierre del mes pueden generar sanciones administrativas. Regulariza hoy: {liga_pago}'
+      'Aviso importante de {nombre_org}: tu {concept} de este mes (${monto_con_recargo}) sigue sin pagarse. Los adeudos no regularizados al cierre del mes pueden generar sanciones administrativas. Regulariza hoy: {liga_pago}'
   }
 ]
 

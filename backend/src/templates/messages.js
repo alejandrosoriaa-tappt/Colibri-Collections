@@ -7,7 +7,7 @@ export function buildMessage(template, vars = {}) {
     '{monto_con_recargo}': vars.monto_con_recargo ? formatCurrency(vars.monto_con_recargo) : '',
     '{liga_pago}': vars.liga_pago || '',
     '{fecha_limite}': vars.fecha_limite ? formatDate(vars.fecha_limite) : '',
-    '{nombre_escuela}': vars.nombre_escuela || '',
+    '{nombre_org}': vars.nombre_org || '',
     '{concept}': vars.concept || '',
     '{late_fee_pct}': vars.late_fee_pct !== undefined ? String(vars.late_fee_pct) : ''
   }

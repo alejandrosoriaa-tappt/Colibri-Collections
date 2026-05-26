@@ -139,7 +139,7 @@ async function sendCampaignMessage(campaign, message, tenant) {
         monto_con_recargo: montoConRecargo,
         liga_pago: invoice.liga_pago || tenant?.payment_link_general || '',
         fecha_limite: campaign.due_date,
-        nombre_escuela: tenant?.display_name || tenant?.name || '',
+        nombre_org: tenant?.display_name || tenant?.name || '',
         concept: campaign.concept || 'pago mensual',
         late_fee_pct: lateFee
       }
