@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kollybry para Colegios — One Pager</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8;
+      color: #1a1a1a;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    :root {
+      --green:  #0d6e4f;
+      --green2: #15a374;
+      --red:    #dc2626;
+      --red-bg: #fef2f2;
+      --red-bd: #fecaca;
+    }
+
+    /* ── PAGE SHELL ── */
+    .page {
+      max-width: 900px;
+      margin: 32px auto;
+      background: white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+    }
+
+    /* ── HEADER ── */
+    .header {
+      background: linear-gradient(135deg, #074a35 0%, var(--green) 60%, var(--green2) 100%);
+      padding: 36px 48px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .header-left h1 {
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.6);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+    }
+    .header-left h2 {
+      font-size: 30px;
+      font-weight: 900;
+      color: white;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+    }
+    .header-left h2 span { color: #7de8b8; }
+    .header-logo {
+      font-size: 15px;
+      font-weight: 800;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      opacity: 0.9;
+    }
+    .header-logo-icon {
+      width: 40px; height: 40px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+
+    /* ── TWO COLUMNS ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+    }
+
+    /* ── PAIN ── */
+    .pain {
+      padding: 36px 40px;
+      background: var(--red-bg);
+      border-right: 1px solid var(--red-bd);
+    }
+    .col-label {
+      display: flex; align-items: center; gap-8px;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      margin-bottom: 20px;
+    }
+    .col-label-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      margin-right: 8px; flex-shrink: 0;
+    }
+    .pain .col-label { color: var(--red); }
+    .pain .col-label-dot { background: var(--red); }
+    .pain-title {
+      font-size: 18px; font-weight: 800;
+      color: #7f1d1d; margin-bottom: 20px; line-height: 1.3;
+    }
+    .pain-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 16px; padding-bottom: 16px;
+      border-bottom: 1px solid var(--red-bd);
+    }
+    .pain-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .pain-emoji { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+    .pain-item h3 { font-size: 14px; font-weight: 700; color: #7f1d1d; margin-bottom: 4px; }
+    .pain-item p { font-size: 12.5px; color: #991b1b; line-height: 1.55; }
+
+    /* ── SOLUTION ── */
+    .solution {
+      padding: 36px 40px;
+      background: #f0faf5;
+    }
+    .solution .col-label { color: var(--green); }
+    .solution .col-label-dot { background: var(--green2); }
+    .solution-title {
+      font-size: 18px; font-weight: 800;
+      color: #064e35; margin-bottom: 20px; line-height: 1.3;
+    }
+    .sol-item {
+      display: flex; gap: 12px; align-items: flex-start;
+      margin-bottom: 16px; padding-bottom: 16px;
+      border-bottom: 1px solid #c6f0dd;
+    }
+    .sol-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .sol-check {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--green); color: white;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
+    }
+    .sol-item h3 { font-size: 14px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
+    .sol-item p { font-size: 12.5px; color: #166534; line-height: 1.55; }
+
+    /* ── HOW ── */
+    .how {
+      padding: 32px 48px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+    }
+    .how-title {
+      font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1px;
+      color: var(--green); margin-bottom: 20px;
+      text-align: center;
+    }
+    .steps {
+      display: grid; grid-template-columns: repeat(4,1fr);
+      gap: 16px;
+    }
+    .step {
+      text-align: center; padding: 18px 14px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+    }
+    .step-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--green); color: white;
+      font-weight: 800; font-size: 15px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 10px;
+    }
+    .step h3 { font-size: 13px; font-weight: 700; color: #0f1923; margin-bottom: 5px; }
+    .step p { font-size: 11.5px; color: #6b7280; line-height: 1.5; }
+
+    /* ── METRICS ── */
+    .metrics {
+      padding: 28px 48px;
+      background: var(--green);
+      display: flex; justify-content: center;
+      gap: 48px; flex-wrap: wrap;
+    }
+    .metric { text-align: center; color: white; }
+    .metric-num { font-size: 36px; font-weight: 900; color: #7de8b8; line-height: 1; }
+    .metric-label { font-size: 12px; color: rgba(255,255,255,0.75); margin-top: 5px; font-weight: 500; }
+
+    /* ── MOCKUP ── */
+    .mockup-section {
+      padding: 32px 48px;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      display: flex; gap: 32px; align-items: flex-start;
+    }
+    .mockup-text { flex: 1; }
+    .mockup-text h3 {
+      font-size: 16px; font-weight: 800; color: #0f1923; margin-bottom: 6px;
+    }
+    .mockup-text p { font-size: 13px; color: #6b7280; line-height: 1.6; margin-bottom: 14px; }
+    .mockup-text ul { padding-left: 16px; }
+    .mockup-text ul li { font-size: 13px; color: #374151; line-height: 1.8; }
+    .mockup-text ul li span { color: var(--green); font-weight: 600; }
+
+    .phone-wrap { flex-shrink: 0; }
+    .phone {
+      width: 210px;
+      background: #fff; border-radius: 28px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.13);
+      border: 5px solid #1a1a1a;
+      overflow: hidden;
+    }
+    .phone-bar {
+      background: #075e54; color: white;
+      padding: 10px 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .phone-av {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--green2); display: flex; align-items: center;
+      justify-content: center; font-size: 12px; font-weight: 800; color: white;
+    }
+    .phone-info .pname { font-size: 12.5px; font-weight: 600; }
+    .phone-info .pstat { font-size: 10px; opacity: 0.7; }
+    .phone-body { background: #ece5dd; padding: 12px 10px; }
+    .bubble {
+      background: white; border-radius: 0 10px 10px 10px;
+      padding: 9px 12px; font-size: 11.5px; line-height: 1.55;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      max-width: 95%; margin-bottom: 8px; color: #1a1a1a;
+    }
+    .bubble strong { color: var(--green); }
+    .bubble-time { font-size: 9.5px; color: #999; text-align: right; margin-top: 4px; }
+
+    /* ── CTA ── */
+    .cta {
+      padding: 28px 48px;
+      background: white;
+      border-top: 1px solid #e2e8f0;
+      display: flex; align-items: center; justify-content: space-between; gap: 24px;
+    }
+    .cta-left h3 { font-size: 18px; font-weight: 800; color: #0f1923; margin-bottom: 6px; }
+    .cta-left p { font-size: 13px; color: #6b7280; }
+    .cta-right { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .cta-btn {
+      background: var(--green); color: white;
+      padding: 12px 28px; border-radius: 10px;
+      font-size: 14px; font-weight: 700;
+      text-decoration: none; display: inline-block;
+    }
+    .cta-url { font-size: 12px; color: #9ca3af; }
+
+    /* ── FOOTER ── */
+    .footer {
+      background: #0f1923;
+      padding: 14px 48px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .footer span { color: #4b5563; font-size: 12px; }
+    .footer a { color: #4b5563; font-size: 12px; text-decoration: none; }
+
+    /* ── PRINT ── */
+    @media print {
+      body { background: white; }
+      .page { margin: 0; border-radius: 0; box-shadow: none; max-width: 100%; }
+      .cta-btn { border: 2px solid var(--green); }
+    }
+
+    @media (max-width: 700px) {
+      .two-col { grid-template-columns: 1fr; }
+      .pain { border-right: none; border-bottom: 1px solid var(--red-bd); }
+      .steps { grid-template-columns: repeat(2,1fr); }
+      .mockup-section { flex-direction: column; }
+      .phone-wrap { display: none; }
+      .metrics { gap: 28px; }
+      .cta { flex-direction: column; align-items: flex-start; }
+      .cta-right { align-items: flex-start; }
+      .header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <h1>Solución para colegios y escuelas</h1>
+      <h2>Cobra colegiaturas y comunica<br/><span>directo al WhatsApp de cada papá</span></h2>
+    </div>
+    <div class="header-logo">
+      <div class="header-logo-icon">🐦</div>
+      <div>
+        <div style="font-size:17px;font-weight:900">Kollybry</div>
+        <div style="font-size:11px;font-weight:500;opacity:0.7">kollybry.com</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOLOR vs SOLUCIÓN -->
+  <div class="two-col">
+
+    <!-- DOLOR -->
+    <div class="pain">
+      <div class="col-label">
+        <div class="col-label-dot"></div>El problema hoy
+      </div>
+      <div class="pain-title">Cobrar y comunicar en un colegio es un caos</div>
+
+      <div class="pain-item">
+        <div class="pain-emoji">📞</div>
+        <div>
+          <h3>Llamadas uno por uno</h3>
+          <p>La secretaria dedica horas llamando a los papás que deben colegiatura. Sin tiempo para nada más.</p>
+        </div>
+      </div>
+
+      <div class="pain-item">
+        <div class="pain-emoji">📧</div>
+        <div>
+          <h3>Correos que nadie lee</h3>
+          <p>El email tiene 20% de apertura. El 80% de los padres nunca vio el comunicado que enviaste.</p>
+        </div>
+      </div>
+
+      <div class="pain-item">
+        <div class="pain-emoji">🤯</div>
+        <div>
+          <h3>Grupos de WhatsApp caóticos</h3>
+          <p>300 padres en un grupo. Todos responden, se pierde la información, es imposible controlar.</p>
+        </div>
+      </div>
+
+      <div class="pain-item">
+        <div class="pain-emoji">📋</div>
+        <div>
+          <h3>Sin segmentación por salón</h3>
+          <p>Un aviso del 3ro B le llega a toda la escuela. Genera confusión y desconfianza en la institución.</p>
+        </div>
+      </div>
+
+      <div class="pain-item">
+        <div class="pain-emoji">❓</div>
+        <div>
+          <h3>No sabes quién recibió el mensaje</h3>
+          <p>Mandas una circular y no tienes idea si llegó, si la leyeron o si simplemente se perdió.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SOLUCIÓN -->
+    <div class="solution">
+      <div class="col-label">
+        <div class="col-label-dot"></div>La solución Kollybry
+      </div>
+      <div class="solution-title">WhatsApp automático, segmentado y con métricas</div>
+
+      <div class="sol-item">
+        <div class="sol-check">✓</div>
+        <div>
+          <h3>Recordatorios automáticos de colegiatura</h3>
+          <p>Cada papá recibe un WhatsApp personalizado con el nombre de su hijo, el monto y un link de pago — sin que nadie llame.</p>
+        </div>
+      </div>
+
+      <div class="sol-item">
+        <div class="sol-check">✓</div>
+        <div>
+          <h3>98% de apertura garantizada</h3>
+          <p>WhatsApp tiene la tasa de lectura más alta de cualquier canal. El mensaje llega y se lee.</p>
+        </div>
+      </div>
+
+      <div class="sol-item">
+        <div class="sol-check">✓</div>
+        <div>
+          <h3>Por salón, por grado o para toda la escuela</h3>
+          <p>Envía solo a los papás del 3ro B, a toda la primaria o a un grupo específico. Tú decides quién recibe qué.</p>
+        </div>
+      </div>
+
+      <div class="sol-item">
+        <div class="sol-check">✓</div>
+        <div>
+          <h3>Comunicados con PDF adjunto</h3>
+          <p>Circulares, listas de útiles, convocatorias — el documento llega directo al WhatsApp de los papás.</p>
+        </div>
+      </div>
+
+      <div class="sol-item">
+        <div class="sol-check">✓</div>
+        <div>
+          <h3>Ves en tiempo real quién leyó</h3>
+          <p>Dashboard con enviados, entregados y leídos. Sabes exactamente cuántos papás vieron el mensaje.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- METRICS BAR -->
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-num">98%</div>
+      <div class="metric-label">Tasa de apertura WhatsApp</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num">5×</div>
+      <div class="metric-label">Más efectivo que el email</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num">&lt;3 min</div>
+      <div class="metric-label">Tiempo de lectura promedio</div>
+    </div>
+    <div class="metric">
+      <div class="metric-num">2 min</div>
+      <div class="metric-label">Para subir tu lista de grupos</div>
+    </div>
+  </div>
+
+  <!-- CÓMO FUNCIONA -->
+  <div class="how">
+    <div class="how-title">¿Cómo lo implementa tu colegio?</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h3>Subes tu lista</h3>
+        <p>Excel con nombre, teléfono y salón de cada alumno. Listo en 2 minutos.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h3>Seleccionas el grupo</h3>
+        <p>Todos, un grado completo o un salón específico — tú decides.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h3>Escribes el mensaje</h3>
+        <p>Personalizado con el nombre del alumno. Adjunta un PDF si lo necesitas.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h3>Envías y monitoreas</h3>
+        <p>En segundos llega a todos. Ves en vivo quién lo recibió y quién lo leyó.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- MOCKUP + CASOS -->
+  <div class="mockup-section">
+    <div class="mockup-text">
+      <h3>Mensajes que los papás sí leen</h3>
+      <p>Cada mensaje se personaliza automáticamente con el nombre del alumno y el salón. Tus papás reciben algo que parece escrito para ellos — no una circular genérica.</p>
+
+      <p><strong>Casos de uso más comunes en colegios:</strong></p>
+      <ul>
+        <li>💳 <span>Recordatorio de colegiatura</span> mensual con link de pago</li>
+        <li>📢 <span>Aviso por salón</span> (tarea, materiales, evento del grupo)</li>
+        <li>📋 <span>Convocatoria a junta</span> de padres de familia</li>
+        <li>📄 <span>Circular general</span> con PDF adjunto a toda la escuela</li>
+        <li>🏫 <span>Aviso de suspensión</span> o cambio de horario</li>
+        <li>🎉 <span>Invitación a evento</span> (kermés, festival, graduación)</li>
+      </ul>
+    </div>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="phone-bar">
+          <div class="phone-av">K</div>
+          <div class="phone-info">
+            <div class="pname">Colegio Las Américas</div>
+            <div class="pstat">en línea</div>
+          </div>
+        </div>
+        <div class="phone-body">
+          <div class="bubble">
+            Estimada familia <strong>García Martínez</strong> 👋<br/><br/>
+            La colegiatura de <strong>Sofía</strong> (<strong>3ro A</strong>) correspondiente a <strong>Noviembre 2025</strong> está pendiente.<br/><br/>
+            💳 Monto: <strong>$4,500 MXN</strong><br/>
+            📅 Vence: <strong>10 de Noviembre</strong><br/><br/>
+            Realice su pago aquí 👇<br/>
+            <strong>pago.colegiolasamericas.mx</strong>
+            <div class="bubble-time">8:02 a.m. ✓✓</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+    <div class="cta-left">
+      <h3>¿Le mostramos cómo funciona<br/>con los datos de tu colegio?</h3>
+      <p>Demo de 20 minutos, sin compromiso. Ves tu propio directorio funcionando en tiempo real.</p>
+    </div>
+    <div class="cta-right">
+      <a href="https://wa.me/521XXXXXXXXXX?text=Hola%2C%20vi%20el%20one%20pager%20de%20Kollybry%20para%20colegios%20y%20quiero%20una%20demo" class="cta-btn">
+        Solicitar demo →
+      </a>
+      <span class="cta-url">kollybry.com · hola@kollybry.com</span>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <span>© 2025 Kollybry · Comunicación automática para organizaciones</span>
+    <a href="https://kollybry.com">kollybry.com</a>
+  </div>
+
+</div>
+</body>
+</html>
