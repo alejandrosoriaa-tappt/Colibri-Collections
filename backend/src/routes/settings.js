@@ -4,12 +4,13 @@
  */
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
+import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import supabase from '../services/supabase.js'
 
 const router = Router()
 
 // GET /api/settings — return current tenant settings
-router.get('/', authMiddleware, async (req, res) => {
+router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('tenants')
@@ -27,7 +28,7 @@ router.get('/', authMiddleware, async (req, res) => {
 })
 
 // Check if waba_token is set
-router.get('/whatsapp-status', authMiddleware, async (req, res) => {
+router.get('/whatsapp-status', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('tenants')
@@ -49,7 +50,7 @@ router.get('/whatsapp-status', authMiddleware, async (req, res) => {
 })
 
 // PATCH /api/settings — update safe tenant fields
-router.patch('/', authMiddleware, async (req, res) => {
+router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const allowed = [
       'display_name',
