@@ -1,7 +1,7 @@
 {
-  "name": "colybiz-landing-condominios",
+  "name": "kollybry-landing",
   "version": "1.0.0",
-  "description": "ColYbiz landing page for condominium administrators",
+  "description": "Kollybry landing page",
   "scripts": {
     "start": "serve . -p $PORT --single"
   },
