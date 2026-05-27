@@ -198,7 +198,8 @@ router.patch('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
     const allowedFields = [
       'name', 'display_name', 'slug', 'plan', 'status',
       'admin_phone', 'payment_link_general', 'subscription_amount',
-      'trial_ends_at', 'logo_url'
+      'trial_ends_at', 'logo_url',
+      'waba_phone_id', 'waba_token', 'waba_business_id', 'org_type'
     ]
 
     const updates = {}

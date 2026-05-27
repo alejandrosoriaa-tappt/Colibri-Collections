@@ -126,6 +126,15 @@ export const notificationsAPI = {
 }
 
 // ================================================================
+// SETTINGS (tenant self-service)
+// ================================================================
+export const settingsAPI = {
+  get: () => api.get('/api/settings'),
+  update: (data) => api.patch('/api/settings', data),
+  whatsappStatus: () => api.get('/api/settings/whatsapp-status')
+}
+
+// ================================================================
 // ADMIN
 // ================================================================
 export const adminAPI = {

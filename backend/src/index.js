@@ -16,6 +16,7 @@ import notificationsRouter from './routes/notifications.js'
 import webhooksRouter from './routes/webhooks.js'
 import adminRouter from './routes/admin.js'
 import broadcastsRouter from './routes/broadcasts.js'
+import settingsRouter from './routes/settings.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -92,6 +93,7 @@ app.use('/api/notifications', notificationsRouter)
 app.use('/api/webhooks', webhooksRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/broadcasts', broadcastsRouter)
+app.use('/api/settings', settingsRouter)
 
 // 404 handler
 app.use((req, res) => {
