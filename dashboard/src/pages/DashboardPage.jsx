@@ -6,20 +6,6 @@ import KpiBar from '../components/shared/KpiBar.jsx'
 import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 
-function StatBar({ label, value, total, color }) {
-  const pct = total > 0 ? Math.round((value / total) * 100) : 0
-  return (
-    <div>
-      <div className="flex justify-between text-xs mb-1">
-        <span className="text-gray-500">{label}</span>
-        <span className="font-semibold text-gray-800">{value.toLocaleString('es-MX')} <span className="text-gray-400 font-normal">({pct}%)</span></span>
-      </div>
-      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-      </div>
-    </div>
-  )
-}
 
 export default function DashboardPage() {
   const { tenant } = useAuthStore()
@@ -84,22 +70,21 @@ export default function DashboardPage() {
 
       {/* Campaña más reciente */}
       {latestCampaign && (
-        <div className="card space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Campaña más reciente</p>
-              <h2 className="text-base font-semibold text-gray-900 mt-0.5">{latestCampaign.name}</h2>
-            </div>
-            <Link to={`/campaigns/${latestCampaign.id}`} className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1">
-              Ver detalle <ArrowRight size={14} />
-            </Link>
+        <div className="card flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Campaña más reciente</p>
+            <h2 className="text-base font-semibold text-gray-900 mt-0.5">{latestCampaign.name}</h2>
+            <p className="text-xs text-gray-400 mt-1">
+              {latestCampaign.total_contacts || 0} contactos · {latestCampaign.paid_count || 0} pagados ({
+                latestCampaign.total_contacts > 0
+                  ? Math.round(((latestCampaign.paid_count || 0) / latestCampaign.total_contacts) * 100)
+                  : 0
+              }%)
+            </p>
           </div>
-          {stats.sent > 0 && (
-            <div className="space-y-2.5">
-              <StatBar label="Entregados" value={stats.delivered} total={stats.sent} color="bg-green-400" />
-              <StatBar label="Leídos" value={stats.read} total={stats.sent} color="bg-colibri" />
-            </div>
-          )}
+          <Link to={`/campaigns/${latestCampaign.id}`} className="text-sm text-colibri hover:text-colibri-dark flex items-center gap-1 flex-shrink-0">
+            Ver detalle <ArrowRight size={14} />
+          </Link>
         </div>
       )}
 
