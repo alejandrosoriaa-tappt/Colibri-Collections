@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Loader2, Play, Pause, Edit2, Save, X, CheckCircle2,
-  Circle, Users, DollarSign, AlertCircle, MessageSquare, Upload
+  Circle, Users, AlertCircle, MessageSquare, Upload, TrendingUp
 } from 'lucide-react'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
+import KpiBar from '../components/shared/KpiBar.jsx'
 import { campaignsAPI, invoicesAPI } from '../lib/api.js'
 
 function formatCurrency(amount) {
@@ -211,6 +212,13 @@ export default function CampaignDetailPage() {
     )
   }
 
+  // Communication stats from message logs
+  const enviados = messages.reduce((acc, m) => acc + (m.sent_count || 0), 0)
+  const entregados = campaign.msg_stats?.delivered || 0
+  const leidos = campaign.msg_stats?.read || 0
+  const clicks = 0 // pending link tracking
+
+  // Financial stats (secondary)
   const paidPct = campaign.total_contacts > 0
     ? Math.round((campaign.paid_count / campaign.total_contacts) * 100)
     : 0
@@ -267,27 +275,33 @@ export default function CampaignDetailPage() {
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="card">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Contactos</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{campaign.total_contacts}</p>
+      {/* KPIs comunicación */}
+      <KpiBar enviados={enviados} entregados={entregados} leidos={leidos} clicks={clicks} />
+
+      {/* Resumen de cobranza (secundario) */}
+      {campaign.total_contacts > 0 && (
+        <div className="card flex flex-wrap items-center gap-6 py-3">
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-gray-400" />
+            <span className="text-sm text-gray-500">Cobranza:</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-semibold text-gray-900">{campaign.paid_count || 0}</span>
+            <span className="text-xs text-gray-400">de {campaign.total_contacts} pagaron</span>
+            <span className="text-xs font-medium text-green-600 ml-1">({paidPct}%)</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-400">Cobrado:</span>
+            <span className="text-sm font-semibold text-gray-900">{formatCurrency(campaign.paid_amount)}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-400">Por cobrar:</span>
+            <span className="text-sm font-semibold text-orange-500">
+              {formatCurrency((campaign.total_amount || 0) - (campaign.paid_amount || 0))}
+            </span>
+          </div>
         </div>
-        <div className="card">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Pagados</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{campaign.paid_count} <span className="text-sm text-gray-400">({paidPct}%)</span></p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Cobrado</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{formatCurrency(campaign.paid_amount)}</p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-400 uppercase tracking-wide">Por cobrar</p>
-          <p className="text-2xl font-bold text-orange-500 mt-1">
-            {formatCurrency((campaign.total_amount || 0) - (campaign.paid_amount || 0))}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Tabs */}
       <div className="border-b border-gray-200">

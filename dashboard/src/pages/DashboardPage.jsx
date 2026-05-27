@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Megaphone, Users, Send, CheckCheck, BookOpen, ArrowRight, Loader2, Radio } from 'lucide-react'
+import { Megaphone, ArrowRight, Loader2, Radio } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
+import KpiBar from '../components/shared/KpiBar.jsx'
 import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 
@@ -41,9 +42,13 @@ export default function DashboardPage() {
 
   const latestCampaign = campaigns[0] || null
   const activeCampaigns = campaigns.filter(c => c.status === 'active')
-  const stats = latestCampaign?.msg_stats || { sent: 0, delivered: 0, read: 0, failed: 0 }
-  const totalContacts = latestCampaign?.total_contacts || 0
-  const totalBroadcastsSent = broadcasts.reduce((acc, b) => acc + (b.sent_count || 0), 0)
+
+  // Aggregate communication stats across ALL campaigns + broadcasts
+  const totalEnviados = campaigns.reduce((acc, c) => acc + (c.msg_stats?.sent || 0), 0)
+    + broadcasts.reduce((acc, b) => acc + (b.sent_count || 0), 0)
+  const totalEntregados = campaigns.reduce((acc, c) => acc + (c.msg_stats?.delivered || 0), 0)
+  const totalLeidos = campaigns.reduce((acc, c) => acc + (c.msg_stats?.read || 0), 0)
+  const totalClicks = 0 // pending link tracking feature
 
   if (isLoading) {
     return (
@@ -69,29 +74,13 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* KPIs — siempre visibles */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-gray-50 rounded-xl p-3 text-center">
-          <Users size={16} className="text-gray-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{totalContacts.toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Contactos</p>
-        </div>
-        <div className="bg-blue-50 rounded-xl p-3 text-center">
-          <Send size={16} className="text-blue-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{stats.sent.toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Mensajes cobro</p>
-        </div>
-        <div className="bg-colibri-50 rounded-xl p-3 text-center">
-          <Radio size={16} className="text-colibri mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{broadcasts.length}</p>
-          <p className="text-xs text-gray-500">Comunicados</p>
-        </div>
-        <div className="bg-green-50 rounded-xl p-3 text-center">
-          <CheckCheck size={16} className="text-green-400 mx-auto mb-1" />
-          <p className="text-xl font-bold text-gray-900">{(stats.sent + totalBroadcastsSent).toLocaleString('es-MX')}</p>
-          <p className="text-xs text-gray-500">Total enviados</p>
-        </div>
-      </div>
+      {/* KPIs universales de comunicación */}
+      <KpiBar
+        enviados={totalEnviados}
+        entregados={totalEntregados}
+        leidos={totalLeidos}
+        clicks={totalClicks}
+      />
 
       {/* Campaña más reciente */}
       {latestCampaign && (
