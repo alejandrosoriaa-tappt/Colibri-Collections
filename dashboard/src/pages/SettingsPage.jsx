@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
-  MessageSquareMore, Building2, Eye, EyeOff, ExternalLink, Info
+  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI } from '../lib/api.js'
@@ -189,7 +189,7 @@ export default function SettingsPage() {
         <div className="card space-y-4">
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <MessageSquareMore size={16} className="text-colibri" />
+              <MessageSquare size={16} className="text-colibri" />
               Configuración WhatsApp Business API
             </h2>
             {waStatus && (
