@@ -247,7 +247,7 @@ export async function runOperationalReminders() {
         await sendOperationalNotification(tenant.id, 'subscription_due', {
           amount: tenant.subscription_amount,
           due_date: dueDateStr,
-          payment_link: tenant.payment_link_general || 'https://colybiz.com/pago'
+          payment_link: tenant.payment_link_general || 'https://kollybry.com/pago'
         })
       }
 
@@ -262,7 +262,7 @@ export async function runOperationalReminders() {
             days_remaining: daysRemaining,
             end_date: trialEnd.toISOString().split('T')[0],
             plan_price: 2500,
-            contact_link: 'hola@colybiz.com'
+            contact_link: 'hola@kollybry.com'
           })
         }
       }

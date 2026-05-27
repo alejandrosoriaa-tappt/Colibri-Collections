@@ -67,7 +67,7 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="flex items-center gap-3">
           <img src="/logo.png" alt="Colibrí" className="w-10 h-10 object-contain" />
           <div>
-            <h1 className="text-lg font-bold text-white leading-tight">ColYbiz</h1>
+            <h1 className="text-lg font-bold text-white leading-tight">Kollybry</h1>
           </div>
         </div>
         <button

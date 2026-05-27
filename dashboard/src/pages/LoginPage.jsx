@@ -24,9 +24,9 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-28 h-28 bg-white rounded-3xl shadow-lg mb-5">
-            <img src="/logo.png" alt="ColYbiz" className="w-20 h-20 object-contain" />
+            <img src="/logo.png" alt="Kollybry" className="w-20 h-20 object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-white">ColYbiz</h1>
+          <h1 className="text-2xl font-bold text-white">Kollybry</h1>
           <p className="text-white text-opacity-70 text-sm mt-1">Comunicación automática por WhatsApp</p>
         </div>
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-white text-opacity-50 text-xs mt-6">
-          ¿Problemas? Contacta a soporte@colybiz.com
+          ¿Problemas? Contacta a soporte@kollybry.com
         </p>
       </div>
     </div>
