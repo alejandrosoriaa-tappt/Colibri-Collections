@@ -63,6 +63,47 @@ router.get('/:id', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
+// POST /api/contacts — create a single contact manually
+router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { nombre, apellido, telefono, grupo, id_externo, payment_link } = req.body
+
+    if (!nombre || !telefono) {
+      return res.status(400).json({ error: 'nombre y telefono son obligatorios' })
+    }
+
+    // Normalize phone: strip spaces, ensure +52 prefix
+    const phone = telefono.trim().replace(/\s+/g, '')
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .insert({
+        tenant_id: req.tenantId,
+        nombre: nombre.trim(),
+        apellido: apellido?.trim() || null,
+        telefono: phone,
+        grupo: grupo?.trim() || null,
+        id_externo: id_externo?.trim() || null,
+        payment_link: payment_link?.trim() || null,
+        status: 'active'
+      })
+      .select()
+      .single()
+
+    if (error) {
+      if (error.code === '23505') {
+        return res.status(409).json({ error: 'Ya existe un contacto con ese teléfono' })
+      }
+      return res.status(500).json({ error: error.message })
+    }
+
+    return res.status(201).json({ contact: data })
+  } catch (err) {
+    console.error('POST /contacts error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // PATCH /api/contacts/:id
 router.patch('/:id', authMiddleware, inferTenantGuard, async (req, res) => {
   try {

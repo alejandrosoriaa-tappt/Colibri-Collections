@@ -73,6 +73,7 @@ export const campaignsAPI = {
 export const contactsAPI = {
   list: (params) => api.get('/api/contacts', { params }),
   get: (id) => api.get(`/api/contacts/${id}`),
+  create: (data) => api.post('/api/contacts', data),
   update: (id, data) => api.patch(`/api/contacts/${id}`, data)
 }
 
