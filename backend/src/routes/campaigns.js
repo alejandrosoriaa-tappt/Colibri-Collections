@@ -63,6 +63,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       due_date,
       cycle_end_date,
       late_fee_pct,
+      grupo_filter,
       messages: customMessages
     } = req.body
 
@@ -81,6 +82,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         due_date: due_date || null,
         cycle_end_date: cycle_end_date || null,
         late_fee_pct: late_fee_pct || 0,
+        grupo_filter: grupo_filter || null,
         status: 'draft',
         total_contacts: 0,
         paid_count: 0,

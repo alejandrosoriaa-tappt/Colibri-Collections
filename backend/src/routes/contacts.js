@@ -10,6 +10,24 @@ import supabase, {
 
 const router = Router()
 
+// GET /api/contacts/groups — distinct grupo values for this tenant
+router.get('/groups', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('grupo')
+      .eq('tenant_id', req.tenantId)
+      .not('grupo', 'is', null)
+      .neq('grupo', '')
+
+    if (error) throw error
+    const groups = [...new Set(data.map(r => r.grupo))].sort()
+    return res.json({ groups })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/contacts
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {

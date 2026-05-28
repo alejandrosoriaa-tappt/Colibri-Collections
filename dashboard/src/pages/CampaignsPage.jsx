@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Megaphone, Plus, Loader2, X, AlertCircle } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
-import { campaignsAPI } from '../lib/api.js'
+import { campaignsAPI, contactsAPI } from '../lib/api.js'
 
 const STATUS_FILTERS = [
   { value: '', label: 'Todas' },
@@ -51,11 +51,13 @@ const EMPTY_FORM = {
   concept: '',
   billing_month: String(new Date().getMonth() + 1),
   billing_year: String(currentYear),
-  late_fee_pct: ''
+  late_fee_pct: '',
+  grupo_filter: ''
 }
 
 export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState([])
+  const [groups, setGroups] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -70,7 +72,10 @@ export default function CampaignsPage() {
       .finally(() => setIsLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    contactsAPI.groups().then(res => setGroups(res.data.groups || [])).catch(() => {})
+  }, [])
 
   const filtered = statusFilter
     ? campaigns.filter(c => c.status === statusFilter)
@@ -91,7 +96,8 @@ export default function CampaignsPage() {
         cycle_start_date: `${y}-${mm}-01`,
         due_date:         `${y}-${mm}-${last}`,
         cycle_end_date:   `${y}-${mm}-${last}`,
-        late_fee_pct:     form.late_fee_pct ? Number(form.late_fee_pct) : 0
+        late_fee_pct:     form.late_fee_pct ? Number(form.late_fee_pct) : 0,
+        grupo_filter:     form.grupo_filter || null
       }
       await campaignsAPI.create(payload)
       setShowForm(false)
@@ -238,6 +244,25 @@ export default function CampaignsPage() {
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   El ciclo abarcará del 1 al último día del mes seleccionado.
+                </p>
+              </div>
+
+              <div>
+                <label className="label">
+                  Segmento / Grupo <span className="text-gray-400 font-normal">(opcional)</span>
+                </label>
+                <select
+                  className="input"
+                  value={form.grupo_filter}
+                  onChange={e => setForm(f => ({ ...f, grupo_filter: e.target.value }))}
+                >
+                  <option value="">— Todos los contactos —</option>
+                  {groups.map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  Si seleccionas un grupo, solo se enviará a los contactos de ese segmento.
                 </p>
               </div>
 
