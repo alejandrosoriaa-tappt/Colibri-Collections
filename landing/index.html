@@ -673,7 +673,13 @@
     const msg = encodeURIComponent(
       `Hola! Vi Kollybry y me interesa una demo.\n\nNombre: ${nombre}\nTeléfono: ${telefono}`
     )
-    window.open(`https://wa.me/521XXXXXXXXXX?text=${msg}`, '_blank')
+    // Use anchor click for best cross-platform compatibility (iOS + Android)
+    const a = document.createElement('a')
+    a.href = `https://wa.me/524625902365?text=${msg}`
+    a.rel = 'noopener noreferrer'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   // Smooth scroll for pill anchors
