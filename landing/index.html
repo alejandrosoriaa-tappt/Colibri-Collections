@@ -24,7 +24,8 @@
       display: flex; align-items: center; justify-content: space-between;
       position: sticky; top: 0; z-index: 100;
     }
-    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    .nav-logo img { height: 48px; width: 48px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2)); }
     .nav-logo span { font-size: 22px; font-weight: 800; color: white; letter-spacing: -0.5px; }
     .nav-cta {
       background: white; color: var(--green); border: none; border-radius: 8px;
@@ -265,13 +266,15 @@
 <!-- ═══════════ NAV ═══════════ -->
 <nav>
   <a href="#" class="nav-logo">
-    <span>🐦 Kollybry</span>
+    <img src="/logo.png" alt="Kollybry" />
+    <span>Kollybry</span>
   </a>
   <a href="https://app.kollybry.com/login" class="nav-cta">Iniciar sesión</a>
 </nav>
 
 <!-- ═══════════ HERO ═══════════ -->
 <div class="hero">
+  <img src="/logo.png" alt="Kollybry" style="height:96px;width:96px;object-fit:contain;margin-bottom:16px;filter:drop-shadow(0 4px 16px rgba(0,0,0,0.25));" />
   <div class="hero-badge">📲 WhatsApp Business API</div>
   <h1>Comunícate con tus miembros<br/><span>de forma automática</span></h1>
   <p class="hero-sub">
