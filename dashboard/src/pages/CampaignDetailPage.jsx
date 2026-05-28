@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Loader2, Play, Pause, Edit2, Save, X, CheckCircle2,
-  Circle, Users, AlertCircle, MessageSquare, Upload, TrendingUp
+  Circle, Users, AlertCircle, MessageSquare, Upload, TrendingUp, Send
 } from 'lucide-react'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
 import KpiBar from '../components/shared/KpiBar.jsx'
@@ -50,10 +50,12 @@ function InvoiceRow({ invoice, onMarkPaid }) {
   )
 }
 
-function MessageEditor({ msg, onSave }) {
+function MessageEditor({ msg, onSave, onSend }) {
   const [editing, setEditing] = useState(false)
   const [template, setTemplate] = useState(msg.message_template)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [sendResult, setSendResult] = useState(null)
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -64,6 +66,20 @@ function MessageEditor({ msg, onSave }) {
       console.error(err)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleSend = async () => {
+    if (!window.confirm(`¿Enviar Mensaje ${msg.message_number} ahora a todos los contactos aplicables? Esta acción es irreversible.`)) return
+    setIsSending(true)
+    setSendResult(null)
+    try {
+      const res = await onSend(msg.id)
+      setSendResult({ ok: true, sent: res.sent, failed: res.failed, total: res.total })
+    } catch (err) {
+      setSendResult({ ok: false, error: err.response?.data?.error || err.message })
+    } finally {
+      setIsSending(false)
     }
   }
 
@@ -80,14 +96,26 @@ function MessageEditor({ msg, onSave }) {
           <span className="text-xs text-gray-400">Día {msg.trigger_day} · {msg.send_to === 'unpaid' ? 'Solo pendientes' : 'Todos'}</span>
         </div>
         {!msg.sent_at && (
-          <button
-            onClick={() => editing ? handleSave() : setEditing(true)}
-            className="flex items-center gap-1 text-xs font-medium text-colibri hover:text-colibri-dark"
-            disabled={isSaving}
-          >
-            {isSaving ? <Loader2 size={12} className="animate-spin" /> : editing ? <Save size={12} /> : <Edit2 size={12} />}
-            {editing ? 'Guardar' : 'Editar'}
-          </button>
+          <div className="flex items-center gap-3">
+            {!editing && (
+              <button
+                onClick={handleSend}
+                disabled={isSending}
+                className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700"
+              >
+                {isSending ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                {isSending ? 'Enviando...' : 'Enviar ahora'}
+              </button>
+            )}
+            <button
+              onClick={() => editing ? handleSave() : setEditing(true)}
+              className="flex items-center gap-1 text-xs font-medium text-colibri hover:text-colibri-dark"
+              disabled={isSaving}
+            >
+              {isSaving ? <Loader2 size={12} className="animate-spin" /> : editing ? <Save size={12} /> : <Edit2 size={12} />}
+              {editing ? 'Guardar' : 'Editar'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -100,6 +128,17 @@ function MessageEditor({ msg, onSave }) {
         />
       ) : (
         <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{msg.message_template}</p>
+      )}
+
+      {sendResult && (
+        <div className={`mt-2 flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+          sendResult.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+        }`}>
+          {sendResult.ok
+            ? <><CheckCircle2 size={13} /> Enviado: {sendResult.sent} exitosos, {sendResult.failed} fallidos de {sendResult.total} contactos</>
+            : <><AlertCircle size={13} /> Error: {sendResult.error}</>
+          }
+        </div>
       )}
 
       {msg.sent_at && (
@@ -178,6 +217,15 @@ export default function CampaignDetailPage() {
   const handleSaveMessage = async (msgId, updates) => {
     await campaignsAPI.updateMessage(id, msgId, updates)
     setMessages(msgs => msgs.map(m => m.id === msgId ? { ...m, ...updates } : m))
+  }
+
+  const handleSendMessage = async (msgId) => {
+    const res = await campaignsAPI.sendMessage(id, msgId)
+    // Refresh messages to reflect sent_at update
+    const detailRes = await campaignsAPI.get(id)
+    setMessages(detailRes.data.messages || [])
+    setCampaign(detailRes.data.campaign)
+    return res.data
   }
 
   const handleMarkPaid = async () => {
@@ -330,7 +378,7 @@ export default function CampaignDetailPage() {
       {activeTab === 'mensajes' && (
         <div className="space-y-3">
           {messages.map(msg => (
-            <MessageEditor key={msg.id} msg={msg} onSave={handleSaveMessage} />
+            <MessageEditor key={msg.id} msg={msg} onSave={handleSaveMessage} onSend={handleSendMessage} />
           ))}
         </div>
       )}

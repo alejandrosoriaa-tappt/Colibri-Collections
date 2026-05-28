@@ -6,8 +6,12 @@ import supabase, {
   getCampaign,
   getCampaignMessages,
   updateCampaignMessage,
-  updateCampaignStats
+  updateCampaignStats,
+  getInvoices,
+  logMessage
 } from '../services/supabase.js'
+import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import { buildMessage, calculateAmountWithLateFee } from '../templates/messages.js'
 
 const router = Router()
 
@@ -283,6 +287,99 @@ router.patch('/:id/messages/:msgId', authMiddleware, inferTenantGuard, async (re
     return res.json({ message: updatedMsg })
   } catch (err) {
     console.error('PATCH /campaigns/:id/messages/:msgId error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/campaigns/:id/messages/:msgId/send  — manual immediate send
+router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.id)
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
+
+    if (!req.isAdmin && campaign.tenant_id !== req.tenantId) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
+
+    const { data: msg, error: msgFetchError } = await supabase
+      .from('campaign_messages')
+      .select('*')
+      .eq('id', req.params.msgId)
+      .eq('campaign_id', req.params.id)
+      .single()
+
+    if (msgFetchError || !msg) {
+      return res.status(404).json({ error: 'Message not found' })
+    }
+
+    const tenant = campaign.tenants
+    const filters = { campaign_id: campaign.id }
+    if (msg.send_to === 'unpaid') filters.status = 'pending'
+
+    const invoices = await getInvoices(filters)
+
+    let sentCount = 0
+    let failedCount = 0
+    const results = []
+
+    for (const invoice of invoices) {
+      const contact = invoice.contacts
+      if (!contact?.telefono) continue
+
+      const lateFee = Number(campaign.late_fee_pct) || 0
+      const vars = {
+        nombre: contact.nombre,
+        monto: invoice.monto,
+        monto_con_recargo: calculateAmountWithLateFee(invoice.monto, lateFee),
+        liga_pago: invoice.liga_pago || tenant?.payment_link_general || '',
+        fecha_limite: campaign.due_date,
+        nombre_org: tenant?.display_name || tenant?.name || '',
+        concept: campaign.concept || 'pago mensual',
+        late_fee_pct: lateFee
+      }
+
+      const text = buildMessage(msg.message_template, vars)
+      const result = await sendWhatsAppMessage(contact.telefono, text)
+
+      await logMessage({
+        tenant_id: campaign.tenant_id,
+        campaign_id: campaign.id,
+        contact_id: invoice.contact_id,
+        invoice_id: invoice.id,
+        campaign_message_id: msg.id,
+        message_number: msg.message_number,
+        message_text: text,
+        phone: contact.telefono,
+        wa_message_id: result.wa_message_id || null,
+        status: result.success ? 'sent' : 'failed',
+        error_message: result.error || null,
+        sent_at: new Date().toISOString()
+      }).catch(err => console.error('Failed to log message:', err))
+
+      if (result.success) sentCount++
+      else failedCount++
+
+      results.push({
+        contact: `${contact.nombre} ${contact.apellido || ''}`.trim(),
+        phone: contact.telefono,
+        success: result.success,
+        error: result.error || null
+      })
+
+      await new Promise(r => setTimeout(r, 150))
+    }
+
+    // Mark message as sent and update stats
+    await updateCampaignMessage(msg.id, {
+      sent_at: new Date().toISOString(),
+      sent_count: sentCount,
+      failed_count: failedCount
+    })
+    await updateCampaignStats(campaign.id).catch(() => {})
+
+    return res.json({ sent: sentCount, failed: failedCount, total: invoices.length, results })
+  } catch (err) {
+    console.error('POST /campaigns/:id/messages/:msgId/send error:', err)
     return res.status(500).json({ error: err.message })
   }
 })

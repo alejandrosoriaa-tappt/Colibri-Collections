@@ -64,7 +64,8 @@ export const campaignsAPI = {
   getMessages: (id) => api.get(`/api/campaigns/${id}/messages`),
   updateMessage: (campaignId, msgId, data) =>
     api.patch(`/api/campaigns/${campaignId}/messages/${msgId}`, data),
-  getInvoices: (id, params) => api.get(`/api/campaigns/${id}/invoices`, { params })
+  getInvoices: (id, params) => api.get(`/api/campaigns/${id}/invoices`, { params }),
+  sendMessage: (campaignId, msgId) => api.post(`/api/campaigns/${campaignId}/messages/${msgId}/send`)
 }
 
 // ================================================================
