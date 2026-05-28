@@ -24,7 +24,8 @@ router.post('/whatsapp', async (req, res) => {
     // Acknowledge receipt immediately
     res.status(200).json({ status: 'ok' })
 
-    const body = req.body
+    // express.raw() gives a Buffer — parse it
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body
 
     if (body.object !== 'whatsapp_business_account') {
       return
