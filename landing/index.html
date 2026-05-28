@@ -230,12 +230,24 @@
 
     /* ── FOOTER ── */
     footer {
-      background: #0a0a0a; padding: 28px 48px;
-      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      background: #0a0a0a; padding: 32px 48px;
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    .footer-main {
+      width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+    }
+    .footer-nkuvo {
+      width: 100%; border-top: 1px solid #1a1a1a; padding-top: 16px;
+      display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
     }
     footer span { color: #555; font-size: 13px; }
     footer a { color: #555; text-decoration: none; font-size: 13px; }
     footer a:hover { color: #aaa; }
+    .nkuvo-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #444; font-size: 12px;
+    }
+    .nkuvo-badge strong { color: #666; letter-spacing: 0.3px; }
 
     /* ── RESPONSIVE ── */
     @media (max-width: 900px) {
@@ -658,10 +670,17 @@
 
 <!-- ═══════════ FOOTER ═══════════ -->
 <footer>
-  <span>© 2025 Kollybry · Todos los derechos reservados</span>
-  <div style="display:flex;gap:24px;flex-wrap:wrap">
-    <a href="mailto:hola@kollybry.com">hola@kollybry.com</a>
-    <a href="https://app.kollybry.com/login">Iniciar sesión</a>
+  <div class="footer-main">
+    <span>© 2026 Kollybry · Todos los derechos reservados</span>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <a href="mailto:hola@kollybry.com">hola@kollybry.com</a>
+      <a href="https://app.kollybry.com/login">Iniciar sesión</a>
+    </div>
+  </div>
+  <div class="footer-nkuvo">
+    <span class="nkuvo-badge">
+      Un desarrollo de <strong>Nkuvo Labs</strong> · Incubadora de ideas, apps y SaaS · <a href="mailto:hola@kollybry.com" style="color:#444;font-size:12px;">hola@kollybry.com</a>
+    </span>
   </div>
 </footer>
 
