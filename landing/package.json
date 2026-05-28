@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Kollybry landing page",
   "scripts": {
-    "start": "serve . -p $PORT --single"
+    "start": "serve . -p $PORT"
   },
   "dependencies": {
     "serve": "^14.2.6"
