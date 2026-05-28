@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   Radio, Plus, X, Loader2, AlertCircle, CheckCircle2,
-  Users, Send, FileText, ChevronDown, Eye
+  Users, Send, FileText, Eye
 } from 'lucide-react'
 import { broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -14,7 +14,7 @@ const VARIABLES_HELP = [
 const EMPTY_FORM = {
   title: '',
   message: '',
-  group_filter: '',
+  group_filters: [],   // array of selected groups (empty = todos)
   media_url: '',
 }
 
@@ -107,14 +107,24 @@ export default function BroadcastsPage() {
 
   useEffect(() => { load() }, [load])
 
-  // Preview count when group changes
+  // Preview count when group selection changes
   useEffect(() => {
     if (!showForm) return
     setPreviewCount(null)
-    broadcastsAPI.preview(form.group_filter || undefined)
+    const groupParam = form.group_filters.length > 0 ? form.group_filters.join(',') : undefined
+    broadcastsAPI.preview(groupParam)
       .then(res => setPreviewCount(res.data.count))
       .catch(() => setPreviewCount(null))
-  }, [form.group_filter, showForm])
+  }, [form.group_filters, showForm])
+
+  const toggleGroup = (g) => {
+    setForm(f => ({
+      ...f,
+      group_filters: f.group_filters.includes(g)
+        ? f.group_filters.filter(x => x !== g)
+        : [...f.group_filters, g]
+    }))
+  }
 
   const filtered = groupFilter
     ? broadcasts.filter(b => b.group_filter === groupFilter)
@@ -129,7 +139,7 @@ export default function BroadcastsPage() {
       await broadcastsAPI.send({
         title: form.title.trim(),
         message: form.message.trim(),
-        group_filter: form.group_filter || null,
+        group_filters: form.group_filters.length > 0 ? form.group_filters : null,
         media_url: form.media_url.trim() || null,
         media_type: form.media_url ? 'document' : null,
         media_filename: form.media_url ? form.media_url.split('/').pop() : null
@@ -274,22 +284,41 @@ export default function BroadcastsPage() {
                 />
               </div>
 
-              {/* Group selector */}
+              {/* Group selector — multi-select pills */}
               <div>
                 <label className="label">Destinatarios</label>
-                <div className="relative">
-                  <select
-                    className="input appearance-none pr-8"
-                    value={form.group_filter}
-                    onChange={e => setForm(f => ({ ...f, group_filter: e.target.value }))}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, group_filters: [] }))}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                      form.group_filters.length === 0
+                        ? 'bg-colibri text-white border-colibri'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
+                    }`}
                   >
-                    <option value="">Todos los contactos</option>
-                    {groups.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    Todos
+                  </button>
+                  {groups.map(g => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => toggleGroup(g)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                        form.group_filters.includes(g)
+                          ? 'bg-colibri text-white border-colibri'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
                 </div>
+                {form.group_filters.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Seleccionados: {form.group_filters.join(', ')}
+                  </p>
+                )}
 
                 {/* Preview count */}
                 {previewCount !== null && (
@@ -365,7 +394,7 @@ export default function BroadcastsPage() {
                     <p className="text-sm text-gray-800 whitespace-pre-wrap">
                       {form.message
                         .replace(/{nombre}/g, 'Roberto')
-                        .replace(/{grupo}/g, form.group_filter || 'Grupo A')}
+                        .replace(/{grupo}/g, form.group_filters[0] || 'Grupo A')}
                     </p>
                     {form.media_url && (
                       <div className="flex items-center gap-2 mt-2 p-2 bg-blue-50 rounded-lg">

@@ -432,7 +432,9 @@ export async function getContactsForBroadcast(tenantId, groupFilter = null) {
     .not('telefono', 'is', null)
     .neq('telefono', '')
 
-  if (groupFilter) {
+  if (Array.isArray(groupFilter) && groupFilter.length > 0) {
+    query = query.in('grupo', groupFilter)
+  } else if (typeof groupFilter === 'string' && groupFilter) {
     query = query.eq('grupo', groupFilter)
   }
 

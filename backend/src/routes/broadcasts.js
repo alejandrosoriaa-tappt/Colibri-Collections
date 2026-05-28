@@ -40,11 +40,17 @@ router.get('/groups', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
-// GET /api/broadcasts/preview — count contacts for a group
+// GET /api/broadcasts/preview — count contacts for group(s)
 router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
+    // group can be a single string or comma-separated list
     const { group } = req.query
-    const contacts = await getContactsForBroadcast(req.tenantId, group || null)
+    let groupFilter = null
+    if (group) {
+      const parts = group.split(',').map(s => s.trim()).filter(Boolean)
+      groupFilter = parts.length === 1 ? parts[0] : parts
+    }
+    const contacts = await getContactsForBroadcast(req.tenantId, groupFilter)
     return res.json({ count: contacts.length })
   } catch (err) {
     console.error('GET /broadcasts/preview error:', err)
@@ -54,23 +60,36 @@ router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
 
 // POST /api/broadcasts — create and send
 router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
-  const { title, message, group_filter, media_url, media_type, media_filename } = req.body
+  const { title, message, group_filter, group_filters, media_url, media_type, media_filename } = req.body
 
   if (!title || !message) {
     return res.status(400).json({ error: 'title and message are required' })
   }
 
+  // Support both group_filters (array) and legacy group_filter (string)
+  let effectiveFilter = null
+  if (Array.isArray(group_filters) && group_filters.length > 0) {
+    effectiveFilter = group_filters
+  } else if (group_filter) {
+    effectiveFilter = group_filter
+  }
+
   // Get contacts
   let contacts
   try {
-    contacts = await getContactsForBroadcast(req.tenantId, group_filter || null)
+    contacts = await getContactsForBroadcast(req.tenantId, effectiveFilter)
   } catch (err) {
     return res.status(500).json({ error: 'Failed to get contacts' })
   }
 
   if (contacts.length === 0) {
-    return res.status(400).json({ error: 'No contacts found for the selected group' })
+    return res.status(400).json({ error: 'No hay contactos en el grupo seleccionado' })
   }
+
+  // Label for display
+  const groupLabel = Array.isArray(effectiveFilter)
+    ? effectiveFilter.join(', ')
+    : (effectiveFilter || null)
 
   // Create broadcast record
   let broadcast
@@ -79,7 +98,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       tenant_id: req.tenantId,
       title,
       message,
-      group_filter: group_filter || null,
+      group_filter: groupLabel,
       media_url: media_url || null,
       media_type: media_type || null,
       media_filename: media_filename || null,
@@ -99,11 +118,19 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   let sentCount = 0
   let failedCount = 0
 
+  // Check credentials once before loop
+  const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID
+  const accessToken = process.env.WABA_ACCESS_TOKEN
+  if (!phoneNumberId || !accessToken) {
+    console.error(`Broadcast "${title}": WhatsApp credentials not configured (WABA_PHONE_NUMBER_ID or WABA_ACCESS_TOKEN missing)`)
+    await updateBroadcast(broadcast.id, { sent_count: 0, failed_count: contacts.length, status: 'sent' }).catch(() => {})
+    return
+  }
+
   for (const contact of contacts) {
     try {
       if (!contact.telefono) { failedCount++; continue }
 
-      // Personalize message with contact name
       const text = message
         .replace(/{nombre}/g, contact.nombre || '')
         .replace(/{grupo}/g, contact.grupo || '')
@@ -111,12 +138,12 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       const result = await sendWhatsAppMessage(contact.telefono, text)
       if (result.success) {
         sentCount++
+        console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
       } else {
         failedCount++
-        console.error(`Broadcast: failed to send to ${contact.telefono}:`, result.error)
+        console.error(`Broadcast: ✗ failed ${contact.telefono} — code:${result.error_code} msg:${result.error}`)
       }
 
-      // Small delay to avoid rate limits
       await new Promise(r => setTimeout(r, 150))
     } catch (err) {
       failedCount++
@@ -124,7 +151,6 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     }
   }
 
-  // Update broadcast with final stats
   try {
     await updateBroadcast(broadcast.id, {
       sent_count: sentCount,
@@ -135,7 +161,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     console.error('Broadcast: failed to update stats:', err)
   }
 
-  console.log(`Broadcast "${title}": sent ${sentCount}, failed ${failedCount}`)
+  console.log(`Broadcast "${title}": sent ${sentCount}, failed ${failedCount} of ${contacts.length}`)
 })
 
 export default router
