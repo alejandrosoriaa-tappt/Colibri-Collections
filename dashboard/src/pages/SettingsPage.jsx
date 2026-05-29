@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
-  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info, Globe, Mail, MapPin
+  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info, Globe, Mail, MapPin, Lock
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI } from '../lib/api.js'
+import supabase from '../lib/supabase.js'
 
 const ORG_TYPES = [
   { value: 'general',    label: 'General' },
@@ -320,6 +321,9 @@ export default function SettingsPage() {
         </button>
       </form>
 
+      {/* ── Cambiar contraseña ── */}
+      <PasswordSection />
+
       {/* ── Plan info ── */}
       {tenant && (
         <SectionCard icon={Settings} title="Plan y suscripción">
@@ -348,5 +352,121 @@ export default function SettingsPage() {
         </SectionCard>
       )}
     </div>
+  )
+}
+
+function PasswordSection() {
+  const [newPassword, setNewPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showNew, setShowNew] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError(null)
+    if (newPassword.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      return
+    }
+    if (newPassword !== confirm) {
+      setError('Las contraseñas no coinciden')
+      return
+    }
+    setSaving(true)
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      if (error) throw error
+      setSaved(true)
+      setNewPassword('')
+      setConfirm('')
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setError(err.message || 'No se pudo cambiar la contraseña')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <SectionCard icon={Lock} title="Contraseña">
+      {saved && (
+        <div className="flex items-center gap-3 p-3 bg-green-50 rounded-2xl">
+          <CheckCircle2 size={15} className="text-green-600 flex-shrink-0" />
+          <p className="text-sm text-green-700 font-medium">Contraseña actualizada correctamente</p>
+        </div>
+      )}
+      {error && (
+        <div className="flex items-start gap-3 p-3 bg-md-error-container rounded-2xl">
+          <AlertCircle size={15} className="text-md-on-error-container flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-md-on-error-container">{error}</p>
+        </div>
+      )}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="label">Nueva contraseña</label>
+          <div className="relative">
+            <input
+              type={showNew ? 'text' : 'password'}
+              className="input pr-10"
+              placeholder="Mínimo 8 caracteres"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNew(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-surface"
+            >
+              {showNew ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Confirmar contraseña</label>
+          <div className="relative">
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              className="input pr-10"
+              placeholder="Repite la nueva contraseña"
+              value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              required
+              autoComplete="new-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-surface"
+            >
+              {showConfirm ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+          {/* strength hint */}
+          {newPassword && confirm && newPassword !== confirm && (
+            <p className="text-xs text-md-error mt-1.5">Las contraseñas no coinciden</p>
+          )}
+          {newPassword && confirm && newPassword === confirm && (
+            <p className="text-xs text-green-600 mt-1.5 flex items-center gap-1">
+              <CheckCircle2 size={11} /> Coinciden
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="btn-secondary text-sm"
+          disabled={saving || !newPassword || !confirm}
+        >
+          {saving ? <Loader2 size={14} className="animate-spin" /> : <Lock size={14} />}
+          {saving ? 'Guardando...' : 'Cambiar contraseña'}
+        </button>
+      </form>
+    </SectionCard>
   )
 }
