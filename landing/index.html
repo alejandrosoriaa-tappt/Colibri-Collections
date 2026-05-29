@@ -43,11 +43,13 @@
     }
 
     /* ══════════════════════════════════════════════
-       NAV — white surface, sticky
+       NAV — glass sticky
     ══════════════════════════════════════════════ */
     nav {
-      background: #fff;
-      border-bottom: 1px solid var(--md-outline-variant);
+      background: rgba(255,255,255,0.78);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-bottom: 1px solid rgba(255,255,255,0.45);
       padding: 14px 48px;
       display: flex;
       align-items: center;
@@ -82,11 +84,11 @@
     .nav-cta:hover { background: #004D35; }
 
     /* ══════════════════════════════════════════════
-       HERO — flat primary, decorative circles
+       HERO — gradient + glass panel
     ══════════════════════════════════════════════ */
     .hero {
-      background: var(--md-primary);
-      padding: 88px 48px 80px;
+      background: linear-gradient(140deg, #004D35 0%, #006C4A 45%, #00855B 100%);
+      padding: 72px 48px 80px;
       text-align: center;
       position: relative;
       overflow: hidden;
@@ -94,18 +96,34 @@
     .hero-circle {
       position: absolute;
       border-radius: 50%;
-      background: rgba(255,255,255,0.05);
       pointer-events: none;
     }
-    .hero-circle-1 { width: 340px; height: 340px; top: -120px; right: -100px; }
-    .hero-circle-2 { width: 200px; height: 200px; bottom: -60px; left: -60px; }
-    .hero-circle-3 { width: 160px; height: 160px; top: 40%; right: 6%; background: rgba(255,255,255,0.03); }
+    .hero-circle-1 { width: 480px; height: 480px; top: -180px; right: -140px; background: rgba(137,248,198,0.12); }
+    .hero-circle-2 { width: 260px; height: 260px; bottom: -80px; left: -80px; background: rgba(255,255,255,0.06); }
+    .hero-circle-3 { width: 200px; height: 200px; top: 30%; left: -60px; background: rgba(137,248,198,0.07); }
 
     .hero > *:not(.hero-circle) { position: relative; z-index: 1; }
 
+    /* Glass panel that floats on the gradient */
+    .hero-glass {
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 32px;
+      padding: 52px 56px 48px;
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
     .hero-logo {
       width: 80px; height: 80px;
-      background: rgba(255,255,255,0.15);
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.25);
       border-radius: 24px;
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 20px;
@@ -116,9 +134,11 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: rgba(255,255,255,0.12);
+      background: rgba(137,248,198,0.15);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: var(--md-primary-container);
-      border: 1px solid rgba(255,255,255,0.2);
+      border: 1px solid rgba(137,248,198,0.30);
       border-radius: 9999px;
       padding: 6px 18px;
       font-size: 13px;
@@ -152,18 +172,20 @@
     }
     .pill {
       background: rgba(255,255,255,0.10);
-      border: 1px solid rgba(255,255,255,0.20);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.22);
       color: #fff;
       border-radius: 9999px;
       padding: 8px 20px;
       font-size: 13.5px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.15s;
+      transition: background 0.15s, border-color 0.15s;
       text-decoration: none;
       font-family: inherit;
     }
-    .pill:hover { background: rgba(255,255,255,0.20); }
+    .pill:hover { background: rgba(255,255,255,0.20); border-color: rgba(255,255,255,0.40); }
 
     .hero-btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
 
@@ -186,9 +208,11 @@
     .btn-primary:hover { background: var(--md-primary-container); }
 
     .btn-outline {
-      background: transparent;
+      background: rgba(255,255,255,0.10);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       color: #fff;
-      border: 2px solid rgba(255,255,255,0.40);
+      border: 1.5px solid rgba(255,255,255,0.35);
       padding: 14px 32px;
       border-radius: 9999px;
       font-size: 15px;
@@ -196,9 +220,9 @@
       font-family: inherit;
       text-decoration: none;
       cursor: pointer;
-      transition: border-color 0.15s;
+      transition: background 0.15s, border-color 0.15s;
     }
-    .btn-outline:hover { border-color: rgba(255,255,255,0.75); }
+    .btn-outline:hover { background: rgba(255,255,255,0.20); border-color: rgba(255,255,255,0.70); }
 
     /* ══════════════════════════════════════════════
        STATS — primary-container band
@@ -603,8 +627,9 @@
     }
     @media (max-width: 768px) {
       nav { padding: 12px 20px; }
-      .hero { padding: 56px 24px 48px; }
-      .hero h1 { font-size: 34px; }
+      .hero { padding: 40px 16px 48px; }
+      .hero-glass { padding: 36px 24px 32px; border-radius: 24px; }
+      .hero h1 { font-size: 32px; }
       .hero-sub { font-size: 16px; }
       .stats-bar { gap: 28px; padding: 24px 20px; }
       .section { padding: 56px 24px; }
@@ -637,24 +662,26 @@
   <div class="hero-circle hero-circle-2"></div>
   <div class="hero-circle hero-circle-3"></div>
 
-  <div class="hero-logo">
-    <img src="/logo.png" alt="Kollybry" />
-  </div>
-  <div class="hero-badge">📲 WhatsApp Business API</div>
-  <h1>Comunícate con tu comunidad<br/>de forma <span>fácil, masiva y automática</span></h1>
-  <p class="hero-sub">
-    Kollybry es la plataforma de comunicación institucional por WhatsApp para colegios, condominios, gimnasios y clubs.
-  </p>
-  <div class="hero-pills">
-    <a href="#condominios" class="pill">🏢 Condominios</a>
-    <a href="#colegios" class="pill">🏫 Colegios</a>
-    <a href="#clubes" class="pill">⛳ Clubes deportivos</a>
-    <a href="#gimnasios" class="pill">🏋️ Gimnasios</a>
-    <a href="#academias" class="pill">🎓 Academias</a>
-  </div>
-  <div class="hero-btns">
-    <a href="#contacto" class="btn-primary">Solicitar demo gratuita</a>
-    <a href="#como-funciona" class="btn-outline">¿Cómo funciona?</a>
+  <div class="hero-glass">
+    <div class="hero-logo">
+      <img src="/logo.png" alt="Kollybry" />
+    </div>
+    <div class="hero-badge">📲 WhatsApp Business API</div>
+    <h1>Comunícate con tu comunidad<br/>de forma <span>fácil, masiva y automática</span></h1>
+    <p class="hero-sub">
+      Kollybry es la plataforma de comunicación institucional por WhatsApp para colegios, condominios, gimnasios y clubs.
+    </p>
+    <div class="hero-pills">
+      <a href="#condominios" class="pill">🏢 Condominios</a>
+      <a href="#colegios" class="pill">🏫 Colegios</a>
+      <a href="#clubes" class="pill">⛳ Clubes deportivos</a>
+      <a href="#gimnasios" class="pill">🏋️ Gimnasios</a>
+      <a href="#academias" class="pill">🎓 Academias</a>
+    </div>
+    <div class="hero-btns">
+      <a href="#contacto" class="btn-primary">Solicitar demo gratuita</a>
+      <a href="#como-funciona" class="btn-outline">¿Cómo funciona?</a>
+    </div>
   </div>
 </div>
 
