@@ -93,34 +93,20 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     // Normalize phone: strip spaces
     const phone = telefono.trim().replace(/\s+/g, '')
 
-    const contactPayload = {
-      tenant_id: req.tenantId,
-      nombre: nombre.trim(),
-      apellido: apellido?.trim() || null,
-      telefono: phone,
-      grupo: grupo?.trim() || null,
-      id_externo: id_externo?.trim() || null,
-      status: 'active'
-    }
-
-    // payment_link requires DB migration: ALTER TABLE contacts ADD COLUMN payment_link TEXT
-    // Include it only when provided — if column doesn't exist yet, Supabase will error
-    // and we retry without it
-    if (payment_link?.trim()) contactPayload.payment_link = payment_link.trim()
-
-    let { data, error } = await supabase
+    const { data, error } = await supabase
       .from('contacts')
-      .insert(contactPayload)
+      .insert({
+        tenant_id: req.tenantId,
+        nombre: nombre.trim(),
+        apellido: apellido?.trim() || null,
+        telefono: phone,
+        grupo: grupo?.trim() || null,
+        id_externo: id_externo?.trim() || null,
+        payment_link: payment_link?.trim() || null,
+        status: 'active'
+      })
       .select()
       .single()
-
-    // If payment_link column doesn't exist yet, retry without it
-    if (error?.code === '42703' && contactPayload.payment_link) {
-      delete contactPayload.payment_link
-      const retry = await supabase.from('contacts').insert(contactPayload).select().single()
-      data = retry.data
-      error = retry.error
-    }
 
     if (error) {
       if (error.code === '23505') {

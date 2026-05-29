@@ -9,37 +9,27 @@ import supabase from '../services/supabase.js'
 
 const router = Router()
 
+const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,created_at'
+
 // GET /api/settings — return current tenant settings
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('tenants')
-      .select('id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,created_at')
+      .select(TENANT_SELECT)
       .eq('id', req.tenantId)
       .single()
 
     if (error) throw error
-
-    // Try to also fetch new optional fields (added in migration)
-    let extra = {}
-    try {
-      const { data: ex } = await supabase
-        .from('tenants')
-        .select('email,website,address')
-        .eq('id', req.tenantId)
-        .single()
-      if (ex) extra = ex
-    } catch { /* columns may not exist yet — ignore */ }
-
     // Mask waba_token — never send the raw token to the client
-    return res.json({ tenant: { ...data, ...extra, waba_token_set: false } })
+    return res.json({ tenant: { ...data, waba_token_set: false } })
   } catch (err) {
     console.error('GET /settings error:', err)
     return res.status(500).json({ error: err.message })
   }
 })
 
-// Check if waba_token is set
+// GET /api/settings/whatsapp-status
 router.get('/whatsapp-status', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -89,7 +79,7 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
       .from('tenants')
       .update(updates)
       .eq('id', req.tenantId)
-      .select('id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type')
+      .select(TENANT_SELECT)
       .single()
 
     if (error) throw error
