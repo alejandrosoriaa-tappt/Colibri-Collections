@@ -19,9 +19,8 @@ export default function AppLayout({ requireAdmin = false }) {
     )
   }
 
-  // TODO: restore auth check once Supabase connection is confirmed working
-  // if (!session || !user) return <Navigate to="/login" replace />
-  // if (requireAdmin && !isAdmin) return <Navigate to="/" replace />
+  if (!session || !user) return <Navigate to="/login" replace />
+  if (requireAdmin && !isAdmin) return <Navigate to="/" replace />
 
   return (
     <div className="min-h-screen bg-md-surface flex">

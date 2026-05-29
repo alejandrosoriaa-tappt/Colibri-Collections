@@ -284,4 +284,68 @@ router.post('/tenants/:id/add-user', authMiddleware, adminOnly, async (req, res)
   }
 })
 
+// POST /api/admin/onboard — create tenant + user + send welcome WhatsApp in one shot
+router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
+  const { org_name, display_name, slug, plan = 'basic', admin_phone, email, password, send_whatsapp = true } = req.body
+
+  if (!org_name || !email || !password) {
+    return res.status(400).json({ error: 'org_name, email y password son requeridos' })
+  }
+
+  let authUser = null
+  let tenant = null
+
+  try {
+    // 1. Create Supabase Auth user
+    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true   // skip confirmation email, we handle welcome manually
+    })
+    if (authErr) throw new Error(`Error creando usuario: ${authErr.message}`)
+    authUser = authData.user
+
+    // 2. Create tenant
+    const tenantSlug = slug || org_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
+    const { data: tenantData, error: tenantErr } = await supabase
+      .from('tenants')
+      .insert({
+        name: org_name.toLowerCase().replace(/\s+/g, '-'),
+        display_name: display_name || org_name,
+        slug: tenantSlug,
+        plan,
+        status: 'trial',
+        admin_phone: admin_phone || null
+      })
+      .select()
+      .single()
+    if (tenantErr) throw new Error(`Error creando tenant: ${tenantErr.message}`)
+    tenant = tenantData
+
+    // 3. Link user → tenant (as owner)
+    const { error: linkErr } = await supabase
+      .from('tenant_users')
+      .insert({ tenant_id: tenant.id, user_id: authUser.id, role: 'owner' })
+    if (linkErr) throw new Error(`Error vinculando usuario: ${linkErr.message}`)
+
+    // 4. Send welcome WhatsApp (if phone provided and flag is true)
+    let whatsappSent = false
+    if (send_whatsapp && admin_phone) {
+      const welcomeText = `¡Bienvenido a Kollybry! 🎉\n\nHola, aquí están tus credenciales de acceso:\n\n📧 Usuario: ${email}\n🔑 Contraseña temporal: ${password}\n\n🔗 Accede en: https://app.kollybry.com\n\n⚠️ Te recomendamos cambiar tu contraseña en Configuración al entrar por primera vez.\n\n¿Dudas? Estamos aquí para ayudarte.`
+      const result = await sendWhatsAppMessage(admin_phone, welcomeText)
+      whatsappSent = result.success
+    }
+
+    return res.json({ tenant, user: { id: authUser.id, email }, whatsapp_sent: whatsappSent })
+
+  } catch (err) {
+    // Rollback: delete auth user if tenant creation failed
+    if (authUser && !tenant) {
+      await supabase.auth.admin.deleteUser(authUser.id).catch(() => {})
+    }
+    console.error('POST /admin/onboard error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 export default router
