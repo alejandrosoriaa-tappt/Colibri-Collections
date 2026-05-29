@@ -218,6 +218,16 @@ export async function markInvoicePaid(id, { reference, notes }) {
   return data
 }
 
+/**
+ * Maps legacy role names to the current RBAC roles.
+ * Legacy schema used: 'owner' | 'admin' | 'member'
+ * Current RBAC uses:  'owner' | 'billing' | 'comms'
+ */
+export function normalizeRole(role) {
+  const legacyMap = { admin: 'owner', member: 'comms' }
+  return legacyMap[role] ?? role ?? null
+}
+
 export async function getTenantByUser(userId) {
   const { data, error } = await supabase
     .from('tenant_users')
@@ -225,7 +235,8 @@ export async function getTenantByUser(userId) {
     .eq('user_id', userId)
     .single()
   if (error) throw error
-  return data
+  if (!data) return data
+  return { ...data, role: normalizeRole(data.role) }
 }
 
 export async function isAdminUser(userId) {

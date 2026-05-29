@@ -1,4 +1,4 @@
-import supabase from '../services/supabase.js'
+import supabase, { normalizeRole } from '../services/supabase.js'
 
 export function tenantGuard(paramName = 'tenantId') {
   return async function (req, res, next) {
@@ -55,7 +55,7 @@ export function tenantGuard(paramName = 'tenantId') {
       }
 
       req.tenantId = tenantId
-      req.tenantRole = membership.role
+      req.tenantRole = normalizeRole(membership.role)
       req.isAdmin = false
       next()
     } catch (err) {
@@ -101,7 +101,7 @@ export async function inferTenantGuard(req, res, next) {
         .eq('user_id', req.user.id)
         .maybeSingle()
       req.tenantId = membership?.tenant_id || null
-      req.tenantRole = membership?.role || 'owner'
+      req.tenantRole = normalizeRole(membership?.role) || 'owner'
       return next()
     }
 
@@ -117,7 +117,7 @@ export async function inferTenantGuard(req, res, next) {
     }
 
     req.tenantId = membership.tenant_id
-    req.tenantRole = membership.role
+    req.tenantRole = normalizeRole(membership.role)
     req.isAdmin = false
     next()
   } catch (err) {
