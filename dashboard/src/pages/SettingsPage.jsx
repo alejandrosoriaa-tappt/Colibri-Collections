@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
   Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock,
-  Receipt, Info, Users
+  Receipt, Info, Users, UserPlus, Trash2, X, Crown,
+  CreditCard, Megaphone
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
-import { settingsAPI } from '../lib/api.js'
+import { settingsAPI, teamAPI } from '../lib/api.js'
 import supabase from '../lib/supabase.js'
 
 const ORG_TYPES = [
@@ -95,7 +96,7 @@ function SectionCard({ icon: Icon, title, badge, children }) {
 }
 
 export default function SettingsPage() {
-  const { tenant, updateTenant } = useAuthStore()
+  const { tenant, updateTenant, tenantRole, user } = useAuthStore()
 
   const [form, setForm] = useState({
     display_name: '',
@@ -464,6 +465,9 @@ export default function SettingsPage() {
         </button>
       </form>
 
+      {/* ── Equipo ── */}
+      <TeamSection tenantRole={tenantRole} currentUserId={user?.id} />
+
       {/* ── Cambiar contraseña ── */}
       <PasswordSection />
 
@@ -495,6 +499,270 @@ export default function SettingsPage() {
         </SectionCard>
       )}
     </div>
+  )
+}
+
+// ── Role metadata ──────────────────────────────────────────────
+const ROLES = [
+  { value: 'owner',   label: 'Administrador', icon: Crown,     bg: 'bg-md-primary-container',   text: 'text-md-on-primary-container' },
+  { value: 'billing', label: 'Cobranza',       icon: CreditCard, bg: 'bg-amber-100',              text: 'text-amber-800' },
+  { value: 'comms',   label: 'Comunicados',    icon: Megaphone, bg: 'bg-green-100',              text: 'text-green-800' },
+]
+const roleInfo = (role) => ROLES.find(r => r.value === role) || ROLES[2]
+
+function RoleBadge({ role }) {
+  const { label, bg, text } = roleInfo(role)
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${bg} ${text}`}>
+      {label}
+    </span>
+  )
+}
+
+function UserAvatar({ name, email }) {
+  const initial = (name || email || '?')[0].toUpperCase()
+  return (
+    <div className="w-9 h-9 rounded-full bg-md-primary flex items-center justify-center flex-shrink-0">
+      <span className="text-white text-sm font-semibold">{initial}</span>
+    </div>
+  )
+}
+
+// ── Invite Modal ───────────────────────────────────────────────
+function InviteModal({ onClose, onInvited }) {
+  const [email, setEmail] = useState('')
+  const [name, setName]   = useState('')
+  const [role, setRole]   = useState('comms')
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await teamAPI.invite({ email: email.trim(), name: name.trim(), role })
+      onInvited(res.data.user)
+      onClose()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+      <div className="bg-md-surface rounded-3xl shadow-md3-3 w-full max-w-sm p-6 space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-md-on-surface">Agregar usuario</h2>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container text-md-on-surface-variant">
+            <X size={18} />
+          </button>
+        </div>
+
+        {error && (
+          <div className="flex items-start gap-2.5 p-3 bg-md-error-container rounded-2xl">
+            <AlertCircle size={15} className="text-md-on-error-container flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-md-on-error-container">{error}</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label">Correo electrónico</label>
+            <input
+              type="email"
+              className="input"
+              placeholder="usuario@empresa.com"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoFocus
+            />
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Recibirá un correo para crear su contraseña
+            </p>
+          </div>
+
+          <div>
+            <label className="label">Nombre (opcional)</label>
+            <input
+              type="text"
+              className="input"
+              placeholder="Ej. María García"
+              value={name}
+              onChange={e => setName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="label">Rol</label>
+            <div className="space-y-2">
+              {ROLES.map(r => (
+                <label key={r.value} className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer border-2 transition-colors ${role === r.value ? 'border-md-primary bg-md-primary-container/30' : 'border-md-outline-variant hover:bg-md-surface-container'}`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value={r.value}
+                    checked={role === r.value}
+                    onChange={() => setRole(r.value)}
+                    className="hidden"
+                  />
+                  <r.icon size={15} className={role === r.value ? 'text-md-primary' : 'text-md-on-surface-variant'} />
+                  <div>
+                    <p className="text-sm font-medium text-md-on-surface">{r.label}</p>
+                    <p className="text-xs text-md-on-surface-variant">
+                      {r.value === 'owner'   && 'Acceso completo a todas las funciones'}
+                      {r.value === 'billing' && 'Campañas, facturas y contactos'}
+                      {r.value === 'comms'   && 'Solo comunicados y difusiones'}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <button type="submit" className="btn-primary w-full" disabled={loading}>
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
+            {loading ? 'Enviando invitación...' : 'Enviar invitación'}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Team Section ───────────────────────────────────────────────
+function TeamSection({ tenantRole, currentUserId }) {
+  const [users, setUsers]       = useState([])
+  const [total, setTotal]       = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+  const [removing, setRemoving]   = useState(null)
+  const [error, setError]         = useState(null)
+  const MAX = 5
+  const isOwner = tenantRole === 'owner'
+
+  const load = useCallback(async () => {
+    try {
+      const res = await teamAPI.list()
+      setUsers(res.data.users)
+      setTotal(res.data.total)
+    } catch (err) {
+      console.error('TeamSection load error:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleRemove = async (userId) => {
+    setRemoving(userId)
+    setError(null)
+    try {
+      await teamAPI.remove(userId)
+      setUsers(u => u.filter(m => m.user_id !== userId))
+      setTotal(t => t - 1)
+    } catch (err) {
+      setError(err.response?.data?.error || err.message)
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  const handleInvited = (user) => {
+    setUsers(u => [...u, user])
+    setTotal(t => t + 1)
+  }
+
+  return (
+    <>
+      {showModal && (
+        <InviteModal
+          onClose={() => setShowModal(false)}
+          onInvited={handleInvited}
+        />
+      )}
+
+      <SectionCard
+        icon={Users}
+        title="Equipo"
+        badge={
+          <span className="text-xs text-md-on-surface-variant bg-md-surface-container px-2.5 py-1 rounded-full">
+            {total} / {MAX}
+          </span>
+        }
+      >
+        {error && (
+          <div className="flex items-start gap-2.5 p-3 bg-md-error-container rounded-2xl">
+            <AlertCircle size={14} className="text-md-on-error-container flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-md-on-error-container">{error}</p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="flex justify-center py-6">
+            <Loader2 size={20} className="animate-spin text-md-primary" />
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {users.map(u => (
+              <div key={u.user_id} className="flex items-center gap-3 p-3 rounded-2xl bg-md-surface-container">
+                <UserAvatar name={u.name} email={u.email} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-md-on-surface truncate">
+                    {u.name || u.email}
+                    {u.is_self && <span className="ml-1.5 text-xs text-md-on-surface-variant">(tú)</span>}
+                  </p>
+                  {u.name && (
+                    <p className="text-xs text-md-on-surface-variant truncate">{u.email}</p>
+                  )}
+                </div>
+                <RoleBadge role={u.role} />
+                {isOwner && !u.is_self && (
+                  <button
+                    onClick={() => handleRemove(u.user_id)}
+                    disabled={removing === u.user_id}
+                    className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                    title="Eliminar del equipo"
+                  >
+                    {removing === u.user_id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Trash2 size={14} />
+                    }
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isOwner && total < MAX && (
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="btn-secondary text-sm w-full mt-1"
+          >
+            <UserPlus size={14} />
+            Agregar usuario
+          </button>
+        )}
+
+        {isOwner && total >= MAX && (
+          <p className="text-xs text-md-on-surface-variant text-center py-1">
+            Límite de {MAX} usuarios alcanzado
+          </p>
+        )}
+
+        {!isOwner && (
+          <p className="text-xs text-md-on-surface-variant">
+            Solo el administrador puede gestionar el equipo.
+          </p>
+        )}
+      </SectionCard>
+    </>
   )
 }
 

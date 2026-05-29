@@ -103,4 +103,163 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
+// ================================================================
+// TEAM MANAGEMENT  (max 5 users per tenant)
+// ================================================================
+const MAX_TEAM = 5
+
+// GET /api/settings/users
+router.get('/users', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { data: members, error } = await supabase
+      .from('tenant_users')
+      .select('user_id, role, created_at')
+      .eq('tenant_id', req.tenantId)
+      .order('created_at', { ascending: true })
+
+    if (error) throw error
+
+    const users = await Promise.all(
+      members.map(async (m) => {
+        try {
+          const { data: { user } } = await supabase.auth.admin.getUserById(m.user_id)
+          return {
+            user_id:    m.user_id,
+            role:       m.role,
+            created_at: m.created_at,
+            email:      user?.email || '',
+            name:       user?.user_metadata?.full_name || user?.user_metadata?.name || '',
+            is_self:    m.user_id === req.user.id
+          }
+        } catch {
+          return { user_id: m.user_id, role: m.role, created_at: m.created_at, email: '', name: '', is_self: m.user_id === req.user.id }
+        }
+      })
+    )
+
+    return res.json({ users, total: members.length, max: MAX_TEAM })
+  } catch (err) {
+    console.error('GET /settings/users error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/settings/users — invite team member
+router.post('/users', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    if (req.tenantRole !== 'owner' && !req.isAdmin) {
+      return res.status(403).json({ error: 'Solo el administrador puede agregar usuarios' })
+    }
+
+    const { email, role = 'comms', name = '' } = req.body
+    if (!email) return res.status(400).json({ error: 'El correo es requerido' })
+
+    const ALLOWED_ROLES = ['owner', 'billing', 'comms']
+    if (!ALLOWED_ROLES.includes(role)) return res.status(400).json({ error: 'Rol inválido' })
+
+    // Check team limit
+    const { count, error: countErr } = await supabase
+      .from('tenant_users')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', req.tenantId)
+    if (countErr) throw countErr
+    if (count >= MAX_TEAM) {
+      return res.status(400).json({ error: `Límite de ${MAX_TEAM} usuarios alcanzado` })
+    }
+
+    // Invite user (creates if new, resends if existing)
+    let userId
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.kollybry.com'
+
+    const { data: invited, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${frontendUrl}/reset-password`,
+      data: { full_name: name }
+    })
+
+    if (inviteErr) {
+      const msg = inviteErr.message?.toLowerCase() || ''
+      if (msg.includes('already been registered') || msg.includes('already registered')) {
+        // User exists — look up by email
+        const { data: { users: allUsers }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 })
+        if (listErr) throw listErr
+        const found = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase())
+        if (!found) return res.status(400).json({ error: 'No se pudo encontrar el usuario' })
+        userId = found.id
+      } else {
+        throw inviteErr
+      }
+    } else {
+      userId = invited.user.id
+    }
+
+    // Already a member?
+    const { data: existing } = await supabase
+      .from('tenant_users')
+      .select('user_id')
+      .eq('tenant_id', req.tenantId)
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (existing) return res.status(400).json({ error: 'Este usuario ya es miembro del equipo' })
+
+    // Add to tenant
+    const { data: member, error: memberErr } = await supabase
+      .from('tenant_users')
+      .insert({ tenant_id: req.tenantId, user_id: userId, role })
+      .select()
+      .single()
+
+    if (memberErr) throw memberErr
+
+    return res.status(201).json({ user: { ...member, email, name } })
+  } catch (err) {
+    console.error('POST /settings/users error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/settings/users/:userId — remove team member
+router.delete('/users/:userId', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    if (req.tenantRole !== 'owner' && !req.isAdmin) {
+      return res.status(403).json({ error: 'Solo el administrador puede eliminar usuarios' })
+    }
+
+    if (req.params.userId === req.user.id) {
+      return res.status(400).json({ error: 'No puedes eliminarte a ti mismo' })
+    }
+
+    const { data: member, error: findErr } = await supabase
+      .from('tenant_users')
+      .select('user_id, role')
+      .eq('tenant_id', req.tenantId)
+      .eq('user_id', req.params.userId)
+      .maybeSingle()
+
+    if (findErr || !member) return res.status(404).json({ error: 'Usuario no encontrado en este equipo' })
+
+    // Protect last owner
+    if (member.role === 'owner') {
+      const { count } = await supabase
+        .from('tenant_users')
+        .select('*', { count: 'exact', head: true })
+        .eq('tenant_id', req.tenantId)
+        .eq('role', 'owner')
+      if (count <= 1) return res.status(400).json({ error: 'No puedes eliminar al único administrador' })
+    }
+
+    const { error: deleteErr } = await supabase
+      .from('tenant_users')
+      .delete()
+      .eq('tenant_id', req.tenantId)
+      .eq('user_id', req.params.userId)
+
+    if (deleteErr) throw deleteErr
+    return res.json({ success: true })
+  } catch (err) {
+    console.error('DELETE /settings/users/:userId error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 export default router

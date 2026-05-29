@@ -148,6 +148,15 @@ export const settingsAPI = {
 }
 
 // ================================================================
+// TEAM (settings/users)
+// ================================================================
+export const teamAPI = {
+  list:   ()               => api.get('/api/settings/users'),
+  invite: (data)           => api.post('/api/settings/users', data),
+  remove: (userId)         => api.delete(`/api/settings/users/${userId}`)
+}
+
+// ================================================================
 // ADMIN
 // ================================================================
 export const adminAPI = {
