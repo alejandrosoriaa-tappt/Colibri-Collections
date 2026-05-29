@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
-  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info, Globe, Mail, MapPin, Lock
+  Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI } from '../lib/api.js'
@@ -16,16 +16,6 @@ const ORG_TYPES = [
   { value: 'academia',   label: 'Academia' },
 ]
 
-function StatusDot({ ok, label }) {
-  return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${
-      ok ? 'bg-green-100 text-green-700' : 'bg-md-surface-container text-md-on-surface-variant'
-    }`}>
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ok ? 'bg-green-500' : 'bg-md-on-surface-variant/40'}`} />
-      {label}
-    </span>
-  )
-}
 
 function SectionCard({ icon: Icon, title, badge, children }) {
   return (
@@ -52,14 +42,9 @@ export default function SettingsPage() {
     org_type: 'general',
     email: '',
     website: '',
-    address: '',
-    waba_phone_id: '',
-    waba_token: '',
-    waba_business_id: ''
+    address: ''
   })
 
-  const [waStatus, setWaStatus] = useState(null)
-  const [showToken, setShowToken] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState(null)
@@ -68,10 +53,7 @@ export default function SettingsPage() {
   const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
 
   useEffect(() => {
-    Promise.all([
-      settingsAPI.get(),
-      settingsAPI.whatsappStatus().catch(() => ({ data: null }))
-    ]).then(([sRes, waRes]) => {
+    settingsAPI.get().then(sRes => {
       const t = sRes.data.tenant
       setForm({
         display_name: t.display_name || '',
@@ -80,12 +62,8 @@ export default function SettingsPage() {
         org_type: t.org_type || 'general',
         email: t.email || '',
         website: t.website || '',
-        address: t.address || '',
-        waba_phone_id: t.waba_phone_id || '',
-        waba_token: '',
-        waba_business_id: t.waba_business_id || ''
+        address: t.address || ''
       })
-      if (waRes.data) setWaStatus(waRes.data)
     }).catch(console.error)
       .finally(() => setIsLoading(false))
   }, [])
@@ -103,22 +81,12 @@ export default function SettingsPage() {
         org_type: form.org_type,
         email: form.email.trim(),
         website: form.website.trim(),
-        address: form.address.trim(),
-        waba_phone_id: form.waba_phone_id.trim(),
-        waba_business_id: form.waba_business_id.trim()
-      }
-      if (form.waba_token.trim()) {
-        payload.waba_token = form.waba_token.trim()
+        address: form.address.trim()
       }
 
       const res = await settingsAPI.update(payload)
       updateTenant(res.data.tenant)
-
-      const waRes = await settingsAPI.whatsappStatus().catch(() => null)
-      if (waRes?.data) setWaStatus(waRes.data)
-
       setSaved(true)
-      setForm(f => ({ ...f, waba_token: '' }))
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
       setError(err.response?.data?.error || err.message)
@@ -216,97 +184,6 @@ export default function SettingsPage() {
                 <input className="input" value={form.address} onChange={set('address')} placeholder="Calle, colonia, ciudad, estado" />
               </div>
             </div>
-          </div>
-        </SectionCard>
-
-        {/* ── WhatsApp API ── */}
-        <SectionCard
-          icon={MessageSquare}
-          title="WhatsApp Business API"
-          badge={waStatus && (
-            <StatusDot
-              ok={waStatus.configured}
-              label={waStatus.configured ? 'Configurado' : 'Sin configurar'}
-            />
-          )}
-        >
-          {/* Status indicators */}
-          {waStatus && (
-            <div className="flex gap-2 flex-wrap">
-              <StatusDot ok={waStatus.phone_id_set} label="Phone ID" />
-              <StatusDot ok={waStatus.token_set} label="Token" />
-              <StatusDot ok={waStatus.business_id_set} label="Business ID" />
-            </div>
-          )}
-
-          {/* Info box */}
-          <div className="flex gap-3 p-4 bg-md-tertiary-container/40 rounded-2xl">
-            <Info size={15} className="text-md-on-tertiary-container flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-md-on-tertiary-container space-y-1">
-              <p className="font-semibold">¿Cómo obtener las credenciales?</p>
-              <p>Necesitas una cuenta de Meta Business y una aplicación de WhatsApp Business. Obtén el Phone Number ID y el Access Token desde Meta for Developers.</p>
-              <a
-                href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 font-medium hover:underline"
-              >
-                Ver guía de Meta <ExternalLink size={11} />
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <label className="label">Phone Number ID</label>
-            <input
-              className="input font-mono text-sm"
-              value={form.waba_phone_id}
-              onChange={set('waba_phone_id')}
-              placeholder="Ej. 123456789012345"
-            />
-            <p className="text-xs text-md-on-surface-variant mt-1.5">
-              Meta for Developers → Tu App → WhatsApp → API Setup
-            </p>
-          </div>
-
-          <div>
-            <label className="label">
-              Access Token
-              {waStatus?.token_set && (
-                <span className="ml-2 text-xs font-normal text-green-600">● Ya configurado — deja vacío para no cambiar</span>
-              )}
-            </label>
-            <div className="relative">
-              <input
-                className="input font-mono text-sm pr-10"
-                type={showToken ? 'text' : 'password'}
-                value={form.waba_token}
-                onChange={set('waba_token')}
-                placeholder={waStatus?.token_set ? '••••••••••••••••••••••••' : 'EAAxxxxxxxx...'}
-                autoComplete="off"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-surface transition-colors"
-              >
-                {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
-              </button>
-            </div>
-            <p className="text-xs text-md-on-surface-variant mt-1.5">Token permanente de tu app de Meta. Se almacena cifrado.</p>
-          </div>
-
-          <div>
-            <label className="label">
-              WhatsApp Business Account ID
-              <span className="ml-1 text-md-on-surface-variant font-normal">(opcional)</span>
-            </label>
-            <input
-              className="input font-mono text-sm"
-              value={form.waba_business_id}
-              onChange={set('waba_business_id')}
-              placeholder="Ej. 987654321098765"
-            />
           </div>
         </SectionCard>
 
