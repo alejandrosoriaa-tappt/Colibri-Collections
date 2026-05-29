@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
-  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info
+  MessageSquare, Building2, Eye, EyeOff, ExternalLink, Info, Globe, Mail, MapPin
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI } from '../lib/api.js'
@@ -15,14 +15,29 @@ const ORG_TYPES = [
   { value: 'academia',   label: 'Academia' },
 ]
 
-function StatusBadge({ ok, label }) {
+function StatusDot({ ok, label }) {
   return (
-    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
-      ok ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'
+    <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full ${
+      ok ? 'bg-green-100 text-green-700' : 'bg-md-surface-container text-md-on-surface-variant'
     }`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-green-500' : 'bg-gray-400'}`} />
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ok ? 'bg-green-500' : 'bg-md-on-surface-variant/40'}`} />
       {label}
     </span>
+  )
+}
+
+function SectionCard({ icon: Icon, title, badge, children }) {
+  return (
+    <div className="card space-y-5">
+      <div className="flex items-start justify-between gap-3">
+        <h2 className="text-base font-semibold text-md-on-surface flex items-center gap-2">
+          <Icon size={17} className="text-md-primary flex-shrink-0" />
+          {title}
+        </h2>
+        {badge}
+      </div>
+      {children}
+    </div>
   )
 }
 
@@ -34,6 +49,9 @@ export default function SettingsPage() {
     admin_phone: '',
     payment_link_general: '',
     org_type: 'general',
+    email: '',
+    website: '',
+    address: '',
     waba_phone_id: '',
     waba_token: '',
     waba_business_id: ''
@@ -46,6 +64,8 @@ export default function SettingsPage() {
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  const set = (key) => (e) => setForm(f => ({ ...f, [key]: e.target.value }))
+
   useEffect(() => {
     Promise.all([
       settingsAPI.get(),
@@ -57,8 +77,11 @@ export default function SettingsPage() {
         admin_phone: t.admin_phone || '',
         payment_link_general: t.payment_link_general || '',
         org_type: t.org_type || 'general',
+        email: t.email || '',
+        website: t.website || '',
+        address: t.address || '',
         waba_phone_id: t.waba_phone_id || '',
-        waba_token: '',           // never pre-fill token
+        waba_token: '',
         waba_business_id: t.waba_business_id || ''
       })
       if (waRes.data) setWaStatus(waRes.data)
@@ -77,10 +100,12 @@ export default function SettingsPage() {
         admin_phone: form.admin_phone.trim(),
         payment_link_general: form.payment_link_general.trim(),
         org_type: form.org_type,
+        email: form.email.trim(),
+        website: form.website.trim(),
+        address: form.address.trim(),
         waba_phone_id: form.waba_phone_id.trim(),
         waba_business_id: form.waba_business_id.trim()
       }
-      // Only send token if the user actually typed one
       if (form.waba_token.trim()) {
         payload.waba_token = form.waba_token.trim()
       }
@@ -88,12 +113,11 @@ export default function SettingsPage() {
       const res = await settingsAPI.update(payload)
       updateTenant(res.data.tenant)
 
-      // Refresh WA status
       const waRes = await settingsAPI.whatsappStatus().catch(() => null)
       if (waRes?.data) setWaStatus(waRes.data)
 
       setSaved(true)
-      setForm(f => ({ ...f, waba_token: '' })) // clear token field after save
+      setForm(f => ({ ...f, waba_token: '' }))
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
       setError(err.response?.data?.error || err.message)
@@ -105,123 +129,128 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 size={28} className="text-colibri animate-spin" />
+        <Loader2 size={28} className="text-md-primary animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-5 max-w-2xl">
+
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-        <p className="text-gray-500 text-sm mt-1">Ajustes de tu cuenta y organización</p>
+        <h1 className="text-2xl font-semibold text-md-on-surface">Configuración</h1>
+        <p className="text-sm text-md-on-surface-variant mt-0.5">Ajustes de tu cuenta y organización</p>
       </div>
 
+      {/* Error / Success banners */}
       {error && (
-        <div className="flex items-start gap-3 p-3 bg-red-50 border border-red-200 rounded-xl">
-          <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-red-700">{error}</p>
+        <div className="flex items-start gap-3 p-4 bg-md-error-container rounded-2xl">
+          <AlertCircle size={16} className="text-md-on-error-container flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-md-on-error-container">{error}</p>
         </div>
       )}
       {saved && (
-        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-          <CheckCircle2 size={16} className="text-green-600" />
-          <p className="text-sm text-green-700">Cambios guardados correctamente</p>
+        <div className="flex items-center gap-3 p-4 bg-green-50 rounded-2xl">
+          <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
+          <p className="text-sm text-green-700 font-medium">Cambios guardados correctamente</p>
         </div>
       )}
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form onSubmit={handleSave} className="space-y-5">
 
         {/* ── Organización ── */}
-        <div className="card space-y-4">
-          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <Building2 size={16} className="text-colibri" />
-            Datos de la organización
-          </h2>
+        <SectionCard icon={Building2} title="Datos de la organización">
 
-          <div>
-            <label className="label">Nombre de la organización</label>
-            <input
-              className="input"
-              value={form.display_name}
-              onChange={e => setForm(f => ({ ...f, display_name: e.target.value }))}
-              placeholder="Ej. Colegio Las Américas"
-            />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="label">Nombre de la organización</label>
+              <input className="input" value={form.display_name} onChange={set('display_name')} placeholder="Ej. Colegio Las Américas" />
+            </div>
 
-          <div>
-            <label className="label">Tipo de organización</label>
-            <select
-              className="input"
-              value={form.org_type}
-              onChange={e => setForm(f => ({ ...f, org_type: e.target.value }))}
-            >
-              {ORG_TYPES.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          </div>
+            <div>
+              <label className="label">Tipo de organización</label>
+              <select className="input" value={form.org_type} onChange={set('org_type')}>
+                {ORG_TYPES.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="label">Teléfono administrador (WhatsApp)</label>
-            <input
-              className="input"
-              value={form.admin_phone}
-              onChange={e => setForm(f => ({ ...f, admin_phone: e.target.value }))}
-              placeholder="+521XXXXXXXXXX"
-            />
-            <p className="text-xs text-gray-400 mt-1">Recibe notificaciones operativas del sistema</p>
+            <div>
+              <label className="label">Teléfono WhatsApp administrador</label>
+              <input className="input" value={form.admin_phone} onChange={set('admin_phone')} placeholder="+521XXXXXXXXXX" />
+              <p className="text-xs text-md-on-surface-variant mt-1.5">Recibe notificaciones operativas</p>
+            </div>
           </div>
 
           <div>
             <label className="label">Liga de pago general</label>
-            <input
-              className="input"
-              value={form.payment_link_general}
-              onChange={e => setForm(f => ({ ...f, payment_link_general: e.target.value }))}
-              placeholder="https://..."
-            />
-            <p className="text-xs text-gray-400 mt-1">Se usa cuando un contacto no tiene liga de pago individual</p>
+            <input className="input" value={form.payment_link_general} onChange={set('payment_link_general')} placeholder="https://..." />
+            <p className="text-xs text-md-on-surface-variant mt-1.5">Se usa cuando un contacto no tiene liga individual</p>
           </div>
-        </div>
+
+          {/* Additional info */}
+          <div className="pt-1 border-t border-md-outline-variant">
+            <p className="text-xs font-medium text-md-on-surface-variant mb-3">Información adicional</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  <Mail size={12} className="text-md-on-surface-variant" />
+                  Correo electrónico
+                </label>
+                <input className="input" type="email" value={form.email} onChange={set('email')} placeholder="contacto@tuorganizacion.com" />
+              </div>
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  <Globe size={12} className="text-md-on-surface-variant" />
+                  Sitio web
+                </label>
+                <input className="input" value={form.website} onChange={set('website')} placeholder="https://tuorganizacion.com" />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="label flex items-center gap-1.5">
+                  <MapPin size={12} className="text-md-on-surface-variant" />
+                  Dirección
+                </label>
+                <input className="input" value={form.address} onChange={set('address')} placeholder="Calle, colonia, ciudad, estado" />
+              </div>
+            </div>
+          </div>
+        </SectionCard>
 
         {/* ── WhatsApp API ── */}
-        <div className="card space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <MessageSquare size={16} className="text-colibri" />
-              Configuración WhatsApp Business API
-            </h2>
-            {waStatus && (
-              <StatusBadge
-                ok={waStatus.configured}
-                label={waStatus.configured ? 'Configurado' : 'Sin configurar'}
-              />
-            )}
-          </div>
-
+        <SectionCard
+          icon={MessageSquare}
+          title="WhatsApp Business API"
+          badge={waStatus && (
+            <StatusDot
+              ok={waStatus.configured}
+              label={waStatus.configured ? 'Configurado' : 'Sin configurar'}
+            />
+          )}
+        >
           {/* Status indicators */}
           {waStatus && (
             <div className="flex gap-2 flex-wrap">
-              <StatusBadge ok={waStatus.phone_id_set} label="Phone ID" />
-              <StatusBadge ok={waStatus.token_set} label="Token" />
-              <StatusBadge ok={waStatus.business_id_set} label="Business ID" />
+              <StatusDot ok={waStatus.phone_id_set} label="Phone ID" />
+              <StatusDot ok={waStatus.token_set} label="Token" />
+              <StatusDot ok={waStatus.business_id_set} label="Business ID" />
             </div>
           )}
 
-          {/* Info banner */}
-          <div className="flex gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
-            <Info size={15} className="text-blue-500 flex-shrink-0 mt-0.5" />
-            <div className="text-xs text-blue-700 space-y-1">
-              <p className="font-semibold">¿Cómo obtener estas credenciales?</p>
-              <p>Necesitas una cuenta de Meta Business y una aplicación de WhatsApp Business. Obtén el Phone Number ID y el Access Token en el panel de Meta for Developers.</p>
+          {/* Info box */}
+          <div className="flex gap-3 p-4 bg-md-tertiary-container/40 rounded-2xl">
+            <Info size={15} className="text-md-on-tertiary-container flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-md-on-tertiary-container space-y-1">
+              <p className="font-semibold">¿Cómo obtener las credenciales?</p>
+              <p>Necesitas una cuenta de Meta Business y una aplicación de WhatsApp Business. Obtén el Phone Number ID y el Access Token desde Meta for Developers.</p>
               <a
                 href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-blue-600 font-medium hover:underline"
+                className="inline-flex items-center gap-1 font-medium hover:underline"
               >
-                Guía de Meta <ExternalLink size={11} />
+                Ver guía de Meta <ExternalLink size={11} />
               </a>
             </div>
           </div>
@@ -231,11 +260,11 @@ export default function SettingsPage() {
             <input
               className="input font-mono text-sm"
               value={form.waba_phone_id}
-              onChange={e => setForm(f => ({ ...f, waba_phone_id: e.target.value }))}
+              onChange={set('waba_phone_id')}
               placeholder="Ej. 123456789012345"
             />
-            <p className="text-xs text-gray-400 mt-1">
-              Se encuentra en Meta for Developers → Tu App → WhatsApp → API Setup
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Meta for Developers → Tu App → WhatsApp → API Setup
             </p>
           </div>
 
@@ -251,38 +280,39 @@ export default function SettingsPage() {
                 className="input font-mono text-sm pr-10"
                 type={showToken ? 'text' : 'password'}
                 value={form.waba_token}
-                onChange={e => setForm(f => ({ ...f, waba_token: e.target.value }))}
-                placeholder={waStatus?.token_set ? '••••••••••••••••••••••••••••••••' : 'EAAxxxxxxxx...'}
+                onChange={set('waba_token')}
+                placeholder={waStatus?.token_set ? '••••••••••••••••••••••••' : 'EAAxxxxxxxx...'}
                 autoComplete="off"
               />
               <button
                 type="button"
                 onClick={() => setShowToken(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant hover:text-md-on-surface transition-colors"
               >
                 {showToken ? <EyeOff size={15} /> : <Eye size={15} />}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Token permanente o temporal de tu app de Meta. Se almacena cifrado.
-            </p>
+            <p className="text-xs text-md-on-surface-variant mt-1.5">Token permanente de tu app de Meta. Se almacena cifrado.</p>
           </div>
 
           <div>
-            <label className="label">WhatsApp Business Account ID <span className="text-gray-400 font-normal">(opcional)</span></label>
+            <label className="label">
+              WhatsApp Business Account ID
+              <span className="ml-1 text-md-on-surface-variant font-normal">(opcional)</span>
+            </label>
             <input
               className="input font-mono text-sm"
               value={form.waba_business_id}
-              onChange={e => setForm(f => ({ ...f, waba_business_id: e.target.value }))}
+              onChange={set('waba_business_id')}
               placeholder="Ej. 987654321098765"
             />
           </div>
-        </div>
+        </SectionCard>
 
         {/* ── Save button ── */}
         <button
           type="submit"
-          className="btn-primary flex items-center gap-2 text-sm"
+          className="btn-primary text-sm"
           disabled={isSaving}
         >
           {isSaving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
@@ -292,34 +322,30 @@ export default function SettingsPage() {
 
       {/* ── Plan info ── */}
       {tenant && (
-        <div className="card">
-          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Settings size={16} className="text-colibri" />
-            Plan y suscripción
-          </h2>
+        <SectionCard icon={Settings} title="Plan y suscripción">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Plan actual</p>
-              <p className="font-semibold text-gray-900 capitalize">{tenant.plan}</p>
+              <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Plan actual</p>
+              <p className="font-semibold text-md-on-surface capitalize">{tenant.plan}</p>
             </div>
             <div>
-              <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Estado</p>
-              <p className="font-semibold text-gray-900 capitalize">{tenant.status}</p>
+              <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Estado</p>
+              <p className="font-semibold text-md-on-surface capitalize">{tenant.status}</p>
             </div>
             {tenant.slug && (
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Identificador</p>
-                <p className="font-mono text-gray-600 text-xs">{tenant.slug}</p>
+                <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Identificador</p>
+                <p className="font-mono text-md-on-surface-variant text-xs">{tenant.slug}</p>
               </div>
             )}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-400">
+          <div className="pt-4 border-t border-md-outline-variant">
+            <p className="text-xs text-md-on-surface-variant">
               Para cambios de plan o consultas de facturación:{' '}
-              <span className="text-colibri font-medium">hola@kollybry.com</span>
+              <span className="text-md-primary font-medium">hola@kollybry.com</span>
             </p>
           </div>
-        </div>
+        </SectionCard>
       )}
     </div>
   )

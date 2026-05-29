@@ -4,32 +4,145 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    @apply bg-md-surface text-md-on-surface font-sans;
+  }
+
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 }
 
 @layer components {
+
+  /* ──────────────────────────────────────────
+     MD3 Buttons
+  ────────────────────────────────────────── */
+
+  /* Filled button — high emphasis */
   .btn-primary {
-    @apply bg-colibri text-white px-4 py-2 rounded-lg font-medium hover:bg-colibri-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2
+           bg-md-primary text-md-on-primary
+           px-6 py-2.5 rounded-full font-medium text-sm
+           hover:shadow-md3-1 active:shadow-none
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
+  /* Tonal button — medium emphasis */
   .btn-secondary {
-    @apply bg-white text-colibri border border-colibri px-4 py-2 rounded-lg font-medium hover:bg-colibri-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2
+           bg-md-secondary-container text-md-on-secondary-container
+           px-6 py-2.5 rounded-full font-medium text-sm
+           hover:shadow-md3-1 active:shadow-none
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
+  /* Outlined button */
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2
+           border border-md-outline text-md-primary bg-transparent
+           px-6 py-2.5 rounded-full font-medium text-sm
+           transition-colors duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Text button — low emphasis */
+  .btn-text {
+    @apply inline-flex items-center justify-center gap-2
+           text-md-primary bg-transparent
+           px-3 py-2.5 rounded-full font-medium text-sm
+           transition-colors duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
+  /* Danger — filled error */
   .btn-danger {
-    @apply bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2
+           bg-md-error text-md-on-error
+           px-6 py-2.5 rounded-full font-medium text-sm
+           hover:shadow-md3-1 active:shadow-none
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed;
   }
 
+  /* ──────────────────────────────────────────
+     MD3 Cards
+  ────────────────────────────────────────── */
+
+  /* Elevated card */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white rounded-3xl p-6 shadow-md3-1;
   }
+
+  /* Filled card (tonal) */
+  .card-tonal {
+    @apply bg-md-surface-container rounded-3xl p-6;
+  }
+
+  /* Outlined card */
+  .card-outlined {
+    @apply bg-white rounded-3xl p-6 border border-md-outline-variant;
+  }
+
+  /* ──────────────────────────────────────────
+     MD3 Input / Form
+  ────────────────────────────────────────── */
 
   .input {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-colibri focus:border-transparent;
+    @apply w-full border border-md-outline rounded-xl px-4 py-3
+           text-sm text-md-on-surface bg-transparent
+           placeholder:text-md-on-surface-variant
+           focus:outline-none focus:border-md-primary focus:ring-1 focus:ring-md-primary
+           transition-colors duration-150;
   }
 
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-md-on-surface-variant mb-1.5;
+  }
+
+  /* ──────────────────────────────────────────
+     MD3 FAB (Floating Action Button)
+  ────────────────────────────────────────── */
+
+  .fab {
+    @apply fixed bottom-6 right-6
+           bg-md-primary-container text-md-on-primary-container
+           w-16 h-16 rounded-3xl
+           flex items-center justify-center
+           shadow-md3-3 hover:shadow-md3-4
+           transition-all duration-200 z-10 cursor-pointer;
+  }
+
+  .fab-small {
+    @apply bg-md-primary-container text-md-on-primary-container
+           w-12 h-12 rounded-2xl
+           flex items-center justify-center
+           shadow-md3-3 hover:shadow-md3-4
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* ──────────────────────────────────────────
+     MD3 Chips / Pills
+  ────────────────────────────────────────── */
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 px-3 py-1
+           rounded-full text-xs font-medium
+           border border-md-outline text-md-on-surface-variant
+           transition-colors duration-150 cursor-pointer;
+  }
+
+  .chip-selected {
+    @apply bg-md-secondary-container text-md-on-secondary-container border-md-secondary-container;
+  }
+
+  /* ──────────────────────────────────────────
+     MD3 Skeleton loader
+  ────────────────────────────────────────── */
+
+  .skeleton {
+    @apply bg-md-surface-container-high rounded-2xl animate-pulse;
   }
 }

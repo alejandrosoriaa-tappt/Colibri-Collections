@@ -10,10 +10,10 @@ export default function AppLayout({ requireAdmin = false }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-md-surface flex items-center justify-center">
         <div className="text-center">
-          <div className="w-10 h-10 border-4 border-colibri border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-sm text-gray-500">Cargando...</p>
+          <div className="w-10 h-10 border-4 border-md-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm text-md-on-surface-variant">Cargando...</p>
         </div>
       </div>
     )
@@ -24,11 +24,11 @@ export default function AppLayout({ requireAdmin = false }) {
   // if (requireAdmin && !isAdmin) return <Navigate to="/" replace />
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-md-surface flex">
       {/* Overlay móvil */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-20 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}

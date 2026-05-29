@@ -19,8 +19,20 @@ router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
       .single()
 
     if (error) throw error
+
+    // Try to also fetch new optional fields (added in migration)
+    let extra = {}
+    try {
+      const { data: ex } = await supabase
+        .from('tenants')
+        .select('email,website,address')
+        .eq('id', req.tenantId)
+        .single()
+      if (ex) extra = ex
+    } catch { /* columns may not exist yet — ignore */ }
+
     // Mask waba_token — never send the raw token to the client
-    return res.json({ tenant: { ...data, waba_token_set: false } })
+    return res.json({ tenant: { ...data, ...extra, waba_token_set: false } })
   } catch (err) {
     console.error('GET /settings error:', err)
     return res.status(500).json({ error: err.message })
@@ -58,6 +70,9 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
       'payment_link_general',
       'logo_url',
       'org_type',
+      'email',
+      'website',
+      'address',
       'waba_phone_id',
       'waba_token',
       'waba_business_id'

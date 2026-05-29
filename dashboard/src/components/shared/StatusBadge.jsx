@@ -1,74 +1,74 @@
 const STATUS_CONFIG = {
   pending: {
     label: 'Pendiente',
-    classes: 'bg-gray-100 text-gray-700 border-gray-200'
+    classes: 'bg-md-surface-container text-md-on-surface-variant'
   },
   paid: {
     label: 'Pagado',
-    classes: 'bg-green-100 text-green-800 border-green-200'
+    classes: 'bg-green-100 text-green-800'
   },
   suspended: {
     label: 'Suspendido',
-    classes: 'bg-gray-200 text-gray-600 border-gray-300'
+    classes: 'bg-md-surface-container-high text-md-on-surface-variant'
   },
   draft: {
     label: 'Borrador',
-    classes: 'bg-gray-100 text-gray-600 border-gray-200'
+    classes: 'bg-md-surface-container text-md-on-surface-variant'
   },
   active: {
     label: 'Activo',
-    classes: 'bg-green-100 text-green-800 border-green-200'
+    classes: 'bg-md-primary-container text-md-on-primary-container'
   },
   paused: {
     label: 'Pausado',
-    classes: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+    classes: 'bg-yellow-100 text-yellow-800'
   },
   completed: {
     label: 'Completado',
-    classes: 'bg-blue-100 text-blue-800 border-blue-200'
+    classes: 'bg-md-secondary-container text-md-on-secondary-container'
   },
   trial: {
     label: 'En prueba',
-    classes: 'bg-orange-100 text-orange-800 border-orange-200'
+    classes: 'bg-orange-100 text-orange-800'
   },
   cancelled: {
     label: 'Cancelado',
-    classes: 'bg-red-100 text-red-700 border-red-200'
+    classes: 'bg-md-error-container text-md-on-error-container'
   },
   inactive: {
     label: 'Inactivo',
-    classes: 'bg-gray-100 text-gray-500 border-gray-200'
+    classes: 'bg-md-surface-container text-md-on-surface-variant'
   },
   failed: {
     label: 'Fallido',
-    classes: 'bg-red-100 text-red-700 border-red-200'
+    classes: 'bg-md-error-container text-md-on-error-container'
   },
   delivered: {
     label: 'Entregado',
-    classes: 'bg-blue-100 text-blue-700 border-blue-200'
+    classes: 'bg-md-tertiary-container text-md-on-tertiary-container'
   },
   read: {
     label: 'Leído',
-    classes: 'bg-indigo-100 text-indigo-700 border-indigo-200'
+    classes: 'bg-md-primary-container text-md-on-primary-container'
   },
   sent: {
     label: 'Enviado',
-    classes: 'bg-green-50 text-green-700 border-green-200'
+    classes: 'bg-md-primary-container/60 text-md-on-primary-container'
   },
   processing: {
     label: 'Procesando',
-    classes: 'bg-blue-100 text-blue-700 border-blue-200'
+    classes: 'bg-md-tertiary-container text-md-on-tertiary-container'
   },
   error: {
     label: 'Error',
-    classes: 'bg-red-100 text-red-700 border-red-200'
+    classes: 'bg-md-error-container text-md-on-error-container'
   }
 }
 
 export default function StatusBadge({ status, size = 'sm' }) {
   const config = STATUS_CONFIG[status] || {
     label: status || 'Desconocido',
-    classes: 'bg-gray-100 text-gray-600 border-gray-200'
+    classes: 'bg-md-surface-container text-md-on-surface-variant'
   }
 
   const sizeClasses = size === 'xs'
@@ -77,7 +77,7 @@ export default function StatusBadge({ status, size = 'sm' }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border font-medium ${sizeClasses} ${config.classes}`}
+      className={`inline-flex items-center rounded-full font-medium ${sizeClasses} ${config.classes}`}
     >
       {config.label}
     </span>
