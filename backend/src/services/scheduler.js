@@ -10,8 +10,13 @@ import supabase, {
   updateCampaignMessage,
   updateCampaignStats
 } from './supabase.js'
-import { sendWhatsAppMessage } from './whatsapp.js'
-import { buildMessage, calculateAmountWithLateFee } from '../templates/messages.js'
+import { sendWhatsAppTemplate } from './whatsapp.js'
+import { calculateAmountWithLateFee } from '../templates/messages.js'
+import {
+  TEMPLATE_NAMES,
+  recordatorioPagoComponents,
+  avisoVencidoComponents
+} from '../templates/whatsappTemplates.js'
 import { sendOperationalNotification } from './notifier.js'
 
 function getDaysSince(dateStr) {
@@ -129,25 +134,36 @@ async function sendCampaignMessage(campaign, message, tenant) {
         continue
       }
 
-      // Build message text
-      const lateFee = Number(campaign.late_fee_pct) || 0
-      const montoConRecargo = calculateAmountWithLateFee(invoice.monto, lateFee)
+      // Determine template: aviso_vencido if due_date already passed, recordatorio otherwise
+      const orgName = tenant?.display_name || tenant?.name || ''
+      const link    = invoice.liga_pago || tenant?.payment_link_general || ''
 
-      const vars = {
-        nombre: contact.nombre,
-        monto: invoice.monto,
-        monto_con_recargo: montoConRecargo,
-        liga_pago: invoice.liga_pago || tenant?.payment_link_general || '',
-        fecha_limite: campaign.due_date,
-        nombre_org: tenant?.display_name || tenant?.name || '',
-        concept: campaign.concept || 'pago mensual',
-        late_fee_pct: lateFee
+      let templateName, components
+      const isOverdue = campaign.due_date && new Date(campaign.due_date) < new Date()
+      const diasVencido = isOverdue ? getDaysSince(campaign.due_date) : 0
+
+      if (isOverdue && diasVencido > 0) {
+        templateName = TEMPLATE_NAMES.AVISO_VENCIDO
+        components   = avisoVencidoComponents({
+          nombre: contact.nombre,
+          orgName,
+          monto:       invoice.monto,
+          concepto:    campaign.concept || 'pago mensual',
+          diasVencido
+        })
+      } else {
+        templateName = TEMPLATE_NAMES.RECORDATORIO_PAGO
+        components   = recordatorioPagoComponents({
+          nombre:   contact.nombre,
+          orgName,
+          concepto: campaign.concept || 'pago mensual',
+          monto:    invoice.monto,
+          link
+        })
       }
 
-      const text = buildMessage(message.message_template, vars)
-
-      // Send message
-      const result = await sendWhatsAppMessage(contact.telefono, text)
+      // Send via approved Meta template
+      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es', components)
 
       // Log the message
       const logData = {
@@ -157,7 +173,7 @@ async function sendCampaignMessage(campaign, message, tenant) {
         invoice_id: invoice.id,
         campaign_message_id: message.id,
         message_number: message.message_number,
-        message_text: text,
+        message_text: `[template:${templateName}]`,
         phone: contact.telefono,
         wa_message_id: result.wa_message_id || null,
         status: result.success ? 'sent' : 'failed',

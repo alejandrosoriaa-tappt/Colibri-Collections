@@ -6,10 +6,15 @@ import {
   createBroadcast,
   updateBroadcast,
   getContactGroupsByTenant,
-  getContactsForBroadcast
+  getContactsForBroadcast,
+  getTenant
 } from '../services/supabase.js'
-import { sendWhatsAppMessage } from '../services/whatsapp.js'
-import { buildMessage } from '../templates/messages.js'
+import { sendWhatsAppTemplate } from '../services/whatsapp.js'
+import {
+  TEMPLATE_NAMES,
+  comunicadoComponents,
+  comunicadoImagenComponents
+} from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -127,15 +132,28 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     return
   }
 
+  // Get tenant name for template
+  let orgName = ''
+  try {
+    const tenant = await getTenant(req.tenantId)
+    orgName = tenant?.display_name || tenant?.name || ''
+  } catch (e) {
+    console.warn('Broadcast: could not load tenant name:', e.message)
+  }
+
+  // Determine which template to use
+  const useImage = !!(media_url && media_type?.startsWith('image'))
+  const templateName = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
+
   for (const contact of contacts) {
     try {
       if (!contact.telefono) { failedCount++; continue }
 
-      const text = message
-        .replace(/{nombre}/g, contact.nombre || '')
-        .replace(/{grupo}/g, contact.grupo || '')
+      const components = useImage
+        ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: message, imageUrl: media_url })
+        : comunicadoComponents({ titulo: title, orgName, cuerpo: message })
 
-      const result = await sendWhatsAppMessage(contact.telefono, text)
+      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es', components)
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)

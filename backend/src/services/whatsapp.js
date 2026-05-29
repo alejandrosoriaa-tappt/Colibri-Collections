@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const GRAPH_URL = 'https://graph.facebook.com/v18.0'
+const GRAPH_URL = 'https://graph.facebook.com/v20.0'
 
 export async function sendWhatsAppMessage(phone, text) {
   const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID

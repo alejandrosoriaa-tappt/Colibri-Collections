@@ -7,6 +7,8 @@ import supabase, {
   updateInvoice,
   updateCampaignStats
 } from '../services/supabase.js'
+import { sendWhatsAppTemplate } from '../services/whatsapp.js'
+import { TEMPLATE_NAMES, confirmacionPagoComponents } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -37,6 +39,11 @@ router.patch('/:id/mark-paid', authMiddleware, inferTenantGuard, async (req, res
     } catch (statsErr) {
       console.error('Failed to update campaign stats after marking paid:', statsErr)
     }
+
+    // Send payment confirmation via WhatsApp (fire-and-forget)
+    sendPaymentConfirmation(invoice, updated).catch(err =>
+      console.error('Failed to send payment confirmation WA:', err)
+    )
 
     return res.json({ invoice: updated })
   } catch (err) {
@@ -96,5 +103,46 @@ router.patch('/:id/suspend', authMiddleware, inferTenantGuard, async (req, res) 
     return res.status(500).json({ error: err.message })
   }
 })
+
+// ================================================================
+// HELPERS
+// ================================================================
+async function sendPaymentConfirmation(invoice, updatedInvoice) {
+  try {
+    // Get contact phone
+    const { data: contact } = await supabase
+      .from('contacts')
+      .select('nombre, telefono')
+      .eq('id', invoice.contact_id)
+      .single()
+
+    if (!contact?.telefono) return
+
+    // Get campaign + tenant name
+    const { data: campaign } = await supabase
+      .from('campaigns')
+      .select('concept, tenants(display_name, name)')
+      .eq('id', invoice.campaign_id)
+      .single()
+
+    const orgName = campaign?.tenants?.display_name || campaign?.tenants?.name || 'Tu organización'
+    const concepto = campaign?.concept || 'pago'
+    const monto = updatedInvoice?.monto ?? invoice.monto
+    const fecha = updatedInvoice?.paid_at
+      ? updatedInvoice.paid_at.split('T')[0]
+      : new Date().toISOString().split('T')[0]
+
+    const components = confirmacionPagoComponents({ nombre: contact.nombre, orgName, concepto, monto, fecha })
+    const result = await sendWhatsAppTemplate(contact.telefono, TEMPLATE_NAMES.CONFIRMACION_PAGO, 'es', components)
+
+    if (result.success) {
+      console.log(`Invoice ${invoice.id}: confirmación de pago enviada a ${contact.telefono}`)
+    } else {
+      console.warn(`Invoice ${invoice.id}: no se pudo enviar confirmación — ${result.error}`)
+    }
+  } catch (err) {
+    console.error('sendPaymentConfirmation error:', err)
+  }
+}
 
 export default router
