@@ -10,21 +10,23 @@ import {
   X
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore.js'
+import { NAV_ITEMS, ROLE_LABELS } from '../../lib/permissions.js'
 
-const navLinks = [
-  { to: '/', icon: LayoutDashboard, label: 'Inicio', exact: true },
-  { to: '/mensajes', icon: MessageSquare, label: 'Mensajes' },
-  { to: '/contacts', icon: Users, label: 'Contactos' },
-  { to: '/settings', icon: Settings, label: 'Configuración' },
-]
+const ICONS = { LayoutDashboard, MessageSquare, Users, Settings }
 
 const adminLinks = [
-  { to: '/admin', icon: Shield, label: 'Panel Admin', exact: true },
+  { to: '/admin',         icon: Shield,    label: 'Panel Admin', exact: true },
   { to: '/admin/tenants', icon: Building2, label: 'Tenants' },
 ]
 
+const ROLE_BADGE = {
+  owner:   { bg: 'bg-md-primary-container',  text: 'text-md-on-primary-container' },
+  billing: { bg: 'bg-amber-100',              text: 'text-amber-800' },
+  comms:   { bg: 'bg-green-100',              text: 'text-green-800' },
+}
+
 export default function Sidebar({ isOpen, onClose }) {
-  const { user, tenant, isAdmin, logout } = useAuthStore()
+  const { user, tenant, isAdmin, tenantRole, logout } = useAuthStore()
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -37,7 +39,7 @@ export default function Sidebar({ isOpen, onClose }) {
   }
 
   const displayName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuario'
-  const initials = displayName.charAt(0).toUpperCase()
+  const initials    = displayName.charAt(0).toUpperCase()
 
   const linkClass = ({ isActive }) =>
     `flex items-center gap-4 px-4 py-3 rounded-full font-medium text-sm transition-colors duration-150 ${
@@ -45,6 +47,14 @@ export default function Sidebar({ isOpen, onClose }) {
         ? 'bg-md-primary-container text-md-on-primary-container'
         : 'text-md-on-surface-variant hover:bg-md-surface-container'
     }`
+
+  // Filter nav items for this role (admins see everything)
+  const visibleNav = NAV_ITEMS.filter(item =>
+    isAdmin || !tenantRole || item.roles.includes(tenantRole)
+  )
+
+  const roleBadge = tenantRole && tenantRole !== 'owner' ? ROLE_BADGE[tenantRole] : null
+  const roleLabel = ROLE_LABELS[tenantRole] || ''
 
   return (
     <aside
@@ -78,18 +88,21 @@ export default function Sidebar({ isOpen, onClose }) {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
-        {navLinks.map(({ to, icon: Icon, label, exact }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={exact}
-            onClick={handleNavClick}
-            className={linkClass}
-          >
-            <Icon size={20} className="flex-shrink-0" />
-            <span>{label}</span>
-          </NavLink>
-        ))}
+        {visibleNav.map(({ to, iconName, label, exact }) => {
+          const Icon = ICONS[iconName]
+          return (
+            <NavLink
+              key={to}
+              to={to}
+              end={exact}
+              onClick={handleNavClick}
+              className={linkClass}
+            >
+              <Icon size={20} className="flex-shrink-0" />
+              <span>{label}</span>
+            </NavLink>
+          )
+        })}
 
         {isAdmin && (
           <>
@@ -121,7 +134,14 @@ export default function Sidebar({ isOpen, onClose }) {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-md-on-surface truncate leading-tight">{displayName}</p>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="text-sm font-medium text-md-on-surface truncate leading-tight">{displayName}</p>
+              {roleBadge && (
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${roleBadge.bg} ${roleBadge.text}`}>
+                  {roleLabel}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-md-on-surface-variant truncate">{user?.email}</p>
           </div>
           <button

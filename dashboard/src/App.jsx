@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import useAuthStore from './store/authStore.js'
+import { canAccess } from './lib/permissions.js'
 
 import AppLayout from './components/layout/AppLayout.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -16,6 +17,27 @@ import MensajesPage from './pages/MensajesPage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import TenantsPage from './pages/admin/TenantsPage.jsx'
 
+/**
+ * Redirects to "/" if the current user's role doesn't allow this route.
+ * Admins bypass all role checks.
+ */
+function RoleRoute({ children }) {
+  const { tenantRole, isAdmin, isLoading } = useAuthStore()
+  const { pathname } = useLocation()
+
+  // Still initializing — let AppLayout handle the loading state
+  if (isLoading) return null
+
+  // Admins always pass
+  if (isAdmin) return children
+
+  if (!canAccess(tenantRole, pathname)) {
+    return <Navigate to="/" replace />
+  }
+
+  return children
+}
+
 export default function App() {
   const initialize = useAuthStore(s => s.initialize)
 
@@ -29,21 +51,26 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
 
         <Route element={<AppLayout />}>
-          <Route path="/" element={<DashboardPage />} />
-          <Route path="/campaigns" element={<CampaignsPage />} />
-          <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-          <Route path="/upload" element={<UploadPage />} />
-          <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/messages" element={<MessagesPage />} />
+          {/* Accessible by all roles */}
+          <Route path="/"         element={<DashboardPage />} />
           <Route path="/mensajes" element={<MensajesPage />} />
           <Route path="/broadcasts" element={<BroadcastsPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
+
+          {/* billing + owner */}
+          <Route path="/contacts"        element={<RoleRoute><ContactsPage /></RoleRoute>} />
+          <Route path="/campaigns"       element={<RoleRoute><CampaignsPage /></RoleRoute>} />
+          <Route path="/campaigns/:id"   element={<RoleRoute><CampaignDetailPage /></RoleRoute>} />
+          <Route path="/upload"          element={<RoleRoute><UploadPage /></RoleRoute>} />
+          <Route path="/messages"        element={<RoleRoute><MessagesPage /></RoleRoute>} />
+
+          {/* owner only */}
+          <Route path="/settings"        element={<RoleRoute><SettingsPage /></RoleRoute>} />
         </Route>
 
         <Route element={<AppLayout requireAdmin />}>
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/tenants" element={<TenantsPage />} />
-          <Route path="/admin/tenants/:id" element={<TenantsPage />} />
+          <Route path="/admin"                element={<AdminPage />} />
+          <Route path="/admin/tenants"        element={<TenantsPage />} />
+          <Route path="/admin/tenants/:id"    element={<TenantsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
