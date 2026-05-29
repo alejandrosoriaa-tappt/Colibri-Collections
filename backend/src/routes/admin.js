@@ -286,7 +286,7 @@ router.post('/tenants/:id/add-user', authMiddleware, adminOnly, async (req, res)
 
 // POST /api/admin/onboard — create tenant + user + send welcome WhatsApp in one shot
 router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
-  const { org_name, display_name, slug, plan = 'basic', admin_phone, email, password, send_whatsapp = true } = req.body
+  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true } = req.body
 
   if (!org_name || !email || !password) {
     return res.status(400).json({ error: 'org_name, email y password son requeridos' })
@@ -314,6 +314,7 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
         display_name: display_name || org_name,
         slug: tenantSlug,
         plan,
+        org_type,
         status: 'trial',
         admin_phone: admin_phone || null
       })

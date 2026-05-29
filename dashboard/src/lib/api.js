@@ -76,7 +76,17 @@ export const contactsAPI = {
   groups: () => api.get('/api/contacts/groups'),
   get: (id) => api.get(`/api/contacts/${id}`),
   create: (data) => api.post('/api/contacts', data),
-  update: (id, data) => api.patch(`/api/contacts/${id}`, data)
+  update: (id, data) => api.patch(`/api/contacts/${id}`, data),
+  deactivate: (id) => api.patch(`/api/contacts/${id}/deactivate`),
+  reactivate: (id) => api.patch(`/api/contacts/${id}/reactivate`),
+  bulkDeactivate: (ids) => api.post('/api/contacts/bulk-deactivate', { ids }),
+  bulkReactivate: (ids) => api.post('/api/contacts/bulk-reactivate', { ids }),
+  bulkDelete: (ids) => api.delete('/api/contacts/bulk-delete', { data: { ids } }),
+  sync: (formData) => api.post('/api/contacts/sync', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000
+  }),
+  cleanup: () => api.post('/api/contacts/cleanup')
 }
 
 // ================================================================
@@ -98,8 +108,8 @@ export const uploadAPI = {
       timeout: 120000
     }),
   getStatus: (id) => api.get(`/api/upload/${id}`),
-  downloadLayout: () =>
-    api.get('/api/upload/layout', { responseType: 'blob' })
+  downloadLayout: (orgType) =>
+    api.get('/api/upload/layout', { params: orgType ? { org_type: orgType } : {}, responseType: 'blob' })
 }
 
 // ================================================================

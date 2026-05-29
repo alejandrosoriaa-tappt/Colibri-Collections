@@ -87,9 +87,21 @@ export async function inferTenantGuard(req, res, next) {
 
     if (adminData) {
       req.isAdmin = true
-      // For admins, tenantId must be explicitly provided or inferred
-      const tenantId = req.params.tenantId || req.body.tenant_id || req.query.tenant_id
-      req.tenantId = tenantId
+      // If an explicit tenant_id is provided (e.g. admin panel operations), use it
+      const explicitTenantId = req.params.tenantId || req.body.tenant_id || req.query.tenant_id
+      if (explicitTenantId) {
+        req.tenantId = explicitTenantId
+        return next()
+      }
+      // Otherwise infer from the admin's own tenant membership so they can use
+      // the app as a regular user without needing to pass tenant_id on every request
+      const { data: membership } = await supabase
+        .from('tenant_users')
+        .select('tenant_id, role')
+        .eq('user_id', req.user.id)
+        .maybeSingle()
+      req.tenantId = membership?.tenant_id || null
+      req.tenantRole = membership?.role || 'owner'
       return next()
     }
 

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
-  Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock
+  Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock,
+  Receipt, Info, Users
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI } from '../lib/api.js'
@@ -14,6 +15,67 @@ const ORG_TYPES = [
   { value: 'gimnasio',   label: 'Gimnasio' },
   { value: 'club',       label: 'Club deportivo' },
   { value: 'academia',   label: 'Academia' },
+]
+
+// SAT catalog — Regímenes fiscales más comunes
+const REGIMENES_FISCALES = [
+  { value: '601', label: '601 – General de Ley Personas Morales' },
+  { value: '603', label: '603 – Personas Morales con Fines no Lucrativos' },
+  { value: '605', label: '605 – Sueldos y Salarios e Ingresos Asimilados a Salarios' },
+  { value: '606', label: '606 – Arrendamiento' },
+  { value: '607', label: '607 – Régimen de Enajenación o Adquisición de Bienes' },
+  { value: '608', label: '608 – Demás Ingresos' },
+  { value: '610', label: '610 – Residentes en el Extranjero sin EP en México' },
+  { value: '611', label: '611 – Ingresos por Dividendos (socios y accionistas)' },
+  { value: '612', label: '612 – Personas Físicas con Actividades Empresariales y Profesionales' },
+  { value: '614', label: '614 – Ingresos por Intereses' },
+  { value: '615', label: '615 – Régimen de los ingresos por obtención de premios' },
+  { value: '616', label: '616 – Sin obligaciones fiscales' },
+  { value: '620', label: '620 – Sociedades Cooperativas de Producción que optan por diferir sus ingresos' },
+  { value: '621', label: '621 – Incorporación Fiscal' },
+  { value: '622', label: '622 – Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras' },
+  { value: '623', label: '623 – Opcional para Grupos de Sociedades' },
+  { value: '624', label: '624 – Coordinados' },
+  { value: '625', label: '625 – Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas' },
+  { value: '626', label: '626 – Régimen Simplificado de Confianza (RESICO)' },
+]
+
+// SAT catalog — Usos de CFDI más comunes
+const USOS_CFDI = [
+  { value: 'G01', label: 'G01 – Adquisición de mercancias' },
+  { value: 'G02', label: 'G02 – Devoluciones, descuentos o bonificaciones' },
+  { value: 'G03', label: 'G03 – Gastos en general' },
+  { value: 'I01', label: 'I01 – Construcciones' },
+  { value: 'I02', label: 'I02 – Mobilario y equipo de oficina por inversiones' },
+  { value: 'I03', label: 'I03 – Equipo de transporte' },
+  { value: 'I04', label: 'I04 – Equipo de computo y accesorios' },
+  { value: 'I05', label: 'I05 – Dados, troqueles, moldes, matrices y herramental' },
+  { value: 'I06', label: 'I06 – Comunicaciones telefónicas' },
+  { value: 'I07', label: 'I07 – Comunicaciones satelitales' },
+  { value: 'I08', label: 'I08 – Otra maquinaria y equipo' },
+  { value: 'D01', label: 'D01 – Honorarios médicos, dentales y gastos hospitalarios' },
+  { value: 'D02', label: 'D02 – Gastos médicos por incapacidad o discapacidad' },
+  { value: 'D03', label: 'D03 – Gastos funerales' },
+  { value: 'D04', label: 'D04 – Donativos' },
+  { value: 'D05', label: 'D05 – Intereses reales efectivamente pagados por créditos hipotecarios (casa habitación)' },
+  { value: 'D06', label: 'D06 – Aportaciones voluntarias al SAR' },
+  { value: 'D07', label: 'D07 – Primas por seguros de gastos médicos' },
+  { value: 'D08', label: 'D08 – Gastos de transportación escolar obligatoria' },
+  { value: 'D09', label: 'D09 – Depósitos en cuentas para el ahorro, primas que tengan como base planes de pensiones' },
+  { value: 'D10', label: 'D10 – Pagos por servicios educativos (colegiaturas)' },
+  { value: 'S01', label: 'S01 – Sin efectos fiscales' },
+  { value: 'CP01', label: 'CP01 – Pagos' },
+  { value: 'CN01', label: 'CN01 – Nómina' },
+]
+
+// Mexican states
+const ESTADOS_MX = [
+  'Aguascalientes','Baja California','Baja California Sur','Campeche',
+  'Chiapas','Chihuahua','Ciudad de México','Coahuila','Colima',
+  'Durango','Estado de México','Guanajuato','Guerrero','Hidalgo',
+  'Jalisco','Michoacán','Morelos','Nayarit','Nuevo León','Oaxaca',
+  'Puebla','Querétaro','Quintana Roo','San Luis Potosí','Sinaloa',
+  'Sonora','Tabasco','Tamaulipas','Tlaxcala','Veracruz','Yucatán','Zacatecas'
 ]
 
 
@@ -42,7 +104,19 @@ export default function SettingsPage() {
     org_type: 'general',
     email: '',
     website: '',
-    address: ''
+    address: '',
+    contact_grace_period_days: 30,
+    // Datos fiscales
+    razon_social: '',
+    rfc: '',
+    regimen_fiscal: '',
+    uso_cfdi: '',
+    fiscal_street: '',
+    fiscal_colony: '',
+    fiscal_city: '',
+    fiscal_state: '',
+    fiscal_zip: '',
+    email_facturacion: ''
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -62,7 +136,19 @@ export default function SettingsPage() {
         org_type: t.org_type || 'general',
         email: t.email || '',
         website: t.website || '',
-        address: t.address || ''
+        address: t.address || '',
+        contact_grace_period_days: t.contact_grace_period_days ?? 30,
+        // Datos fiscales
+        razon_social: t.razon_social || '',
+        rfc: t.rfc || '',
+        regimen_fiscal: t.regimen_fiscal || '',
+        uso_cfdi: t.uso_cfdi || '',
+        fiscal_street: t.fiscal_street || '',
+        fiscal_colony: t.fiscal_colony || '',
+        fiscal_city: t.fiscal_city || '',
+        fiscal_state: t.fiscal_state || '',
+        fiscal_zip: t.fiscal_zip || '',
+        email_facturacion: t.email_facturacion || ''
       })
     }).catch(console.error)
       .finally(() => setIsLoading(false))
@@ -81,7 +167,19 @@ export default function SettingsPage() {
         org_type: form.org_type,
         email: form.email.trim(),
         website: form.website.trim(),
-        address: form.address.trim()
+        address: form.address.trim(),
+        contact_grace_period_days: Number(form.contact_grace_period_days) || 30,
+        // Datos fiscales
+        razon_social: form.razon_social.trim(),
+        rfc: form.rfc.trim().toUpperCase(),
+        regimen_fiscal: form.regimen_fiscal,
+        uso_cfdi: form.uso_cfdi,
+        fiscal_street: form.fiscal_street.trim(),
+        fiscal_colony: form.fiscal_colony.trim(),
+        fiscal_city: form.fiscal_city.trim(),
+        fiscal_state: form.fiscal_state,
+        fiscal_zip: form.fiscal_zip.trim(),
+        email_facturacion: form.email_facturacion.trim()
       }
 
       const res = await settingsAPI.update(payload)
@@ -182,6 +280,174 @@ export default function SettingsPage() {
                   Dirección
                 </label>
                 <input className="input" value={form.address} onChange={set('address')} placeholder="Calle, colonia, ciudad, estado" />
+              </div>
+            </div>
+          </div>
+        </SectionCard>
+
+        {/* ── Gestión de contactos ── */}
+        <SectionCard icon={Users} title="Gestión de contactos">
+          <div>
+            <label className="label">Periodo de gracia para contactos inactivos</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                className="input w-28"
+                min={1}
+                max={365}
+                value={form.contact_grace_period_days}
+                onChange={e => setForm(f => ({ ...f, contact_grace_period_days: e.target.value }))}
+              />
+              <span className="text-sm text-md-on-surface-variant">días</span>
+            </div>
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Cuando un contacto se marca como inactivo (manualmente o al actualizar el padrón),
+              se eliminará definitivamente después de este número de días. Por defecto: 30 días.
+            </p>
+          </div>
+        </SectionCard>
+
+        {/* ── Datos fiscales ── */}
+        <SectionCard
+          icon={Receipt}
+          title="Datos fiscales"
+          badge={
+            <span className="flex items-center gap-1 text-xs text-md-on-surface-variant bg-md-surface-container px-2.5 py-1 rounded-full">
+              <Info size={11} />
+              Opcional
+            </span>
+          }
+        >
+          {/* Info note */}
+          <div className="flex items-start gap-2.5 p-3 bg-md-surface-container rounded-2xl text-xs text-md-on-surface-variant leading-relaxed">
+            <Info size={13} className="flex-shrink-0 mt-0.5 text-md-primary" />
+            <p>
+              Si tu organización emite o recibe facturas, completa estos datos para agilizar el proceso.
+              El <strong>RFC</strong> tiene 12 caracteres para personas morales (empresas) y 13 para personas físicas.
+              La <strong>Razón Social</strong> puede ser igual al nombre comercial si eres persona física con actividad empresarial.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="label">Razón Social</label>
+              <input
+                className="input"
+                value={form.razon_social}
+                onChange={set('razon_social')}
+                placeholder="Ej. ACME Servicios S.A. de C.V. o Juan Pérez López"
+              />
+              <p className="text-xs text-md-on-surface-variant mt-1.5">
+                Nombre legal tal como aparece en tu constancia de situación fiscal
+              </p>
+            </div>
+
+            <div>
+              <label className="label">RFC</label>
+              <input
+                className="input uppercase"
+                value={form.rfc}
+                onChange={e => setForm(f => ({ ...f, rfc: e.target.value.toUpperCase() }))}
+                placeholder="Ej. ACM123456789 o PELJ800101ABC"
+                maxLength={13}
+              />
+              <p className="text-xs text-md-on-surface-variant mt-1.5">
+                12 caracteres (persona moral) · 13 caracteres (persona física)
+              </p>
+            </div>
+
+            <div>
+              <label className="label">Régimen fiscal</label>
+              <select className="input" value={form.regimen_fiscal} onChange={set('regimen_fiscal')}>
+                <option value="">— Selecciona —</option>
+                {REGIMENES_FISCALES.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label">Uso de CFDI</label>
+              <select className="input" value={form.uso_cfdi} onChange={set('uso_cfdi')}>
+                <option value="">— Selecciona —</option>
+                {USOS_CFDI.map(u => (
+                  <option key={u.value} value={u.value}>{u.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="label flex items-center gap-1.5">
+                <Mail size={12} className="text-md-on-surface-variant" />
+                Correo de facturación
+              </label>
+              <input
+                className="input"
+                type="email"
+                value={form.email_facturacion}
+                onChange={set('email_facturacion')}
+                placeholder="facturas@tuorganizacion.com"
+              />
+            </div>
+          </div>
+
+          {/* Domicilio fiscal */}
+          <div className="pt-1 border-t border-md-outline-variant">
+            <p className="text-xs font-medium text-md-on-surface-variant mb-3">Domicilio fiscal</p>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="sm:col-span-2">
+                <label className="label flex items-center gap-1.5">
+                  <MapPin size={12} className="text-md-on-surface-variant" />
+                  Calle y número
+                </label>
+                <input
+                  className="input"
+                  value={form.fiscal_street}
+                  onChange={set('fiscal_street')}
+                  placeholder="Ej. Av. Insurgentes Sur 1234, Int. 5"
+                />
+              </div>
+
+              <div>
+                <label className="label">Colonia</label>
+                <input
+                  className="input"
+                  value={form.fiscal_colony}
+                  onChange={set('fiscal_colony')}
+                  placeholder="Ej. Del Valle"
+                />
+              </div>
+
+              <div>
+                <label className="label">Código postal</label>
+                <input
+                  className="input"
+                  value={form.fiscal_zip}
+                  onChange={set('fiscal_zip')}
+                  placeholder="Ej. 03100"
+                  maxLength={5}
+                  inputMode="numeric"
+                />
+              </div>
+
+              <div>
+                <label className="label">Ciudad / Municipio</label>
+                <input
+                  className="input"
+                  value={form.fiscal_city}
+                  onChange={set('fiscal_city')}
+                  placeholder="Ej. Benito Juárez"
+                />
+              </div>
+
+              <div>
+                <label className="label">Estado</label>
+                <select className="input" value={form.fiscal_state} onChange={set('fiscal_state')}>
+                  <option value="">— Selecciona —</option>
+                  {ESTADOS_MX.map(e => (
+                    <option key={e} value={e}>{e}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

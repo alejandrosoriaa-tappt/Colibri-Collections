@@ -317,13 +317,18 @@ export async function getCampaign(campaignId) {
   return data
 }
 
-export async function getContactsByTenant(tenantId, { search, limit = 50, offset = 0 } = {}) {
+export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0 } = {}) {
   let query = supabase
     .from('contacts')
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
     .order('nombre', { ascending: true })
     .range(offset, offset + limit - 1)
+
+  // Status filter: 'active' | 'inactive' | 'all'
+  if (status !== 'all') {
+    query = query.eq('status', status)
+  }
 
   if (search) {
     query = query.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%`)

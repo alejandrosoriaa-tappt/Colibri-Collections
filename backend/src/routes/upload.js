@@ -3,7 +3,7 @@ import multer from 'multer'
 import path from 'path'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
-import supabase, { createFileUpload, getCampaign } from '../services/supabase.js'
+import supabase, { createFileUpload, getCampaign, getTenant } from '../services/supabase.js'
 import { processFile, generateLayoutBuffer } from '../services/fileProcessor.js'
 
 const router = Router()
@@ -29,12 +29,19 @@ const upload = multer({
   }
 })
 
-// GET /api/upload/layout — generate and return Excel layout
-router.get('/layout', authMiddleware, async (req, res) => {
+// GET /api/upload/layout?org_type=colegio — org-specific Excel template
+router.get('/layout', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
-    const buffer = generateLayoutBuffer()
+    // org_type from query param, or auto-detect from tenant
+    let orgType = req.query.org_type
+    if (!orgType && req.tenantId) {
+      const tenant = await getTenant(req.tenantId)
+      orgType = tenant?.org_type || 'general'
+    }
+
+    const { buffer, filename } = generateLayoutBuffer(orgType || 'general')
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-    res.setHeader('Content-Disposition', 'attachment; filename="colibri_layout.xlsx"')
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
     return res.send(buffer)
   } catch (err) {
     console.error('GET /upload/layout error:', err)

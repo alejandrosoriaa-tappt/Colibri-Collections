@@ -11,15 +11,24 @@ import { sendOperationalNotification } from './notifier.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
-  nombre:     ['alumno', 'nombre', 'name', 'first_name', 'primer_nombre'],
-  apellido:   ['familia', 'apellido', 'apellidos', 'last_name', 'surname'],
-  telefono:   ['teléfono', 'telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
-  grupo:      ['seccion o salon', 'seccion_salon', 'seccion', 'salon', 'grupo', 'group', 'grado'],
-  mensaje:    ['mensaje o recordatorio', 'mensaje', 'recordatorio', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
-  liga_pago:  ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url'],
+  nombre:          ['nombre condómino', 'nombre condomino', 'alumno', 'nombre', 'name', 'first_name', 'primer_nombre'],
+  apellido:        ['familia', 'apellido', 'apellidos', 'last_name', 'surname'],
+  telefono:        ['teléfono', 'telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
+  grupo:           ['grupo', 'group', 'membresía', 'membresia', 'categoría', 'categoria'],
+  mensaje:         ['mensaje o recordatorio', 'mensaje', 'recordatorio', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
+  liga_pago:       ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url'],
   // Opcionales
-  id_externo: ['matricula', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
-  monto:      ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio']
+  id_externo:      ['matricula', 'número socio', 'numero socio', 'número contrato', 'numero contrato', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
+  monto:           ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
+  email:           ['correo', 'email', 'mail', 'correo_electronico', 'correo electrónico'],
+  // Colegio / Academia
+  seccion:         ['sección', 'seccion', 'section', 'nivel escolar', 'nivel'],
+  grado:           ['grado', 'grade', 'año escolar', 'ano escolar'],
+  salon:           ['salón', 'salon', 'aula', 'grupo aula'],
+  // Condominio
+  fraccionamiento: ['fraccionamiento', 'privada', 'coto', 'condominio nombre', 'residencial'],
+  torre:           ['torre', 'edificio', 'bloque', 'block'],
+  num_interior:    ['número interior', 'numero interior', 'num_interior', 'interior', 'unidad', 'departamento', 'depto', 'no. interior'],
 }
 
 function detectColumns(headers) {
@@ -142,25 +151,21 @@ export async function processFile({
       throw new Error('No se detectó la columna de teléfono. Se esperaba: telefono, celular, whatsapp')
     }
 
+    const orgType = tenant.org_type || 'general'
+
     // Process each row
     for (let i = 0; i < rawRows.length; i++) {
       const row = rawRows[i]
       const rowNum = i + 2 // 1-indexed + header row
       const rowErrors = []
 
-      const rawNombre    = colMap.nombre     ? row[colMap.nombre]     : ''
-      const rawTelefono  = colMap.telefono   ? row[colMap.telefono]   : ''
-      const rawIdExterno = colMap.id_externo ? row[colMap.id_externo] : ''
-      const rawMensaje   = colMap.mensaje    ? row[colMap.mensaje]    : ''
-      const rawLigaPago  = colMap.liga_pago  ? row[colMap.liga_pago]  : ''
-      // Campos opcionales de compatibilidad
-      const rawMonto     = colMap.monto      ? row[colMap.monto]      : ''
-      const rawApellido  = colMap.apellido   ? row[colMap.apellido]   : ''
-      const rawGrupo     = colMap.grupo      ? row[colMap.grupo]      : ''
+      const get = (col) => colMap[col] ? (row[colMap[col]] || '').toString().trim() : ''
+
+      const rawNombre   = get('nombre')
+      const rawTelefono = get('telefono')
 
       // Validate nombre
-      const nombre = (rawNombre || '').toString().trim()
-      if (!nombre) {
+      if (!rawNombre) {
         rowErrors.push({ row: rowNum, field: 'nombre', error: 'Nombre es requerido' })
       }
 
@@ -179,21 +184,45 @@ export async function processFile({
         continue
       }
 
+      // Org-specific fields
+      const seccion         = get('seccion')
+      const grado           = get('grado')
+      const salon           = get('salon')
+      const fraccionamiento = get('fraccionamiento')
+      const torre           = get('torre')
+      const num_interior    = get('num_interior')
+      const rawGrupo        = get('grupo')
+
+      // Auto-build grupo from org-specific fields
+      let grupo = rawGrupo
+      if ((orgType === 'colegio' || orgType === 'academia') && (seccion || grado || salon)) {
+        grupo = [seccion, grado, salon].filter(Boolean).join(' ')
+      } else if (orgType === 'condominio' && (fraccionamiento || torre || num_interior)) {
+        grupo = [fraccionamiento, torre, num_interior].filter(Boolean).join(' · ')
+      }
+
       // monto es opcional; si no viene en el archivo se usa 0
-      const monto = normalizeMonto(rawMonto) ?? 0
+      const monto = normalizeMonto(get('monto')) ?? 0
 
       // Usar liga de pago del tenant si no se proporcionó en el archivo
-      const ligaPago = (rawLigaPago || '').toString().trim() || tenant.payment_link_general || ''
+      const ligaPago = get('liga_pago') || tenant.payment_link_general || ''
 
       validRows.push({
-        nombre,
-        apellido:   (rawApellido  || '').toString().trim(),
+        nombre:          rawNombre,
+        apellido:        get('apellido'),
         telefono,
         monto,
-        grupo:      (rawGrupo     || '').toString().trim(),
-        id_externo: (rawIdExterno || '').toString().trim(),
-        mensaje:    (rawMensaje   || '').toString().trim(),
-        liga_pago:  ligaPago
+        grupo:           grupo || null,
+        id_externo:      get('id_externo'),
+        mensaje:         get('mensaje'),
+        liga_pago:       ligaPago,
+        email:           get('email') || null,
+        seccion:         seccion || null,
+        grado:           grado || null,
+        salon:           salon || null,
+        fraccionamiento: fraccionamiento || null,
+        torre:           torre || null,
+        num_interior:    num_interior || null,
       })
     }
 
@@ -202,11 +231,19 @@ export async function processFile({
     for (const rowData of validRows) {
       try {
         const contactData = {
-          nombre: rowData.nombre,
-          apellido: rowData.apellido,
-          telefono: rowData.telefono,
-          grupo: rowData.grupo || null,
-          id_externo: rowData.id_externo || null
+          nombre:          rowData.nombre,
+          apellido:        rowData.apellido || null,
+          telefono:        rowData.telefono,
+          grupo:           rowData.grupo,
+          id_externo:      rowData.id_externo || null,
+          email:           rowData.email,
+          seccion:         rowData.seccion,
+          grado:           rowData.grado,
+          salon:           rowData.salon,
+          fraccionamiento: rowData.fraccionamiento,
+          torre:           rowData.torre,
+          num_interior:    rowData.num_interior,
+          status:          'active'
         }
 
         const contact = await upsertContact(tenantId, contactData)
@@ -283,22 +320,86 @@ export async function processFile({
   }
 }
 
-export function generateLayoutBuffer() {
-  const ws_data = [
-    ['FAMILIA', 'TELÉFONO', 'ALUMNO', 'Seccion o Salon', 'MENSAJE O RECORDATORIO', 'Liga_Pago'],
-    ['Garcia Franco', '5512345678', 'Raul Garcia Franco', '1-B', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/001'],
-    ['Lopez Ramirez', '5587654321', 'Maria Lopez Ramirez', '6-C', 'Tu colegiatura de junio está pendiente.', 'https://pago.ejemplo.com/002'],
-    ['Martinez Trejo', '5511223344', 'Eduardo Martinez Trejo', 'K1-A', 'Tu colegiatura de junio está pendiente.', '']
-  ]
+// ── Template definitions per org type ────────────────────────────────────────
+const TEMPLATES = {
+  colegio: {
+    filename: 'plantilla_colegio.xlsx',
+    sheetName: 'Colegio',
+    headers: ['NOMBRE FAMILIA', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
+    rows: [
+      ['García López',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/001', 'MAT001'],
+      ['Hernández Soto',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/002', 'MAT002'],
+      ['Martínez Trejo',   '5511223344', 'Secundaria', '1ro', 'C', 'mttrejo@hotmail.com', 'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   '',                            'MAT003'],
+    ],
+    widths: [22, 14, 16, 8, 8, 28, 52, 36, 12],
+  },
+  academia: {
+    filename: 'plantilla_academia.xlsx',
+    sheetName: 'Academia',
+    headers: ['NOMBRE FAMILIA', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
+    rows: [
+      ['García López',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/001', 'MAT001'],
+      ['Hernández Soto',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/002', 'MAT002'],
+    ],
+    widths: [22, 14, 16, 8, 8, 28, 52, 36, 12],
+  },
+  condominio: {
+    filename: 'plantilla_condominio.xlsx',
+    sheetName: 'Condominio',
+    headers: ['NOMBRE CONDÓMINO', 'TELÉFONO', 'FRACCIONAMIENTO', 'TORRE', 'NÚMERO INTERIOR', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago'],
+    rows: [
+      ['Juan Pérez García',   '5512345678', 'Coto Las Palmas',  'Torre A', '203', 'jperez@gmail.com',    'Tu cuota de mantenimiento de junio está pendiente.', 'https://pago.ejemplo.com/001'],
+      ['María López Ruiz',    '5587654321', 'Coto Las Palmas',  'Torre B', '105', '',                    'Tu cuota de mantenimiento de junio está pendiente.', 'https://pago.ejemplo.com/002'],
+      ['Carlos Martínez Vega','5511223344', 'Residencial Norte', '',        '12',  'cmv@outlook.com',    'Tu cuota de mantenimiento de junio está pendiente.', ''],
+    ],
+    widths: [25, 14, 22, 12, 16, 28, 52, 36],
+  },
+  gimnasio: {
+    filename: 'plantilla_gimnasio.xlsx',
+    sheetName: 'Gimnasio',
+    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'MEMBRESÍA', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Número contrato'],
+    rows: [
+      ['María',   'González López',    '5512345678', 'Membresía Oro',    'mgonzalez@gmail.com', 'Tu mensualidad de junio está pendiente.', 'https://pago.ejemplo.com/001', 'GYM001'],
+      ['Carlos',  'Martínez Ruiz',     '5587654321', 'Clase Spinning',   '',                    'Tu mensualidad de junio está pendiente.', 'https://pago.ejemplo.com/002', 'GYM002'],
+      ['Ana',     'López Hernández',   '5511223344', 'Membresía Plata',  'ana@hotmail.com',     'Tu mensualidad de junio está pendiente.', '',                            'GYM003'],
+    ],
+    widths: [16, 20, 14, 18, 28, 52, 36, 16],
+  },
+  club: {
+    filename: 'plantilla_club.xlsx',
+    sheetName: 'Club',
+    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Número socio'],
+    rows: [
+      ['Luis',      'Ramírez Torres',  '5512345678', 'Socio Activo',    'lramirez@gmail.com', 'Tu cuota mensual está pendiente.', 'https://pago.ejemplo.com/001', 'SOC001'],
+      ['Patricia',  'Sánchez Vega',    '5587654321', 'Socio Familiar',  '',                   'Tu cuota mensual está pendiente.', 'https://pago.ejemplo.com/002', 'SOC002'],
+      ['Roberto',   'Cruz Medina',     '5511223344', 'Socio Junior',    'roberto@yahoo.com',  'Tu cuota mensual está pendiente.', '',                            'SOC003'],
+    ],
+    widths: [16, 20, 14, 18, 28, 52, 36, 12],
+  },
+  general: {
+    filename: 'plantilla_general.xlsx',
+    sheetName: 'Contactos',
+    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'GRUPO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'ID Externo'],
+    rows: [
+      ['María',   'González López',  '5512345678', 'Grupo A', 'mgonzalez@gmail.com', 'Tu pago de junio está pendiente.', 'https://pago.ejemplo.com/001', 'EXT001'],
+      ['Carlos',  'Martínez Ruiz',   '5587654321', 'Grupo B', '',                    'Tu pago de junio está pendiente.', 'https://pago.ejemplo.com/002', 'EXT002'],
+      ['Ana',     'López Hernández', '5511223344', 'Grupo A', 'ana@hotmail.com',     'Tu pago de junio está pendiente.', '',                            'EXT003'],
+    ],
+    widths: [16, 20, 14, 14, 28, 52, 36, 12],
+  },
+}
+
+export function generateLayoutBuffer(orgType = 'general') {
+  const tpl = TEMPLATES[orgType] || TEMPLATES.general
 
   const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet(ws_data)
+  const ws = XLSX.utils.aoa_to_sheet([tpl.headers, ...tpl.rows])
+  ws['!cols'] = tpl.widths.map(wch => ({ wch }))
 
-  ws['!cols'] = [
-    { wch: 20 }, { wch: 15 }, { wch: 28 }, { wch: 18 }, { wch: 45 }, { wch: 35 }
-  ]
+  XLSX.utils.book_append_sheet(wb, ws, tpl.sheetName)
 
-  XLSX.utils.book_append_sheet(wb, ws, 'Contactos')
-
-  return XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' })
+  return {
+    buffer: XLSX.write(wb, { bookType: 'xlsx', type: 'buffer' }),
+    filename: tpl.filename
+  }
 }

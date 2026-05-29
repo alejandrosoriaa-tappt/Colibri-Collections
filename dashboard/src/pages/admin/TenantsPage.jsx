@@ -28,6 +28,14 @@ function slugify(str) {
 
 const PLANS = ['basic', 'pro', 'enterprise']
 const STATUSES = ['trial', 'active', 'suspended', 'cancelled']
+const ORG_TYPES = [
+  { value: 'general',    label: 'General' },
+  { value: 'condominio', label: 'Condominio' },
+  { value: 'colegio',    label: 'Colegio / Escuela' },
+  { value: 'gimnasio',   label: 'Gimnasio' },
+  { value: 'club',       label: 'Club deportivo' },
+  { value: 'academia',   label: 'Academia' },
+]
 
 // ─── Onboarding Modal ────────────────────────────────────────────────────────
 
@@ -37,6 +45,7 @@ function OnboardModal({ onClose, onSuccess }) {
     email: '',
     admin_phone: '',
     plan: 'basic',
+    org_type: 'general',
     password: generatePassword(),
     send_whatsapp: true
   })
@@ -64,6 +73,7 @@ function OnboardModal({ onClose, onSuccess }) {
         display_name: form.org_name.trim(),
         slug: slugify(form.org_name),
         plan: form.plan,
+        org_type: form.org_type,
         admin_phone: form.admin_phone.trim() || null,
         email: form.email.trim(),
         password: form.password,
@@ -127,15 +137,25 @@ function OnboardModal({ onClose, onSuccess }) {
         </div>
       )}
 
-      <div>
-        <label className="label">Nombre de la organización *</label>
-        <input
-          className="input"
-          value={form.org_name}
-          onChange={set('org_name')}
-          placeholder="Ej. Colegio Las Américas"
-          required autoFocus
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="label">Nombre de la organización *</label>
+          <input
+            className="input"
+            value={form.org_name}
+            onChange={set('org_name')}
+            placeholder="Ej. Colegio Las Américas"
+            required autoFocus
+          />
+        </div>
+        <div>
+          <label className="label">Tipo de organización</label>
+          <select className="input" value={form.org_type} onChange={set('org_type')}>
+            {ORG_TYPES.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
