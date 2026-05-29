@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, MessageSquareText, Zap, ShieldCheck } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, ArrowLeft, MessageSquare, Zap, ShieldCheck } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import supabase from '../lib/supabase.js'
 
 const FEATURES = [
   { icon: Zap,                text: 'Recordatorios automáticos de cobro' },
-  { icon: MessageSquareText,  text: 'Comunicados masivos por WhatsApp' },
+  { icon: MessageSquare,  text: 'Comunicados masivos por WhatsApp' },
   { icon: ShieldCheck,        text: 'Gestión segura de contactos y grupos' },
 ]
 

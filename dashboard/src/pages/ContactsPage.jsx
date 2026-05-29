@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   Search, Users, Loader2, ChevronLeft, ChevronRight, UserPlus,
   X, CheckCircle2, AlertCircle, UserMinus, UserCheck, Trash2,
-  RefreshCw, Upload, TriangleAlert, Info, Mail, Download
+  RefreshCw, Upload, AlertTriangle, Info, Mail, Download
 } from 'lucide-react'
 import { contactsAPI, uploadAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -350,7 +350,7 @@ function SyncModal({ onClose, onSynced, orgType = 'general' }) {
 
           {/* Warn */}
           <div className="flex items-start gap-2.5 p-3 bg-orange-50 rounded-2xl text-xs text-orange-700 leading-relaxed">
-            <TriangleAlert size={13} className="flex-shrink-0 mt-0.5" />
+            <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
             <p>El archivo debe incluir al menos la columna <strong>teléfono</strong>. Usa la plantilla para asegurar el formato correcto.</p>
           </div>
 
