@@ -107,6 +107,8 @@ export default function SettingsPage() {
     website: '',
     address: '',
     contact_grace_period_days: 30,
+    // Google Sheets
+    sheets_url: '',
     // Datos fiscales
     razon_social: '',
     rfc: '',
@@ -139,6 +141,8 @@ export default function SettingsPage() {
         website: t.website || '',
         address: t.address || '',
         contact_grace_period_days: t.contact_grace_period_days ?? 30,
+        // Google Sheets
+        sheets_url: t.sheets_url || '',
         // Datos fiscales
         razon_social: t.razon_social || '',
         rfc: t.rfc || '',
@@ -180,7 +184,8 @@ export default function SettingsPage() {
         fiscal_city: form.fiscal_city.trim(),
         fiscal_state: form.fiscal_state,
         fiscal_zip: form.fiscal_zip.trim(),
-        email_facturacion: form.email_facturacion.trim()
+        email_facturacion: form.email_facturacion.trim(),
+        sheets_url: form.sheets_url.trim()
       }
 
       const res = await settingsAPI.update(payload)
@@ -255,6 +260,32 @@ export default function SettingsPage() {
             <label className="label">Liga de pago general</label>
             <input className="input" value={form.payment_link_general} onChange={set('payment_link_general')} placeholder="https://..." />
             <p className="text-xs text-md-on-surface-variant mt-1.5">Se usa cuando un contacto no tiene liga individual</p>
+          </div>
+
+          {/* Google Sheets */}
+          <div className="pt-1 border-t border-md-outline-variant">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-5 h-5 rounded flex items-center justify-center bg-green-100 flex-shrink-0">
+                <span className="text-green-700 font-bold text-xs">G</span>
+              </div>
+              <p className="text-xs font-medium text-md-on-surface-variant">Fuente de datos — Google Sheets</p>
+              {form.sheets_url && (
+                <span className="ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 flex items-center gap-1">
+                  <CheckCircle2 size={9} /> Conectada
+                </span>
+              )}
+            </div>
+            <label className="label">URL de tu Google Sheet</label>
+            <input
+              className="input"
+              value={form.sheets_url}
+              onChange={set('sheets_url')}
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Guarda aquí el enlace de tu hoja (compartida como "Cualquier persona con el enlace puede ver").
+              Al importar contactos, Kollybry leerá esta hoja automáticamente.
+            </p>
           </div>
 
           {/* Additional info */}

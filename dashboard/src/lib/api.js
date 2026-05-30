@@ -122,6 +122,14 @@ export const messagesAPI = {
 }
 
 // ================================================================
+// GOOGLE SHEETS
+// ================================================================
+export const sheetsAPI = {
+  preview: (url) => api.get('/api/sheets/preview', { params: { url } }),
+  import:  (data) => api.post('/api/sheets/import', data)
+}
+
+// ================================================================
 // BROADCASTS
 // ================================================================
 export const broadcastsAPI = {

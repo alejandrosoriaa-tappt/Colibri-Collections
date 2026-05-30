@@ -9,7 +9,7 @@ import supabase from '../services/supabase.js'
 
 const router = Router()
 
-const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,created_at'
+const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,sheets_url,created_at'
 
 // GET /api/settings — return current tenant settings
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
@@ -68,6 +68,8 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
       'waba_business_id',
       // Contact management
       'contact_grace_period_days',
+      // Google Sheets integration
+      'sheets_url',
       // Fiscal data
       'razon_social',
       'rfc',
