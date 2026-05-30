@@ -3,7 +3,7 @@ import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
   Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock,
   Receipt, Info, Users, UserPlus, Trash2, X, Crown,
-  CreditCard, Megaphone
+  CreditCard, Megaphone, Send
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI, teamAPI } from '../lib/api.js'
@@ -672,9 +672,16 @@ function TeamSection({ tenantRole, currentUserId }) {
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [removing, setRemoving]   = useState(null)
+  const [resending, setResending] = useState(null)
   const [error, setError]         = useState(null)
+  const [toast, setToast]         = useState(null)
   const MAX = 5
   const isOwner = tenantRole === 'owner'
+
+  const showToast = (msg, isErr = false) => {
+    setToast({ msg, isErr })
+    setTimeout(() => setToast(null), 3000)
+  }
 
   const load = useCallback(async () => {
     try {
@@ -709,6 +716,18 @@ function TeamSection({ tenantRole, currentUserId }) {
     setTotal(t => t + 1)
   }
 
+  const handleResend = async (userId) => {
+    setResending(userId)
+    try {
+      await teamAPI.resendInvite(userId)
+      showToast('Invitación reenviada')
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message, true)
+    } finally {
+      setResending(null)
+    }
+  }
+
   return (
     <>
       {showModal && (
@@ -716,6 +735,15 @@ function TeamSection({ tenantRole, currentUserId }) {
           onClose={() => setShowModal(false)}
           onInvited={handleInvited}
         />
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-full text-sm font-medium shadow-md ${
+          toast.isErr ? 'bg-red-100 text-red-700' : 'bg-md-on-surface text-md-surface'
+        }`}>
+          {toast.isErr ? <AlertCircle size={14} /> : <CheckCircle2 size={14} />}
+          {toast.msg}
+        </div>
       )}
 
       <SectionCard
@@ -754,17 +782,30 @@ function TeamSection({ tenantRole, currentUserId }) {
                 </div>
                 <RoleBadge role={u.role} />
                 {isOwner && !u.is_self && (
-                  <button
-                    onClick={() => handleRemove(u.user_id)}
-                    disabled={removing === u.user_id}
-                    className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
-                    title="Eliminar del equipo"
-                  >
-                    {removing === u.user_id
-                      ? <Loader2 size={14} className="animate-spin" />
-                      : <Trash2 size={14} />
-                    }
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handleResend(u.user_id)}
+                      disabled={resending === u.user_id}
+                      className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container transition-colors"
+                      title="Reenviar invitación"
+                    >
+                      {resending === u.user_id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Send size={14} />
+                      }
+                    </button>
+                    <button
+                      onClick={() => handleRemove(u.user_id)}
+                      disabled={removing === u.user_id}
+                      className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                      title="Eliminar del equipo"
+                    >
+                      {removing === u.user_id
+                        ? <Loader2 size={14} className="animate-spin" />
+                        : <Trash2 size={14} />
+                      }
+                    </button>
+                  </>
                 )}
               </div>
             ))}

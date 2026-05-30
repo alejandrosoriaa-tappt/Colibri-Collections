@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Megaphone, Plus, Loader2, X, AlertCircle } from 'lucide-react'
+import { Megaphone, Plus, Loader2, X, AlertCircle, Users } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
-import { campaignsAPI, contactsAPI } from '../lib/api.js'
+import { campaignsAPI, contactsAPI, broadcastsAPI } from '../lib/api.js'
 
 const STATUS_FILTERS = [
   { value: '', label: 'Todas' },
@@ -69,6 +69,7 @@ export default function CampaignsPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [isSaving, setIsSaving] = useState(false)
   const [formError, setFormError] = useState(null)
+  const [groupContactCount, setGroupContactCount] = useState(null)
 
   const load = () => {
     campaignsAPI.list()
@@ -81,6 +82,15 @@ export default function CampaignsPage() {
     load()
     contactsAPI.groups().then(res => setGroups(res.data.groups || [])).catch(() => {})
   }, [])
+
+  // Preview contact count when group filter changes
+  useEffect(() => {
+    if (!showForm) return
+    setGroupContactCount(null)
+    broadcastsAPI.preview(form.grupo_filter || undefined)
+      .then(res => setGroupContactCount(res.data.count ?? null))
+      .catch(() => setGroupContactCount(null))
+  }, [form.grupo_filter, showForm])
 
   const filtered = statusFilter
     ? campaigns.filter(c => c.status === statusFilter)
@@ -266,6 +276,14 @@ export default function CampaignsPage() {
                     <option key={g} value={g}>{g}</option>
                   ))}
                 </select>
+                {groupContactCount !== null && (
+                  <div className="flex items-center gap-1.5 mt-1.5">
+                    <Users size={12} className="text-colibri" />
+                    <p className="text-xs text-colibri font-medium">
+                      {groupContactCount} contacto{groupContactCount !== 1 ? 's' : ''} {form.grupo_filter ? `en "${form.grupo_filter}"` : 'en total'}
+                    </p>
+                  </div>
+                )}
                 <p className="text-xs text-gray-400 mt-1">
                   Si seleccionas un grupo, solo se enviará a los contactos de ese segmento.
                 </p>

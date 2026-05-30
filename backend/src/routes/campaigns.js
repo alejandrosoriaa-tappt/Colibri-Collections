@@ -435,6 +435,62 @@ router.post('/:id/pause', authMiddleware, inferTenantGuard, async (req, res) => 
   }
 })
 
+// POST /api/campaigns/:id/populate-from-group — bulk-add contacts from campaign's grupo_filter
+router.post('/:id/populate-from-group', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.id)
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
+    if (!req.isAdmin && campaign.tenant_id !== req.tenantId) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
+
+    if (!campaign.grupo_filter) {
+      return res.status(400).json({ error: 'Esta campaña no tiene un grupo asignado' })
+    }
+
+    // Get tenant for payment_link_general
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('payment_link_general')
+      .eq('id', req.tenantId)
+      .single()
+
+    // Fetch all active contacts in the campaign's group
+    const { data: contacts, error: contactsErr } = await supabase
+      .from('contacts')
+      .select('id')
+      .eq('tenant_id', req.tenantId)
+      .eq('status', 'active')
+      .eq('grupo', campaign.grupo_filter)
+
+    if (contactsErr) throw contactsErr
+    if (!contacts || contacts.length === 0) {
+      return res.status(400).json({ error: `No hay contactos activos en el grupo "${campaign.grupo_filter}"` })
+    }
+
+    // Upsert invoices for each contact
+    let added = 0
+    for (const contact of contacts) {
+      try {
+        await upsertInvoice(req.params.id, contact.id, req.tenantId, {
+          monto: 0,
+          liga_pago: tenant?.payment_link_general || '',
+          status: 'pending'
+        })
+        added++
+      } catch (err) {
+        console.error('populate-from-group: error upserting invoice', err)
+      }
+    }
+
+    await updateCampaignStats(req.params.id)
+    return res.json({ added, total: contacts.length, group: campaign.grupo_filter })
+  } catch (err) {
+    console.error('POST /campaigns/:id/populate-from-group error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // POST /api/campaigns/:id/add-contacts — add individual contacts to a campaign
 router.post('/:id/add-contacts', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
@@ -509,7 +565,7 @@ router.get('/:id/invoices', authMiddleware, inferTenantGuard, async (req, res) =
 
     let query = supabase
       .from('invoices')
-      .select('*, contacts(id, nombre, apellido, telefono, grupo)', { count: 'exact' })
+      .select('*, contacts(id, nombre, apellido, telefono, grupo, nombre_alumno)', { count: 'exact' })
       .eq('campaign_id', req.params.id)
       .order('created_at', { ascending: false })
       .range(offset, offset + Number(limit) - 1)

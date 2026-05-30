@@ -30,7 +30,12 @@ function InvoiceRow({ invoice, onMarkPaid }) {
 
   return (
     <tr className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-      <td className="py-3 px-4 text-sm font-medium text-gray-900">{name}</td>
+      <td className="py-3 px-4">
+        <p className="text-sm font-medium text-gray-900">{name}</p>
+        {contact.nombre_alumno && (
+          <p className="text-xs text-gray-400 mt-0.5">Alumno: {contact.nombre_alumno}</p>
+        )}
+      </td>
       <td className="py-3 px-4 text-sm text-gray-600">{contact.telefono}</td>
       <td className="py-3 px-4 text-sm font-semibold text-gray-900">{formatCurrency(invoice.monto)}</td>
       <td className="py-3 px-4">
@@ -169,6 +174,7 @@ export default function CampaignDetailPage() {
   const [contactSearchLoading, setContactSearchLoading] = useState(false)
   const [selectedContactIds, setSelectedContactIds] = useState(new Set())
   const [addingContacts, setAddingContacts] = useState(false)
+  const [populatingGroup, setPopulatingGroup] = useState(false)
 
   const loadInvoices = async (status = '') => {
     try {
@@ -213,6 +219,18 @@ export default function CampaignDetailPage() {
     }, 300)
     return () => clearTimeout(t)
   }, [contactSearch, showAddContacts])
+
+  const handlePopulateFromGroup = async () => {
+    setPopulatingGroup(true)
+    try {
+      await campaignsAPI.populateFromGroup(id)
+      load()
+    } catch (err) {
+      alert(err.response?.data?.error || err.message)
+    } finally {
+      setPopulatingGroup(false)
+    }
+  }
 
   const handleAddContacts = async () => {
     if (selectedContactIds.size === 0) return
@@ -461,6 +479,29 @@ export default function CampaignDetailPage() {
               <UserPlus size={14} /> Agregar contacto
             </button>
           </div>
+
+        {/* Auto-populate banner: show when grupo_filter is set but no contacts yet */}
+        {invoices.length === 0 && !invoiceStatusFilter && campaign.grupo_filter && (
+          <div className="flex items-start gap-3 p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+            <Users size={18} className="text-blue-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-blue-900">
+                Esta campaña está configurada para el grupo <strong>"{campaign.grupo_filter}"</strong>
+              </p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                Puedes agregar automáticamente todos los contactos de ese grupo.
+              </p>
+            </div>
+            <button
+              onClick={handlePopulateFromGroup}
+              disabled={populatingGroup}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-xl hover:bg-blue-700 transition-colors flex-shrink-0"
+            >
+              {populatingGroup ? <Loader2 size={12} className="animate-spin" /> : <Users size={12} />}
+              Agregar grupo
+            </button>
+          </div>
+        )}
 
         <div className="card p-0 overflow-hidden">
           {invoices.length === 0 ? (

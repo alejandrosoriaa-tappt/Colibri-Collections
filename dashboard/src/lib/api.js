@@ -66,6 +66,7 @@ export const campaignsAPI = {
     api.patch(`/api/campaigns/${campaignId}/messages/${msgId}`, data),
   getInvoices: (id, params) => api.get(`/api/campaigns/${id}/invoices`, { params }),
   addContacts: (id, data) => api.post(`/api/campaigns/${id}/add-contacts`, data),
+  populateFromGroup: (id) => api.post(`/api/campaigns/${id}/populate-from-group`),
   sendMessage: (campaignId, msgId) => api.post(`/api/campaigns/${campaignId}/messages/${msgId}/send`)
 }
 
@@ -152,9 +153,10 @@ export const settingsAPI = {
 // TEAM (settings/users)
 // ================================================================
 export const teamAPI = {
-  list:   ()               => api.get('/api/settings/users'),
-  invite: (data)           => api.post('/api/settings/users', data),
-  remove: (userId)         => api.delete(`/api/settings/users/${userId}`)
+  list:         ()         => api.get('/api/settings/users'),
+  invite:       (data)     => api.post('/api/settings/users', data),
+  remove:       (userId)   => api.delete(`/api/settings/users/${userId}`),
+  resendInvite: (userId)   => api.post(`/api/settings/users/${userId}/resend-invite`)
 }
 
 // ================================================================

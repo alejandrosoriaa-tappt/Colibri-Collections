@@ -127,7 +127,11 @@ export default function BroadcastsPage() {
   }
 
   const filtered = groupFilter
-    ? broadcasts.filter(b => b.group_filter === groupFilter)
+    ? broadcasts.filter(b => {
+        if (!b.group_filter) return false
+        // Support both single group ("1°A") and multi-group ("1°A, 1°B")
+        return b.group_filter.split(', ').map(s => s.trim()).includes(groupFilter)
+      })
     : broadcasts
 
   const handleSend = async (e) => {

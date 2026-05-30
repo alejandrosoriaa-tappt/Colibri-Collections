@@ -218,6 +218,44 @@ router.post('/users', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
+// POST /api/settings/users/:userId/resend-invite — resend invitation email
+router.post('/users/:userId/resend-invite', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    if (req.tenantRole !== 'owner' && !req.isAdmin) {
+      return res.status(403).json({ error: 'Solo el administrador puede reenviar invitaciones' })
+    }
+
+    // Verify member belongs to this tenant
+    const { data: member } = await supabase
+      .from('tenant_users')
+      .select('user_id')
+      .eq('tenant_id', req.tenantId)
+      .eq('user_id', req.params.userId)
+      .maybeSingle()
+
+    if (!member) return res.status(404).json({ error: 'Usuario no encontrado en este equipo' })
+
+    // Get user email
+    const { data: { user } } = await supabase.auth.admin.getUserById(req.params.userId)
+    if (!user?.email) return res.status(400).json({ error: 'No se pudo obtener el correo del usuario' })
+
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.kollybry.com'
+    const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(user.email, {
+      redirectTo: `${frontendUrl}/reset-password`
+    })
+
+    // "already registered" is fine — still resends the invite
+    if (inviteErr && !inviteErr.message?.toLowerCase().includes('already')) {
+      throw inviteErr
+    }
+
+    return res.json({ success: true, email: user.email })
+  } catch (err) {
+    console.error('POST /settings/users/:userId/resend-invite error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // DELETE /api/settings/users/:userId — remove team member
 router.delete('/users/:userId', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
