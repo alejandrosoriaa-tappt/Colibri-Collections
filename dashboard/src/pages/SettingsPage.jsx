@@ -473,60 +473,87 @@ export default function SettingsPage() {
 
       {/* ── Plan info ── */}
       {tenant && (
-        <SectionCard icon={Settings} title="Plan y suscripción">
-          {/* Current plan status */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Plan actual</p>
-              <p className="font-semibold text-md-on-surface capitalize">{tenant.plan}</p>
-            </div>
-            <div>
-              <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Estado</p>
-              <p className="font-semibold text-md-on-surface capitalize">{tenant.status}</p>
-            </div>
-            {tenant.slug && (
-              <div>
-                <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Identificador</p>
-                <p className="font-mono text-md-on-surface-variant text-xs">{tenant.slug}</p>
-              </div>
-            )}
-          </div>
-
+        <SectionCard icon={CreditCard} title="Plan y suscripción">
           {/* Plans comparison */}
-          <div className="pt-4 border-t border-md-outline-variant">
-            <p className="text-xs font-semibold text-md-on-surface mb-3">Planes disponibles</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[
-                { name: 'Básico', price: '$399', contacts: 'Hasta 150 contactos', msgs: '3 mensajes/campaña', highlight: false },
-                { name: 'Profesional', price: '$799', contacts: 'Hasta 500 contactos', msgs: '4 mensajes/campaña + comunicados', highlight: true },
-                { name: 'Empresarial', price: '$1,499', contacts: 'Contactos ilimitados', msgs: '5 mensajes/campaña + comunicados + soporte', highlight: false },
-              ].map(plan => (
-                <div key={plan.name} className={`rounded-2xl p-3 border ${
-                  plan.highlight
+          <div className="grid gap-3 sm:grid-cols-3">
+            {[
+              {
+                key: 'basico',
+                name: 'Básico',
+                price: '$399',
+                features: ['Hasta 150 contactos', '3 recordatorios por campaña', 'Comunicados por grupos', 'Soporte por email'],
+              },
+              {
+                key: 'profesional',
+                name: 'Profesional',
+                price: '$799',
+                popular: true,
+                features: ['Hasta 500 contactos', '4 recordatorios por campaña', 'Comunicados por grupos', 'Nombre del alumno y matrícula', 'Soporte prioritario'],
+              },
+              {
+                key: 'empresarial',
+                name: 'Empresarial',
+                price: '$1,499',
+                features: ['Contactos ilimitados', '5 recordatorios por campaña', 'Comunicados por grupos', 'Reportes avanzados', 'Soporte dedicado con WhatsApp'],
+              },
+            ].map(plan => {
+              const isActive = tenant.plan?.toLowerCase().includes(plan.key) || (plan.key === 'profesional' && !tenant.plan)
+              return (
+                <div key={plan.key} className={`rounded-2xl p-4 border-2 transition-colors ${
+                  isActive
                     ? 'border-md-primary bg-md-primary-container/20'
                     : 'border-md-outline-variant bg-md-surface-container-low'
                 }`}>
-                  <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-semibold text-md-on-surface">{plan.name}</p>
-                    {plan.highlight && (
-                      <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full">Popular</span>
-                    )}
+                    <div className="flex gap-1">
+                      {plan.popular && !isActive && (
+                        <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full">Popular</span>
+                      )}
+                      {isActive && (
+                        <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                          <CheckCircle2 size={9} /> Tu plan
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-lg font-bold text-md-primary">{plan.price}<span className="text-xs font-normal text-md-on-surface-variant">/mes</span></p>
-                  <p className="text-xs text-md-on-surface-variant mt-1">{plan.contacts}</p>
-                  <p className="text-xs text-md-on-surface-variant">{plan.msgs}</p>
+                  <p className="text-xl font-bold text-md-primary mb-3">
+                    {plan.price}<span className="text-xs font-normal text-md-on-surface-variant">/mes</span>
+                  </p>
+                  <ul className="space-y-1.5">
+                    {plan.features.map(f => (
+                      <li key={f} className="flex items-start gap-1.5">
+                        <CheckCircle2 size={12} className="text-md-primary flex-shrink-0 mt-0.5" />
+                        <span className="text-xs text-md-on-surface-variant">{f}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
 
           <div className="pt-3 border-t border-md-outline-variant">
+            <p className="text-sm font-medium text-md-on-surface mb-1">¿Quieres cambiar de plan?</p>
             <p className="text-xs text-md-on-surface-variant">
-              Para cambiar de plan:{' '}
-              <a href="mailto:hola@kollybry.com" className="text-md-primary font-medium hover:underline">hola@kollybry.com</a>
-              {' '}o WhatsApp{' '}
-              <a href="https://wa.me/5214625902365" target="_blank" rel="noreferrer" className="text-md-primary font-medium hover:underline">+52 1 462 590 2365</a>
+              Escríbenos y te ayudamos a hacer el cambio sin interrupciones:
             </p>
+            <div className="flex flex-wrap gap-3 mt-2">
+              <a
+                href="mailto:hola@kollybry.com"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-md-primary-container text-md-on-primary-container text-xs font-medium hover:bg-md-primary hover:text-white transition-colors"
+              >
+                <Mail size={12} /> hola@kollybry.com
+              </a>
+              <a
+                href="https://wa.me/5214625902365"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-green-100 text-green-800 text-xs font-medium hover:bg-green-600 hover:text-white transition-colors"
+              >
+                <Send size={12} /> WhatsApp
+              </a>
+            </div>
           </div>
         </SectionCard>
       )}

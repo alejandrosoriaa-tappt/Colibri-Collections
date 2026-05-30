@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router-dom'
 import {
   Plus, MessageSquare, Radio, Megaphone,
   ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
-  Users, Calendar, FileText
+  Users, Calendar, FileText, ArrowRight
 } from 'lucide-react'
-import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
+import { campaignsAPI, broadcastsAPI, contactsAPI } from '../lib/api.js'
 
 const TYPE_FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -127,15 +127,42 @@ function SkeletonCard() {
 
 // ── Broadcast detail modal ────────────────────────────────────
 function BroadcastDetailModal({ broadcast, onClose }) {
+  const navigate = useNavigate()
+  const [groupContacts, setGroupContacts] = useState([])
+  const [loadingContacts, setLoadingContacts] = useState(false)
+  const [showContacts, setShowContacts] = useState(false)
+
   const fmtDate = (d) => new Date(d).toLocaleDateString('es-MX', {
     day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
   })
+
+  const loadContacts = async () => {
+    if (showContacts) { setShowContacts(false); return }
+    setLoadingContacts(true)
+    setShowContacts(true)
+    try {
+      const grupo = broadcast.group_filter?.split(', ')[0] || broadcast.group_filter
+      const res = await contactsAPI.list({ limit: 100, status: 'active', ...(grupo ? { search: '' } : {}) })
+      // Filter by any of the broadcast groups
+      const groups = (broadcast.group_filter || '').split(', ').map(g => g.trim()).filter(Boolean)
+      const filtered = groups.length > 0
+        ? (res.data.contacts || []).filter(c => groups.includes(c.grupo))
+        : (res.data.contacts || [])
+      setGroupContacts(filtered)
+    } catch {
+      setGroupContacts([])
+    } finally {
+      setLoadingContacts(false)
+    }
+  }
+
   const stats = [
-    { icon: Send,             label: 'Enviados',    value: broadcast.sent_count || 0,        color: 'text-blue-600',  bg: 'bg-blue-50' },
-    { icon: CheckCheck,       label: 'Entregados',  value: broadcast.delivered_count || 0,   color: 'text-green-600', bg: 'bg-green-50' },
-    { icon: Eye,              label: 'Leídos',      value: broadcast.read_count || 0,        color: 'text-md-primary', bg: 'bg-md-primary-container/30' },
-    { icon: MousePointerClick,label: 'Clics en liga',value: broadcast.clicked_count || 0,   color: 'text-orange-600', bg: 'bg-orange-50' },
+    { icon: Send,             label: 'Enviados',      sub: 'WhatsApp procesó el envío',  value: broadcast.sent_count || 0,      color: 'text-blue-600',   bg: 'bg-blue-50' },
+    { icon: CheckCheck,       label: 'Entregados',    sub: 'Llegó al celular',            value: broadcast.delivered_count || 0, color: 'text-green-600',  bg: 'bg-green-50' },
+    { icon: Eye,              label: 'Leídos',        sub: 'Abrió el mensaje',            value: broadcast.read_count || 0,      color: 'text-md-primary', bg: 'bg-md-primary-container/30' },
+    { icon: MousePointerClick,label: 'Tocaron enlace',sub: 'Abrió el link de pago',      value: broadcast.clicked_count || 0,   color: 'text-orange-600', bg: 'bg-orange-50' },
   ]
+
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
@@ -164,22 +191,85 @@ function BroadcastDetailModal({ broadcast, onClose }) {
         <div className="px-6 py-5 space-y-5">
           {/* Stats grid */}
           <div className="grid grid-cols-2 gap-3">
-            {stats.map(({ icon: Icon, label, value, color, bg }) => (
+            {stats.map(({ icon: Icon, label, sub, value, color, bg }) => (
               <div key={label} className={`${bg} rounded-2xl p-3`}>
                 <div className="flex items-center gap-1.5 mb-1">
                   <Icon size={13} className={color} />
                   <p className="text-xs text-md-on-surface-variant font-medium">{label}</p>
                 </div>
                 <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                <p className="text-[10px] text-md-on-surface-variant/70 mt-0.5">{sub}</p>
               </div>
             ))}
           </div>
 
-          {/* Group */}
+          {/* Group + recipients */}
           {broadcast.group_filter && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 p-3 bg-md-surface-container rounded-2xl">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Users size={14} className="text-md-on-surface-variant flex-shrink-0" />
+                  <span className="text-sm text-md-on-surface truncate">
+                    Enviado a: <strong>{broadcast.group_filter}</strong>
+                  </span>
+                </div>
+                <button
+                  onClick={loadContacts}
+                  className="flex items-center gap-1 text-xs text-md-primary font-medium hover:underline flex-shrink-0"
+                >
+                  {showContacts ? 'Ocultar' : 'Ver papás'}
+                  <ArrowRight size={11} />
+                </button>
+              </div>
+
+              {showContacts && (
+                <div className="bg-md-surface-container rounded-2xl overflow-hidden">
+                  {loadingContacts ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 size={16} className="text-md-primary animate-spin" />
+                    </div>
+                  ) : groupContacts.length === 0 ? (
+                    <p className="text-xs text-md-on-surface-variant text-center py-4">
+                      No se encontraron contactos activos en este grupo
+                    </p>
+                  ) : (
+                    <div className="divide-y divide-md-outline-variant/30 max-h-52 overflow-y-auto">
+                      {groupContacts.map(c => (
+                        <div key={c.id} className="flex items-center gap-3 px-4 py-2.5">
+                          <div className="w-7 h-7 rounded-full bg-md-primary-container flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-semibold text-md-on-primary-container">
+                              {(c.nombre || '?').charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-md-on-surface truncate">
+                              {[c.nombre, c.apellido].filter(Boolean).join(' ')}
+                            </p>
+                            {c.nombre_alumno && (
+                              <p className="text-xs text-md-on-surface-variant">Alumno: {c.nombre_alumno}</p>
+                            )}
+                          </div>
+                          <p className="text-xs text-md-on-surface-variant font-mono flex-shrink-0">{c.telefono}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {groupContacts.length > 0 && (
+                    <div className="px-4 py-2 border-t border-md-outline-variant/30">
+                      <p className="text-xs text-md-on-surface-variant">
+                        {groupContacts.length} contacto{groupContacts.length !== 1 ? 's' : ''} en el grupo
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {!broadcast.group_filter && (
             <div className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
               <Users size={14} className="text-md-on-surface-variant" />
-              <span className="text-sm text-md-on-surface">Enviado a: <strong>{broadcast.group_filter}</strong></span>
+              <span className="text-sm text-md-on-surface">Enviado a <strong>todos los contactos</strong></span>
             </div>
           )}
 
@@ -375,7 +465,7 @@ export default function MensajesPage() {
             <div className="space-y-3">
               {/* Comunicado option */}
               <button
-                onClick={() => { setShowNewModal(false); navigate('/broadcasts') }}
+                onClick={() => { setShowNewModal(false); navigate('/broadcasts?new=1') }}
                 className="w-full flex items-center gap-4 p-4 rounded-3xl bg-md-tertiary-container hover:bg-md-on-tertiary-container/10 transition-colors text-left group"
               >
                 <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center flex-shrink-0">
@@ -392,7 +482,7 @@ export default function MensajesPage() {
 
               {/* Recordatorio de cobro option */}
               <button
-                onClick={() => { setShowNewModal(false); navigate('/campaigns') }}
+                onClick={() => { setShowNewModal(false); navigate('/campaigns?new=1') }}
                 className="w-full flex items-center gap-4 p-4 rounded-3xl bg-md-secondary-container hover:bg-md-on-secondary-container/10 transition-colors text-left group"
               >
                 <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center flex-shrink-0">

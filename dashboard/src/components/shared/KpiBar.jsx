@@ -4,6 +4,7 @@ export default function KpiBar({ enviados = 0, entregados = 0, leidos = 0, click
   const cards = [
     {
       label: 'Enviados',
+      sub: 'WhatsApp procesó el envío',
       value: enviados,
       icon: Send,
       containerCls: 'bg-md-tertiary-container',
@@ -13,6 +14,7 @@ export default function KpiBar({ enviados = 0, entregados = 0, leidos = 0, click
     },
     {
       label: 'Entregados',
+      sub: 'Llegó al celular',
       value: entregados,
       pct: enviados > 0 ? Math.round((entregados / enviados) * 100) : null,
       icon: CheckCheck,
@@ -23,6 +25,7 @@ export default function KpiBar({ enviados = 0, entregados = 0, leidos = 0, click
     },
     {
       label: 'Leídos',
+      sub: 'Abrió el mensaje',
       value: leidos,
       pct: enviados > 0 ? Math.round((leidos / enviados) * 100) : null,
       icon: BookOpen,
@@ -32,7 +35,8 @@ export default function KpiBar({ enviados = 0, entregados = 0, leidos = 0, click
       metaCls: 'text-md-on-secondary-container/70'
     },
     ...(showClicks ? [{
-      label: 'Clicks en liga',
+      label: 'Tocaron enlace',
+      sub: 'Abrió el link de pago',
       value: clicks,
       pct: enviados > 0 ? Math.round((clicks / enviados) * 100) : null,
       icon: MousePointer,
@@ -45,16 +49,17 @@ export default function KpiBar({ enviados = 0, entregados = 0, leidos = 0, click
 
   return (
     <div className={`grid gap-3 ${showClicks ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-3'}`}>
-      {cards.map(({ label, value, pct, icon: Icon, containerCls, iconCls, valueCls, metaCls }) => (
+      {cards.map(({ label, sub, value, pct, icon: Icon, containerCls, iconCls, valueCls, metaCls }) => (
         <div key={label} className={`${containerCls} rounded-2xl p-4 text-center`}>
           <Icon size={16} className={`${iconCls} mx-auto mb-1.5`} />
           <p className={`text-2xl font-bold ${valueCls}`}>
             {value.toLocaleString('es-MX')}
           </p>
           {pct !== null && pct !== undefined && (
-            <p className={`text-xs ${metaCls}`}>{pct}%</p>
+            <p className={`text-xs font-medium ${metaCls}`}>{pct}%</p>
           )}
-          <p className={`text-xs ${metaCls} mt-0.5`}>{label}</p>
+          <p className={`text-xs font-semibold ${metaCls} mt-0.5`}>{label}</p>
+          <p className={`text-[10px] ${metaCls} leading-tight mt-0.5`}>{sub}</p>
         </div>
       ))}
     </div>

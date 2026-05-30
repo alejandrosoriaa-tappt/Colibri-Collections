@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Radio, Plus, X, Loader2, AlertCircle, CheckCircle2,
   Users, Send, FileText, Eye
@@ -80,6 +81,7 @@ function BroadcastCard({ broadcast }) {
 
 export default function BroadcastsPage() {
   const { tenant } = useAuthStore()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [broadcasts, setBroadcasts] = useState([])
   const [groups, setGroups] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -106,6 +108,16 @@ export default function BroadcastsPage() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Auto-open form if navigated with ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setShowForm(true)
+      setForm(EMPTY_FORM)
+      setFormError(null)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams])
 
   // Preview count when group selection changes
   useEffect(() => {

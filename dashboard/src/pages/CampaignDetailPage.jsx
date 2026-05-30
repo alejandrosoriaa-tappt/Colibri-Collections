@@ -76,7 +76,8 @@ function MessageEditor({ msg, onSave, onSend }) {
   }
 
   const handleSend = async () => {
-    if (!window.confirm(`¿Enviar Mensaje ${msg.message_number} ahora a todos los contactos aplicables? Esta acción es irreversible.`)) return
+    const ordinal = msg.message_number === 1 ? '1er' : msg.message_number === 2 ? '2do' : msg.message_number === 3 ? '3er' : `${msg.message_number}to`
+    if (!window.confirm(`¿Enviar el ${ordinal} recordatorio ahora a todos los contactos aplicables? Esta acción es irreversible.`)) return
     setIsSending(true)
     setSendResult(null)
     try {
@@ -97,7 +98,7 @@ function MessageEditor({ msg, onSave, onSend }) {
             msg.sent_at ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-500 border-gray-200'
           }`}>
             {msg.sent_at ? <CheckCircle2 size={11} /> : <Circle size={11} />}
-            Mensaje {msg.message_number}
+            {msg.message_number === 1 ? '1er' : msg.message_number === 2 ? '2do' : msg.message_number === 3 ? '3er' : `${msg.message_number}to`} recordatorio
           </span>
           <span className="text-xs text-gray-400">Día {msg.trigger_day} · {msg.send_to === 'unpaid' ? 'Solo pendientes' : 'Todos'}</span>
         </div>
@@ -413,7 +414,7 @@ export default function CampaignDetailPage() {
       <div className="border-b border-gray-200">
         <div className="flex gap-6">
           {[
-            { key: 'mensajes', label: 'Mensajes', icon: MessageSquare },
+            { key: 'mensajes', label: 'Recordatorios', icon: MessageSquare },
             { key: 'facturas', label: `Contactos (${invoices.length})`, icon: Users }
           ].map(tab => (
             <button

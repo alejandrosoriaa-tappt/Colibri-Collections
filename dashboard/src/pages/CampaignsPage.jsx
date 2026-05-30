@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Megaphone, Plus, Loader2, X, AlertCircle, Users } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
@@ -56,11 +57,13 @@ const EMPTY_FORM = {
   concept: '',
   billing_month: String(new Date().getMonth() + 1),
   billing_year: String(currentYear),
+  due_day: '10',
   late_fee_pct: '',
   grupo_filter: ''
 }
 
 export default function CampaignsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [campaigns, setCampaigns] = useState([])
   const [groups, setGroups] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -82,6 +85,16 @@ export default function CampaignsPage() {
     load()
     contactsAPI.groups().then(res => setGroups(res.data.groups || [])).catch(() => {})
   }, [])
+
+  // Auto-open form if navigated with ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setShowForm(true)
+      setForm(EMPTY_FORM)
+      setFormError(null)
+      setSearchParams({}, { replace: true })
+    }
+  }, [searchParams])
 
   // Preview contact count when group filter changes
   useEffect(() => {
@@ -105,11 +118,13 @@ export default function CampaignsPage() {
       const m = Number(form.billing_month)
       const mm = String(m).padStart(2, '0')
       const last = lastDayOfMonth(y, m)
+      const dueDay = Math.min(Number(form.due_day) || 10, last)
+      const dueDayStr = String(dueDay).padStart(2, '0')
       const payload = {
         name:             form.name.trim(),
         concept:          form.concept,
         cycle_start_date: `${y}-${mm}-01`,
-        due_date:         `${y}-${mm}-${last}`,
+        due_date:         `${y}-${mm}-${dueDayStr}`,
         cycle_end_date:   `${y}-${mm}-${last}`,
         late_fee_pct:     form.late_fee_pct ? Number(form.late_fee_pct) : 0,
         grupo_filter:     form.grupo_filter || null
@@ -257,8 +272,24 @@ export default function CampaignsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="label">Día límite de pago *</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min="1"
+                    max="28"
+                    className="input w-28"
+                    value={form.due_day}
+                    onChange={e => setForm(f => ({ ...f, due_day: e.target.value }))}
+                    required
+                  />
+                  <p className="text-sm text-gray-500">del mes</p>
+                </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  El ciclo abarcará del 1 al último día del mes seleccionado.
+                  El 1er recordatorio se envía al inicio del mes a todos. A partir de este día, los siguientes recordatorios se envían solo a quienes aún no han pagado.
                 </p>
               </div>
 
