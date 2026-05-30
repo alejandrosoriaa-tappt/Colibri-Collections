@@ -11,7 +11,7 @@ import { sendOperationalNotification } from './notifier.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
-  nombre:          ['nombre condómino', 'nombre condomino', 'alumno', 'nombre', 'name', 'first_name', 'primer_nombre'],
+  nombre:          ['nombre condómino', 'nombre condomino', 'nombre familia', 'nombre_familia', 'alumno', 'nombre', 'name', 'first_name', 'primer_nombre'],
   apellido:        ['familia', 'apellido', 'apellidos', 'last_name', 'surname'],
   telefono:        ['teléfono', 'telefono', 'phone', 'celular', 'tel', 'movil', 'whatsapp'],
   grupo:           ['grupo', 'group', 'membresía', 'membresia', 'categoría', 'categoria'],
@@ -22,6 +22,7 @@ const COLUMN_ALIASES = {
   monto:           ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
   email:           ['correo', 'email', 'mail', 'correo_electronico', 'correo electrónico'],
   // Colegio / Academia
+  nombre_alumno:   ['nombre alumno', 'nombre_alumno', 'alumno nombre', 'nombre del alumno', 'estudiante'],
   seccion:         ['sección', 'seccion', 'section', 'nivel escolar', 'nivel'],
   grado:           ['grado', 'grade', 'año escolar', 'ano escolar'],
   salon:           ['salón', 'salon', 'aula', 'grupo aula'],
@@ -217,6 +218,7 @@ export async function processFile({
         mensaje:         get('mensaje'),
         liga_pago:       ligaPago,
         email:           get('email') || null,
+        nombre_alumno:   get('nombre_alumno') || null,
         seccion:         seccion || null,
         grado:           grado || null,
         salon:           salon || null,
@@ -237,6 +239,7 @@ export async function processFile({
           grupo:           rowData.grupo,
           id_externo:      rowData.id_externo || null,
           email:           rowData.email,
+          nombre_alumno:   rowData.nombre_alumno || null,
           seccion:         rowData.seccion,
           grado:           rowData.grado,
           salon:           rowData.salon,
@@ -325,23 +328,23 @@ const TEMPLATES = {
   colegio: {
     filename: 'plantilla_colegio.xlsx',
     sheetName: 'Colegio',
-    headers: ['NOMBRE FAMILIA', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
+    headers: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
     rows: [
-      ['García López',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/001', 'MAT001'],
-      ['Hernández Soto',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/002', 'MAT002'],
-      ['Martínez Trejo',   '5511223344', 'Secundaria', '1ro', 'C', 'mttrejo@hotmail.com', 'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   '',                            'MAT003'],
+      ['García López',     'Carlos García',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/001', 'MAT001'],
+      ['Hernández Soto',   'Sofía Hernández',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/002', 'MAT002'],
+      ['Martínez Trejo',   'Diego Martínez',    '5511223344', 'Secundaria', '1ro', 'C', 'mttrejo@hotmail.com', 'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   '',                            'MAT003'],
     ],
-    widths: [22, 14, 16, 8, 8, 28, 52, 36, 12],
+    widths: [22, 20, 14, 16, 8, 8, 28, 52, 36, 12],
   },
   academia: {
     filename: 'plantilla_academia.xlsx',
     sheetName: 'Academia',
-    headers: ['NOMBRE FAMILIA', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
+    headers: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
     rows: [
-      ['García López',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/001', 'MAT001'],
-      ['Hernández Soto',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/002', 'MAT002'],
+      ['García López',     'Carlos García',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/001', 'MAT001'],
+      ['Hernández Soto',   'Sofía Hernández',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente.',   'https://pago.ejemplo.com/002', 'MAT002'],
     ],
-    widths: [22, 14, 16, 8, 8, 28, 52, 36, 12],
+    widths: [22, 20, 14, 16, 8, 8, 28, 52, 36, 12],
   },
   condominio: {
     filename: 'plantilla_condominio.xlsx',
