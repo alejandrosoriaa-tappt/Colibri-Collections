@@ -71,17 +71,11 @@ export default function DashboardPage() {
     <div className="space-y-6">
 
       {/* Page header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-md-on-surface">
-            Hola{tenant ? `, ${tenant.display_name || tenant.name}` : ''} 👋
-          </h1>
-          <p className="text-sm text-md-on-surface-variant mt-0.5">Resumen de comunicación</p>
-        </div>
-        <Link to="/mensajes" className="btn-primary text-sm">
-          <Plus size={16} />
-          Nuevo mensaje
-        </Link>
+      <div>
+        <h1 className="text-2xl font-semibold text-md-on-surface">
+          Hola{tenant ? `, ${tenant.display_name || tenant.name}` : ''} 👋
+        </h1>
+        <p className="text-sm text-md-on-surface-variant mt-0.5">Resumen de comunicación</p>
       </div>
 
       {/* KPIs */}

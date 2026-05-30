@@ -42,10 +42,11 @@ function normalizePhone(raw) {
 
 // ── Parse uploaded file and return rows ──────────────────────────────────────
 function parseContactFile(buffer, fileType) {
-  const PHONE_ALIASES = ['teléfono','telefono','phone','celular','tel','movil','whatsapp']
-  const NAME_ALIASES  = ['nombre','name','alumno','first_name','primer_nombre']
-  const LAST_ALIASES  = ['apellido','apellidos','familia','last_name','surname']
-  const GROUP_ALIASES = ['grupo','group','seccion','salon','grado','seccion o salon']
+  const PHONE_ALIASES  = ['teléfono','telefono','phone','celular','tel','movil','whatsapp']
+  const NAME_ALIASES   = ['nombre','name','first_name','primer_nombre','familia']
+  const LAST_ALIASES   = ['apellido','apellidos','last_name','surname']
+  const GROUP_ALIASES  = ['grupo','group','seccion','salon','grado','seccion o salon']
+  const ALUMNO_ALIASES = ['nombre_alumno','alumno','nombre alumno','estudiante','nombre del alumno']
 
   let rows = []
 
@@ -69,18 +70,20 @@ function parseContactFile(buffer, fileType) {
     return null
   }
 
-  const colPhone = findCol(PHONE_ALIASES)
-  const colName  = findCol(NAME_ALIASES)
-  const colLast  = findCol(LAST_ALIASES)
-  const colGroup = findCol(GROUP_ALIASES)
+  const colPhone  = findCol(PHONE_ALIASES)
+  const colName   = findCol(NAME_ALIASES)
+  const colLast   = findCol(LAST_ALIASES)
+  const colGroup  = findCol(GROUP_ALIASES)
+  const colAlumno = findCol(ALUMNO_ALIASES)
 
   if (!colPhone) return []
 
   return rows.map(row => ({
-    telefono: normalizePhone(row[colPhone]),
-    nombre:   colName  ? String(row[colName] || '').trim()  : '',
-    apellido: colLast  ? String(row[colLast] || '').trim()  : '',
-    grupo:    colGroup ? String(row[colGroup] || '').trim() : ''
+    telefono:      normalizePhone(row[colPhone]),
+    nombre:        colName   ? String(row[colName] || '').trim()   : '',
+    apellido:      colLast   ? String(row[colLast] || '').trim()   : '',
+    grupo:         colGroup  ? String(row[colGroup] || '').trim()  : '',
+    nombre_alumno: colAlumno ? String(row[colAlumno] || '').trim() : ''
   })).filter(r => r.telefono)
 }
 
@@ -201,7 +204,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     const {
       nombre, apellido, telefono, grupo, id_externo, payment_link,
       email, seccion, grado, salon, fraccionamiento, torre, num_interior,
-      org_type
+      nombre_alumno, org_type
     } = req.body
 
     if (!nombre || !telefono) {
@@ -228,6 +231,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         fraccionamiento: fraccionamiento?.trim() || null,
         torre: torre?.trim() || null,
         num_interior: num_interior?.trim() || null,
+        nombre_alumno: nombre_alumno?.trim() || null,
         status: 'active'
       })
       .select()
@@ -260,7 +264,8 @@ router.patch('/:id', authMiddleware, inferTenantGuard, async (req, res) => {
 
     const allowedFields = [
       'nombre', 'apellido', 'telefono', 'grupo', 'id_externo', 'status', 'payment_link',
-      'email', 'seccion', 'grado', 'salon', 'fraccionamiento', 'torre', 'num_interior'
+      'email', 'seccion', 'grado', 'salon', 'fraccionamiento', 'torre', 'num_interior',
+      'nombre_alumno'
     ]
     const updates = {}
     for (const field of allowedFields) {
@@ -457,11 +462,12 @@ router.post(
           // Re-activate contact that appears again in the padron
           toUpdate.push({ id: existing.id, reactivate: true, ...row })
         } else {
-          // Active contact — update name/group if changed
+          // Active contact — update name/group/alumno if changed
           const changed = (
             (row.nombre && row.nombre !== existing.nombre) ||
             (row.apellido && row.apellido !== existing.apellido) ||
-            (row.grupo && row.grupo !== existing.grupo)
+            (row.grupo && row.grupo !== existing.grupo) ||
+            (row.nombre_alumno && row.nombre_alumno !== existing.nombre_alumno)
           )
           if (changed) toUpdate.push({ id: existing.id, reactivate: false, ...row })
         }
@@ -485,6 +491,7 @@ router.post(
             apellido: r.apellido || null,
             telefono: r.telefono,
             grupo: r.grupo || null,
+            nombre_alumno: r.nombre_alumno || null,
             status: 'active'
           }))
         )
@@ -497,6 +504,7 @@ router.post(
         if (r.nombre) patch.nombre = r.nombre
         if (r.apellido) patch.apellido = r.apellido
         if (r.grupo) patch.grupo = r.grupo
+        if (r.nombre_alumno) patch.nombre_alumno = r.nombre_alumno
         await supabase.from('contacts').update(patch).eq('id', r.id)
       }
 

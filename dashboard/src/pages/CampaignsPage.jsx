@@ -14,13 +14,18 @@ const STATUS_FILTERS = [
 
 const CONCEPTOS = [
   'Colegiatura',
+  'Reinscripción',
+  'Cuota de Materiales',
+  'Seguro Escolar',
+  'Actividades Extraescolares',
+  'Regularización Académica',
+  'Campamento Escolar',
   'Mensualidad',
   'Membresía',
   'Cuota',
   'Renta',
   'Servicio',
   'Inscripción',
-  'Comunicado',
   'Otro'
 ]
 
@@ -124,7 +129,7 @@ export default function CampaignsPage() {
           className="btn-primary flex items-center gap-2 text-sm"
         >
           <Plus size={16} />
-          Nueva campaña
+          Nueva campaña de cobro
         </button>
       </div>
 
@@ -161,7 +166,7 @@ export default function CampaignsPage() {
               onClick={() => { setShowForm(true); setFormError(null) }}
               className="btn-primary inline-flex items-center gap-2 mt-4 text-sm"
             >
-              <Plus size={15} /> Crear primera campaña
+              <Plus size={15} /> Crear primera campaña de cobro
             </button>
           )}
         </div>
@@ -178,7 +183,7 @@ export default function CampaignsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Nueva campaña</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Nueva campaña de cobro</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>

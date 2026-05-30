@@ -345,18 +345,24 @@ export default function BroadcastsPage() {
                 </div>
 
                 {showVars && (
-                  <div className="flex gap-2 flex-wrap mb-2">
-                    {VARIABLES_HELP.map(v => (
-                      <button
-                        key={v.var}
-                        type="button"
-                        onClick={() => insertVar(v.var)}
-                        className="px-2 py-1 bg-colibri-50 border border-colibri-200 rounded-lg text-xs text-colibri font-mono hover:bg-colibri-100 transition-colors"
-                        title={v.desc}
-                      >
-                        {v.var}
-                      </button>
-                    ))}
+                  <div className="mb-2 space-y-2">
+                    <p className="text-xs text-md-on-surface-variant leading-relaxed">
+                      Las <strong>variables</strong> son datos que Kollybry reemplaza automáticamente por la información de cada contacto al momento de enviar. Por ejemplo, si escribes <code className="bg-md-surface-container px-1 rounded text-xs">{'{nombre}'}</code>, cada papá recibirá el mensaje con su nombre real.
+                    </p>
+                    <div className="flex gap-2 flex-wrap">
+                      {VARIABLES_HELP.map(v => (
+                        <button
+                          key={v.var}
+                          type="button"
+                          onClick={() => insertVar(v.var)}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-md-primary-container/40 border border-md-primary/20 rounded-xl text-xs text-md-primary font-mono hover:bg-md-primary-container transition-colors"
+                          title={v.desc}
+                        >
+                          <span>{v.var}</span>
+                          <span className="text-md-on-surface-variant font-sans font-normal">→ {v.desc}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

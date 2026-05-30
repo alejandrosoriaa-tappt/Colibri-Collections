@@ -41,7 +41,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     nombre: '', apellido: '', telefono: '', email: '',
     grupo: '', payment_link: '',
     // Colegio
-    seccion: '', grado: '', salon: '',
+    seccion: '', grado: '', salon: '', nombre_alumno: '',
     // Condominio
     fraccionamiento: '', torre: '', num_interior: ''
   })
@@ -68,7 +68,8 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
         ...(isColegio && {
           seccion: form.seccion || undefined,
           grado: form.grado || undefined,
-          salon: form.salon.trim() || undefined
+          salon: form.salon.trim() || undefined,
+          nombre_alumno: form.nombre_alumno.trim() || undefined
         }),
         // Condominio
         ...(isCondominio && {
@@ -114,6 +115,13 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                 <input className="input" value={form.nombre} onChange={set('nombre')}
                   placeholder="Ej. García López" required autoFocus />
                 <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido o nombre con el que se identifica la familia</p>
+              </div>
+
+              <div>
+                <label className="label">Nombre del alumno</label>
+                <input className="input" value={form.nombre_alumno} onChange={set('nombre_alumno')}
+                  placeholder="Ej. Carlos García" />
+                <p className="text-xs text-md-on-surface-variant mt-1.5">Nombre del estudiante inscrito</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -697,7 +705,7 @@ export default function ContactsPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant" />
           <input
             className="input pl-9"
-            placeholder="Buscar por nombre, teléfono..."
+            placeholder="Buscar por nombre, alumno, teléfono..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -810,6 +818,11 @@ export default function ContactsPage() {
                           <p className={`text-sm font-medium ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
                             {[c.nombre, c.apellido].filter(Boolean).join(' ')}
                           </p>
+                          {c.nombre_alumno && (
+                            <p className="text-xs text-md-on-surface-variant mt-0.5">
+                              Alumno: {c.nombre_alumno}
+                            </p>
+                          )}
                           {inactive && (
                             <span className="inline-flex items-center gap-1 text-xs text-orange-600 mt-0.5">
                               <UserMinus size={10} /> Inactivo

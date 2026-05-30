@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Loader2, Play, Pause, Edit2, Save, X, CheckCircle2,
-  Circle, Users, AlertCircle, MessageSquare, Upload, TrendingUp, Send
+  Circle, Users, AlertCircle, MessageSquare, Upload, TrendingUp, Send,
+  UserPlus, Search
 } from 'lucide-react'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
 import KpiBar from '../components/shared/KpiBar.jsx'
-import { campaignsAPI, invoicesAPI } from '../lib/api.js'
+import { campaignsAPI, invoicesAPI, contactsAPI } from '../lib/api.js'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('es-MX', {
@@ -162,6 +163,12 @@ export default function CampaignDetailPage() {
   const [activeTab, setActiveTab] = useState('mensajes')
   const [markingInvoice, setMarkingInvoice] = useState(null)
   const [payRef, setPayRef] = useState('')
+  const [showAddContacts, setShowAddContacts] = useState(false)
+  const [contactSearch, setContactSearch] = useState('')
+  const [contactResults, setContactResults] = useState([])
+  const [contactSearchLoading, setContactSearchLoading] = useState(false)
+  const [selectedContactIds, setSelectedContactIds] = useState(new Set())
+  const [addingContacts, setAddingContacts] = useState(false)
 
   const loadInvoices = async (status = '') => {
     try {
@@ -189,6 +196,39 @@ export default function CampaignDetailPage() {
   }
 
   useEffect(() => { load() }, [id])
+
+  // Contact search for "add contacts" modal
+  useEffect(() => {
+    if (!showAddContacts) return
+    const t = setTimeout(async () => {
+      setContactSearchLoading(true)
+      try {
+        const res = await contactsAPI.list({ limit: 30, status: 'active', ...(contactSearch ? { search: contactSearch } : {}) })
+        setContactResults(res.data.contacts || [])
+      } catch {
+        setContactResults([])
+      } finally {
+        setContactSearchLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [contactSearch, showAddContacts])
+
+  const handleAddContacts = async () => {
+    if (selectedContactIds.size === 0) return
+    setAddingContacts(true)
+    try {
+      await campaignsAPI.addContacts(id, { contact_ids: [...selectedContactIds], monto: 0 })
+      setShowAddContacts(false)
+      setSelectedContactIds(new Set())
+      setContactSearch('')
+      load()
+    } catch (err) {
+      alert(err.response?.data?.error || err.message)
+    } finally {
+      setAddingContacts(false)
+    }
+  }
 
   const handleActivate = async () => {
     setIsActing(true)
@@ -377,6 +417,14 @@ export default function CampaignDetailPage() {
       {/* Tab content */}
       {activeTab === 'mensajes' && (
         <div className="space-y-3">
+          {/* M1/M2 explanation */}
+          <div className="flex items-start gap-2.5 p-3 bg-md-primary-container/30 rounded-2xl">
+            <span className="text-base flex-shrink-0">💡</span>
+            <p className="text-xs text-md-on-surface-variant leading-relaxed">
+              <strong className="text-md-on-surface">¿Qué son M1, M2, M3...?</strong>{' '}
+              Son los recordatorios de la campaña en orden cronológico. M1 es el primer aviso (antes o en la fecha de vencimiento), M2 es el segundo recordatorio para quienes no han pagado, y así sucesivamente. Puedes editar el texto de cada uno antes de enviarlo.
+            </p>
+          </div>
           {messages.map(msg => (
             <MessageEditor key={msg.id} msg={msg} onSave={handleSaveMessage} onSend={handleSendMessage} />
           ))}
@@ -385,25 +433,33 @@ export default function CampaignDetailPage() {
 
       {activeTab === 'facturas' && (
         <>
-          <div className="flex gap-2 flex-wrap">
-            {[
-              { value: '', label: 'Todos' },
-              { value: 'pending', label: 'Pendientes' },
-              { value: 'paid', label: 'Pagados' },
-              { value: 'suspended', label: 'Suspendidos' }
-            ].map(f => (
-              <button
-                key={f.value}
-                onClick={() => { setInvoiceStatusFilter(f.value); loadInvoices(f.value) }}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                  invoiceStatusFilter === f.value
-                    ? 'bg-colibri text-white border-colibri'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
+          <div className="flex gap-2 flex-wrap items-center justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { value: '', label: 'Todos' },
+                { value: 'pending', label: 'Pendientes' },
+                { value: 'paid', label: 'Pagados' },
+                { value: 'suspended', label: 'Suspendidos' }
+              ].map(f => (
+                <button
+                  key={f.value}
+                  onClick={() => { setInvoiceStatusFilter(f.value); loadInvoices(f.value) }}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                    invoiceStatusFilter === f.value
+                      ? 'bg-colibri text-white border-colibri'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => { setShowAddContacts(true); setSelectedContactIds(new Set()); setContactSearch('') }}
+              className="btn-primary flex items-center gap-2 text-sm"
+            >
+              <UserPlus size={14} /> Agregar contacto
+            </button>
           </div>
 
         <div className="card p-0 overflow-hidden">
@@ -448,6 +504,100 @@ export default function CampaignDetailPage() {
           )}
         </div>
         </>
+      )}
+
+      {/* Add contacts modal */}
+      {showAddContacts && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
+              <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                <UserPlus size={16} className="text-colibri" /> Agregar contactos a campaña
+              </h3>
+              <button onClick={() => setShowAddContacts(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-4 flex-shrink-0 border-b border-gray-100">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  className="input pl-9 text-sm"
+                  placeholder="Buscar por nombre, alumno, teléfono..."
+                  value={contactSearch}
+                  onChange={e => setContactSearch(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              {selectedContactIds.size > 0 && (
+                <p className="text-xs text-colibri mt-2 font-medium">
+                  {selectedContactIds.size} contacto{selectedContactIds.size !== 1 ? 's' : ''} seleccionado{selectedContactIds.size !== 1 ? 's' : ''}
+                </p>
+              )}
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-2">
+              {contactSearchLoading ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 size={18} className="text-colibri animate-spin" />
+                </div>
+              ) : contactResults.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">No se encontraron contactos</p>
+              ) : (
+                contactResults.map(c => {
+                  const checked = selectedContactIds.has(c.id)
+                  return (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors ${checked ? 'bg-colibri/5' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => {
+                          setSelectedContactIds(prev => {
+                            const next = new Set(prev)
+                            if (next.has(c.id)) next.delete(c.id)
+                            else next.add(c.id)
+                            return next
+                          })
+                        }}
+                        className="accent-colibri rounded"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {[c.nombre, c.apellido].filter(Boolean).join(' ')}
+                        </p>
+                        {c.nombre_alumno && (
+                          <p className="text-xs text-gray-400">Alumno: {c.nombre_alumno}</p>
+                        )}
+                        <p className="text-xs text-gray-400 font-mono">{c.telefono}</p>
+                      </div>
+                      {c.grupo && (
+                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">{c.grupo}</span>
+                      )}
+                    </label>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="flex gap-3 p-4 border-t border-gray-100 flex-shrink-0">
+              <button onClick={() => setShowAddContacts(false)} className="flex-1 btn-secondary text-sm">
+                Cancelar
+              </button>
+              <button
+                onClick={handleAddContacts}
+                disabled={selectedContactIds.size === 0 || addingContacts}
+                className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm"
+              >
+                {addingContacts ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
+                {addingContacts ? 'Agregando...' : `Agregar ${selectedContactIds.size > 0 ? selectedContactIds.size : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Mark paid modal */}

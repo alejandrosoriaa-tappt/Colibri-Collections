@@ -7,6 +7,7 @@ import supabase, {
   getCampaignMessages,
   updateCampaignMessage,
   updateCampaignStats,
+  upsertInvoice,
   getInvoices,
   logMessage
 } from '../services/supabase.js'
@@ -430,6 +431,65 @@ router.post('/:id/pause', authMiddleware, inferTenantGuard, async (req, res) => 
     return res.json({ campaign: data })
   } catch (err) {
     console.error('POST /campaigns/:id/pause error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/campaigns/:id/add-contacts — add individual contacts to a campaign
+router.post('/:id/add-contacts', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const campaign = await getCampaign(req.params.id)
+    if (!campaign) return res.status(404).json({ error: 'Campaign not found' })
+    if (!req.isAdmin && campaign.tenant_id !== req.tenantId) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
+
+    const { contact_ids, monto = 0 } = req.body
+    if (!Array.isArray(contact_ids) || contact_ids.length === 0) {
+      return res.status(400).json({ error: 'contact_ids array is required' })
+    }
+
+    // Get tenant for payment_link_general
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('payment_link_general')
+      .eq('id', req.tenantId)
+      .single()
+
+    let added = 0
+    const errors = []
+    for (const contactId of contact_ids) {
+      try {
+        // Verify contact belongs to tenant
+        const { data: contact } = await supabase
+          .from('contacts')
+          .select('id')
+          .eq('id', contactId)
+          .eq('tenant_id', req.tenantId)
+          .single()
+
+        if (!contact) {
+          errors.push({ contact_id: contactId, error: 'Contact not found' })
+          continue
+        }
+
+        await upsertInvoice(req.params.id, contactId, req.tenantId, {
+          monto: Number(monto) || 0,
+          liga_pago: tenant?.payment_link_general || '',
+          status: 'pending'
+        })
+        added++
+      } catch (err) {
+        errors.push({ contact_id: contactId, error: err.message })
+      }
+    }
+
+    // Update campaign stats
+    await updateCampaignStats(req.params.id)
+
+    return res.json({ added, errors, total: contact_ids.length })
+  } catch (err) {
+    console.error('POST /campaigns/:id/add-contacts error:', err)
     return res.status(500).json({ error: err.message })
   }
 })

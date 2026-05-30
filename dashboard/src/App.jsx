@@ -5,6 +5,7 @@ import { canAccess } from './lib/permissions.js'
 
 import AppLayout from './components/layout/AppLayout.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import CampaignsPage from './pages/CampaignsPage.jsx'
 import CampaignDetailPage from './pages/CampaignDetailPage.jsx'
@@ -49,6 +50,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route element={<AppLayout />}>
           {/* Accessible by all roles */}

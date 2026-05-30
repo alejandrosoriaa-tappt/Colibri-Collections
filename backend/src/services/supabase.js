@@ -342,7 +342,7 @@ export async function getContactsByTenant(tenantId, { search, status = 'active',
   }
 
   if (search) {
-    query = query.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%`)
+    query = query.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%,nombre_alumno.ilike.%${search}%`)
   }
 
   const { data, error, count } = await query

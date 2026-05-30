@@ -2,14 +2,15 @@ import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Plus, MessageSquare, Radio, Megaphone,
-  ChevronRight, Loader2, X
+  ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
+  Users, Calendar, FileText
 } from 'lucide-react'
 import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
 
 const TYPE_FILTERS = [
   { key: 'all', label: 'Todos' },
   { key: 'comunicado', label: 'Comunicados' },
-  { key: 'cobro', label: 'Recordatorios' },
+  { key: 'cobro', label: 'Campañas de cobro' },
 ]
 
 const STATUS_CONFIG = {
@@ -124,6 +125,81 @@ function SkeletonCard() {
   )
 }
 
+// ── Broadcast detail modal ────────────────────────────────────
+function BroadcastDetailModal({ broadcast, onClose }) {
+  const fmtDate = (d) => new Date(d).toLocaleDateString('es-MX', {
+    day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  })
+  const stats = [
+    { icon: Send,             label: 'Enviados',    value: broadcast.sent_count || 0,        color: 'text-blue-600',  bg: 'bg-blue-50' },
+    { icon: CheckCheck,       label: 'Entregados',  value: broadcast.delivered_count || 0,   color: 'text-green-600', bg: 'bg-green-50' },
+    { icon: Eye,              label: 'Leídos',      value: broadcast.read_count || 0,        color: 'text-md-primary', bg: 'bg-md-primary-container/30' },
+    { icon: MousePointerClick,label: 'Clics en liga',value: broadcast.clicked_count || 0,   color: 'text-orange-600', bg: 'bg-orange-50' },
+  ]
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-x-0 bottom-0 bg-md-surface-container-low rounded-t-4xl z-50 shadow-md3-5 max-h-[85vh] overflow-y-auto">
+        <div className="sticky top-0 bg-md-surface-container-low px-6 pt-6 pb-4 border-b border-md-outline-variant">
+          <div className="w-12 h-1 bg-md-outline-variant rounded-full mx-auto mb-4" />
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-9 h-9 rounded-2xl bg-md-tertiary-container flex items-center justify-center flex-shrink-0">
+                <Radio size={16} className="text-md-on-tertiary-container" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-semibold text-md-on-surface text-sm truncate">{broadcast.title}</p>
+                <p className="text-xs text-md-on-surface-variant flex items-center gap-1 mt-0.5">
+                  <Calendar size={10} />
+                  {fmtDate(broadcast.sent_at || broadcast.created_at)}
+                </p>
+              </div>
+            </div>
+            <button onClick={onClose} className="p-2 rounded-full hover:bg-md-surface-container text-md-on-surface-variant">
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-6 py-5 space-y-5">
+          {/* Stats grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {stats.map(({ icon: Icon, label, value, color, bg }) => (
+              <div key={label} className={`${bg} rounded-2xl p-3`}>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Icon size={13} className={color} />
+                  <p className="text-xs text-md-on-surface-variant font-medium">{label}</p>
+                </div>
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Group */}
+          {broadcast.group_filter && (
+            <div className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
+              <Users size={14} className="text-md-on-surface-variant" />
+              <span className="text-sm text-md-on-surface">Enviado a: <strong>{broadcast.group_filter}</strong></span>
+            </div>
+          )}
+
+          {/* Message body */}
+          <div>
+            <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <FileText size={12} />
+              Mensaje enviado
+            </p>
+            <div className="bg-md-surface-container rounded-2xl p-4">
+              <p className="text-sm text-md-on-surface whitespace-pre-wrap leading-relaxed">{broadcast.message}</p>
+            </div>
+          </div>
+        </div>
+        <div className="h-6" />
+      </div>
+    </>
+  )
+}
+
 export default function MensajesPage() {
   const navigate = useNavigate()
   const [campaigns, setCampaigns] = useState([])
@@ -131,6 +207,7 @@ export default function MensajesPage() {
   const [filter, setFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
   const [showNewModal, setShowNewModal] = useState(false)
+  const [selectedBroadcast, setSelectedBroadcast] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -167,7 +244,8 @@ export default function MensajesPage() {
       total: b.total_contacts || 0,
       status: b.status || 'sent',
       date: b.sent_at || b.created_at,
-      href: null
+      href: null,
+      broadcastData: b
     }))
   ].sort((a, b) => new Date(b.date) - new Date(a.date))
 
@@ -243,9 +321,21 @@ export default function MensajesPage() {
           )}
 
           {filtered.map(item => (
-            <MessageCard key={item.id} item={item} />
+            item.broadcastData
+              ? <div key={item.id} onClick={() => setSelectedBroadcast(item.broadcastData)}>
+                  <MessageCard item={item} />
+                </div>
+              : <MessageCard key={item.id} item={item} />
           ))}
         </div>
+      )}
+
+      {/* Broadcast detail modal */}
+      {selectedBroadcast && (
+        <BroadcastDetailModal
+          broadcast={selectedBroadcast}
+          onClose={() => setSelectedBroadcast(null)}
+        />
       )}
 
       {/* FAB */}

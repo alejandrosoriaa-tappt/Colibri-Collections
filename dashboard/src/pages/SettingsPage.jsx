@@ -474,6 +474,7 @@ export default function SettingsPage() {
       {/* ── Plan info ── */}
       {tenant && (
         <SectionCard icon={Settings} title="Plan y suscripción">
+          {/* Current plan status */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-xs text-md-on-surface-variant uppercase tracking-wide mb-1">Plan actual</p>
@@ -490,10 +491,41 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
+
+          {/* Plans comparison */}
           <div className="pt-4 border-t border-md-outline-variant">
+            <p className="text-xs font-semibold text-md-on-surface mb-3">Planes disponibles</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                { name: 'Básico', price: '$399', contacts: 'Hasta 150 contactos', msgs: '3 mensajes/campaña', highlight: false },
+                { name: 'Profesional', price: '$799', contacts: 'Hasta 500 contactos', msgs: '4 mensajes/campaña + comunicados', highlight: true },
+                { name: 'Empresarial', price: '$1,499', contacts: 'Contactos ilimitados', msgs: '5 mensajes/campaña + comunicados + soporte', highlight: false },
+              ].map(plan => (
+                <div key={plan.name} className={`rounded-2xl p-3 border ${
+                  plan.highlight
+                    ? 'border-md-primary bg-md-primary-container/20'
+                    : 'border-md-outline-variant bg-md-surface-container-low'
+                }`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-sm font-semibold text-md-on-surface">{plan.name}</p>
+                    {plan.highlight && (
+                      <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full">Popular</span>
+                    )}
+                  </div>
+                  <p className="text-lg font-bold text-md-primary">{plan.price}<span className="text-xs font-normal text-md-on-surface-variant">/mes</span></p>
+                  <p className="text-xs text-md-on-surface-variant mt-1">{plan.contacts}</p>
+                  <p className="text-xs text-md-on-surface-variant">{plan.msgs}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-md-outline-variant">
             <p className="text-xs text-md-on-surface-variant">
-              Para cambios de plan o consultas de facturación:{' '}
-              <span className="text-md-primary font-medium">hola@kollybry.com</span>
+              Para cambiar de plan:{' '}
+              <a href="mailto:hola@kollybry.com" className="text-md-primary font-medium hover:underline">hola@kollybry.com</a>
+              {' '}o WhatsApp{' '}
+              <a href="https://wa.me/5214625902365" target="_blank" rel="noreferrer" className="text-md-primary font-medium hover:underline">+52 1 462 590 2365</a>
             </p>
           </div>
         </SectionCard>
@@ -803,6 +835,9 @@ function PasswordSection() {
 
   return (
     <SectionCard icon={Lock} title="Contraseña">
+      <p className="text-xs text-md-on-surface-variant -mt-2">
+        Cambia la contraseña de <strong>tu cuenta</strong> con la que accedes a Kollybry. Aplica solo a tu usuario, no afecta a otros miembros del equipo.
+      </p>
       {saved && (
         <div className="flex items-center gap-3 p-3 bg-green-50 rounded-2xl">
           <CheckCircle2 size={15} className="text-green-600 flex-shrink-0" />
