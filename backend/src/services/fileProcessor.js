@@ -18,8 +18,8 @@ const COLUMN_ALIASES = {
   mensaje:         ['mensaje o recordatorio', 'mensaje', 'recordatorio', 'message', 'nota', 'descripcion', 'observaciones', 'comentario'],
   liga_pago:       ['liga_pago', 'payment_link', 'url_pago', 'liga', 'link_pago', 'url'],
   // Opcionales
-  id_externo:      ['matricula', 'número socio', 'numero socio', 'número contrato', 'numero contrato', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato'],
-  monto:           ['monto', 'amount', 'importe', 'cuota', 'costo', 'precio'],
+  id_externo:      ['matricula', 'número socio', 'numero socio', 'número contrato', 'numero contrato', 'id_externo', 'external_id', 'contrato', 'cliente', 'id', 'clave', 'expediente', 'numero_contrato', 'num. membresía', 'num membresía', 'núm. membresía', 'num_membresia', 'numero membresia', 'número membresía', 'membresia num', 'no. membresía'],
+  monto:           ['monto', 'saldo', 'amount', 'importe', 'cuota', 'costo', 'precio', 'deuda', 'adeudo'],
   email:           ['correo', 'email', 'mail', 'correo_electronico', 'correo electrónico'],
   // Colegio / Academia
   nombre_alumno:   ['nombre alumno', 'nombre_alumno', 'alumno nombre', 'nombre del alumno', 'estudiante'],
@@ -357,27 +357,29 @@ const TEMPLATES = {
     ],
     widths: [25, 14, 22, 12, 16, 28, 52, 36],
   },
-  gimnasio: {
-    filename: 'plantilla_gimnasio.xlsx',
-    sheetName: 'Gimnasio',
-    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'MEMBRESÍA', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Número contrato'],
-    rows: [
-      ['María',   'González López',    '5512345678', 'Membresía Oro',    'mgonzalez@gmail.com', 'Tu mensualidad de junio está pendiente.', 'https://pago.ejemplo.com/001', 'GYM001'],
-      ['Carlos',  'Martínez Ruiz',     '5587654321', 'Clase Spinning',   '',                    'Tu mensualidad de junio está pendiente.', 'https://pago.ejemplo.com/002', 'GYM002'],
-      ['Ana',     'López Hernández',   '5511223344', 'Membresía Plata',  'ana@hotmail.com',     'Tu mensualidad de junio está pendiente.', '',                            'GYM003'],
-    ],
-    widths: [16, 20, 14, 18, 28, 52, 36, 16],
-  },
+  // club covers: gym, golf, tennis, sports clubs — same structure
   club: {
     filename: 'plantilla_club.xlsx',
     sheetName: 'Club',
-    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Número socio'],
+    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'SALDO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Num. Membresía'],
     rows: [
-      ['Luis',      'Ramírez Torres',  '5512345678', 'Socio Activo',    'lramirez@gmail.com', 'Tu cuota mensual está pendiente.', 'https://pago.ejemplo.com/001', 'SOC001'],
-      ['Patricia',  'Sánchez Vega',    '5587654321', 'Socio Familiar',  '',                   'Tu cuota mensual está pendiente.', 'https://pago.ejemplo.com/002', 'SOC002'],
-      ['Roberto',   'Cruz Medina',     '5511223344', 'Socio Junior',    'roberto@yahoo.com',  'Tu cuota mensual está pendiente.', '',                            'SOC003'],
+      ['Luis',      'Ramírez Torres',  '5512345678', 'Socio Activo',   1200, 'lramirez@gmail.com', 'Tu cuota mensual está pendiente. Puedes pagarla en el siguiente enlace.', 'https://pago.ejemplo.com/001', 'SOC001'],
+      ['Patricia',  'Sánchez Vega',    '5587654321', 'Socio Familiar', 2400, '',                   'Tu cuota mensual está pendiente. Puedes pagarla en el siguiente enlace.', 'https://pago.ejemplo.com/002', 'SOC002'],
+      ['Roberto',   'Cruz Medina',     '5511223344', 'Socio Junior',    800, 'roberto@yahoo.com',  'Tu cuota mensual está pendiente. Puedes pagarla en el siguiente enlace.', '',                            'SOC003'],
     ],
-    widths: [16, 20, 14, 18, 28, 52, 36, 12],
+    widths: [16, 20, 14, 18, 10, 28, 52, 36, 14],
+  },
+  // gimnasio is an alias for club (same template)
+  gimnasio: {
+    filename: 'plantilla_gimnasio.xlsx',
+    sheetName: 'Gimnasio',
+    headers: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'SALDO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Num. Membresía'],
+    rows: [
+      ['María',   'González López',    '5512345678', 'Membresía Oro',   1500, 'mgonzalez@gmail.com', 'Tu mensualidad de junio está pendiente. Puedes pagarla en el siguiente enlace.', 'https://pago.ejemplo.com/001', 'GYM001'],
+      ['Carlos',  'Martínez Ruiz',     '5587654321', 'Clase Spinning',   800, '',                    'Tu mensualidad de junio está pendiente. Puedes pagarla en el siguiente enlace.', 'https://pago.ejemplo.com/002', 'GYM002'],
+      ['Ana',     'López Hernández',   '5511223344', 'Membresía Plata', 1200, 'ana@hotmail.com',     'Tu mensualidad de junio está pendiente. Puedes pagarla en el siguiente enlace.', '',                            'GYM003'],
+    ],
+    widths: [16, 20, 14, 18, 10, 28, 52, 36, 14],
   },
   general: {
     filename: 'plantilla_general.xlsx',

@@ -8,15 +8,9 @@ import {
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI, teamAPI } from '../lib/api.js'
 import supabase from '../lib/supabase.js'
+import { ORG_TYPE_OPTIONS } from '../config/orgTypeConfig.js'
 
-const ORG_TYPES = [
-  { value: 'general',    label: 'General' },
-  { value: 'condominio', label: 'Condominio' },
-  { value: 'colegio',    label: 'Colegio / Escuela' },
-  { value: 'gimnasio',   label: 'Gimnasio' },
-  { value: 'club',       label: 'Club deportivo' },
-  { value: 'academia',   label: 'Academia' },
-]
+const ORG_TYPES = ORG_TYPE_OPTIONS
 
 // SAT catalog — Regímenes fiscales más comunes
 const REGIMENES_FISCALES = [

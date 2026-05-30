@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import StatusBadge from '../../components/shared/StatusBadge.jsx'
 import { adminAPI } from '../../lib/api.js'
+import { ORG_TYPE_OPTIONS } from '../../config/orgTypeConfig.js'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -28,14 +29,7 @@ function slugify(str) {
 
 const PLANS = ['basic', 'pro', 'enterprise']
 const STATUSES = ['trial', 'active', 'suspended', 'cancelled']
-const ORG_TYPES = [
-  { value: 'general',    label: 'General' },
-  { value: 'condominio', label: 'Condominio' },
-  { value: 'colegio',    label: 'Colegio / Escuela' },
-  { value: 'gimnasio',   label: 'Gimnasio' },
-  { value: 'club',       label: 'Club deportivo' },
-  { value: 'academia',   label: 'Academia' },
-]
+const ORG_TYPES = ORG_TYPE_OPTIONS
 
 // ─── Onboarding Modal ────────────────────────────────────────────────────────
 

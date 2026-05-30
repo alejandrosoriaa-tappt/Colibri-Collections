@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { contactsAPI, uploadAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 // ── Sección escolar options ────────────────────────────────────────────────────
 const SECCIONES = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria / Bachillerato', 'Universidad']
@@ -34,16 +35,20 @@ function daysSince(dateStr) {
 
 // ── Add Contact Modal (dinámico según org_type) ───────────────────────────────
 function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
+  const orgConfig    = getOrgConfig(orgType)
   const isColegio    = orgType === 'colegio' || orgType === 'academia'
   const isCondominio = orgType === 'condominio'
+  const isClub       = orgType === 'club' || orgType === 'gimnasio'
 
   const [form, setForm] = useState({
     nombre: '', apellido: '', telefono: '', email: '',
     grupo: '', payment_link: '',
-    // Colegio
+    // Colegio / Academia
     seccion: '', grado: '', salon: '', nombre_alumno: '',
     // Condominio
-    fraccionamiento: '', torre: '', num_interior: ''
+    fraccionamiento: '', torre: '', num_interior: '',
+    // Club / Gym
+    id_externo: '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -64,7 +69,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
         email: form.email.trim() || undefined,
         payment_link: form.payment_link.trim() || undefined,
         org_type: orgType,
-        // Colegio
+        // Colegio / Academia
         ...(isColegio && {
           seccion: form.seccion || undefined,
           grado: form.grado || undefined,
@@ -77,8 +82,13 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           torre: form.torre.trim() || undefined,
           num_interior: form.num_interior.trim() || undefined
         }),
-        // Fallback grupo for generic types
-        ...(!isColegio && !isCondominio && { grupo: form.grupo.trim() || undefined })
+        // Club / Gym
+        ...(isClub && {
+          grupo: form.grupo.trim() || undefined,
+          id_externo: form.id_externo.trim() || undefined,
+        }),
+        // Generic
+        ...(!isColegio && !isCondominio && !isClub && { grupo: form.grupo.trim() || undefined })
       })
       onSaved()
     } catch (err) {
@@ -182,8 +192,36 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             </>
           )}
 
-          {/* ── GENERAL / GIMNASIO / CLUB ── */}
-          {!isColegio && !isCondominio && (
+          {/* ── CLUB / GIMNASIO ── */}
+          {isClub && (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Nombre <span className="text-md-error">*</span></label>
+                  <input className="input" value={form.nombre} onChange={set('nombre')}
+                    placeholder="María" required autoFocus />
+                </div>
+                <div>
+                  <label className="label">Apellido</label>
+                  <input className="input" value={form.apellido} onChange={set('apellido')}
+                    placeholder="González" />
+                </div>
+              </div>
+              <div>
+                <label className="label">{orgConfig.groupLabel}</label>
+                <input className="input" value={form.grupo} onChange={set('grupo')}
+                  placeholder="Ej. Membresía Oro, Socio Activo, Gold" />
+              </div>
+              <div>
+                <label className="label">{orgConfig.idExternoLabel} <span className="text-md-on-surface-variant font-normal">(opcional)</span></label>
+                <input className="input font-mono" value={form.id_externo} onChange={set('id_externo')}
+                  placeholder="Ej. GYM001, SOC-123" />
+              </div>
+            </>
+          )}
+
+          {/* ── GENERAL ── */}
+          {!isColegio && !isCondominio && !isClub && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -200,7 +238,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
               <div>
                 <label className="label">Grupo / Segmento</label>
                 <input className="input" value={form.grupo} onChange={set('grupo')}
-                  placeholder="Ej. Membresía Oro, Clase Spinning" />
+                  placeholder="Ej. Grupo A, Norte" />
               </div>
             </>
           )}
@@ -497,6 +535,8 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
 export default function ContactsPage() {
   const { tenant } = useAuthStore()
   const orgType = tenant?.org_type || 'general'
+  const orgConfig = getOrgConfig(orgType)
+  const isClub = orgType === 'club' || orgType === 'gimnasio'
   const [contacts, setContacts] = useState([])
   const [total, setTotal] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -658,8 +698,10 @@ export default function ContactsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-md-on-surface">Contactos</h1>
-          <p className="text-sm text-md-on-surface-variant mt-0.5">{total.toLocaleString('es-MX')} {statusTab === 'active' ? 'activos' : statusTab === 'inactive' ? 'inactivos' : 'contactos'}</p>
+          <h1 className="text-2xl font-semibold text-md-on-surface">{orgConfig.contactLabelPlural}</h1>
+          <p className="text-sm text-md-on-surface-variant mt-0.5">
+            {total.toLocaleString('es-MX')} {statusTab === 'active' ? 'activos' : statusTab === 'inactive' ? 'inactivos' : orgConfig.contactLabelPlural.toLowerCase()}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -705,7 +747,7 @@ export default function ContactsPage() {
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-md-on-surface-variant" />
           <input
             className="input pl-9"
-            placeholder="Buscar por nombre, alumno, teléfono..."
+            placeholder={orgConfig.searchPlaceholder}
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -788,7 +830,14 @@ export default function ContactsPage() {
                         className="rounded accent-md-primary cursor-pointer"
                       />
                     </th>
-                    {['Nombre', 'Teléfono', 'Grupo', statusTab !== 'active' ? 'Inactivo desde' : 'Alta', 'Acciones'].map(h => (
+                    {[
+                      orgConfig.contactLabel,
+                      'Teléfono',
+                      orgConfig.groupLabel,
+                      ...(isClub ? [orgConfig.idExternoLabel] : []),
+                      statusTab !== 'active' ? 'Inactivo desde' : 'Alta',
+                      'Acciones'
+                    ].map(h => (
                       <th key={h} className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
@@ -820,7 +869,7 @@ export default function ContactsPage() {
                           </p>
                           {c.nombre_alumno && (
                             <p className="text-xs text-md-on-surface-variant mt-0.5">
-                              Alumno: {c.nombre_alumno}
+                              {orgConfig.studentLabel || 'Alumno'}: {c.nombre_alumno}
                             </p>
                           )}
                           {inactive && (
@@ -831,6 +880,9 @@ export default function ContactsPage() {
                         </td>
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.telefono}</td>
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">{c.grupo || '—'}</td>
+                        {isClub && (
+                          <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.id_externo || '—'}</td>
+                        )}
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">
                           {inactive && days !== null ? (
                             <span className={`text-xs ${days > 20 ? 'text-md-error font-medium' : 'text-orange-600'}`}>
