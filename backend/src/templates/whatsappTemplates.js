@@ -2,14 +2,20 @@ import { formatCurrency, formatDate } from './messages.js'
 
 // ================================================================
 // REGISTERED META TEMPLATE NAMES
+// Must match exactly the names approved in Meta WhatsApp Manager (cuenta Kollybry).
 // ================================================================
 export const TEMPLATE_NAMES = {
-  BIENVENIDA:         'kollybry_bienvenida',
-  RECORDATORIO_PAGO:  'kollybry_recordatorio_pago',
-  AVISO_VENCIDO:      'kollybry_aviso_vencido',
-  COMUNICADO:         'kollybry_comunicado',
-  COMUNICADO_IMAGEN:  'kollybry_comunicado_imagen',
-  CONFIRMACION_PAGO:  'kollybry_confirmacion_pago'
+  // Onboarding: welcome message sent to new tenant admin
+  BIENVENIDA_TENANT:    'kollybry_bienvenida_credenciales',
+  // Community: sent to each contact the first time they're added to a tenant
+  BIENVENIDA_COMUNIDAD: 'kollybry_bienvenida_comunidad',
+  // Payments
+  RECORDATORIO_PAGO:    'kollybry_recordatorio_pago',
+  AVISO_VENCIDO:        'kollybry_aviso_vencido',
+  CONFIRMACION_PAGO:    'kollybry_confirmacion_pago',
+  // Announcements
+  COMUNICADO:           'kollybry_comunicado',
+  COMUNICADO_IMAGEN:    'kollybry_comunicado_imagen',
 }
 
 // ================================================================
@@ -43,10 +49,22 @@ function toFecha(dateStr) {
 // ================================================================
 
 /**
- * kollybry_bienvenida
+ * kollybry_bienvenida_credenciales  (BIENVENIDA_TENANT)
+ * Sent to the tenant admin on onboarding.
+ * "En {{2}} te damos la bienvenida a este nuevo servicio proporcionado por Kollybry."
  * {{1}} nombre  {{2}} orgName
  */
-export function bienvenidaComponents({ nombre, orgName }) {
+export function bienvenidaTenantComponents({ nombre, orgName }) {
+  return bodyOnly(nombre, orgName)
+}
+
+/**
+ * kollybry_bienvenida_comunidad  (BIENVENIDA_COMUNIDAD)
+ * Sent to every contact the first time they are added to a tenant.
+ * "{{2}} te da la bienvenida a este nuevo servicio proporcionado por Kollybry."
+ * {{1}} nombre  {{2}} orgName
+ */
+export function bienvenidaComunidadComponents({ nombre, orgName }) {
   return bodyOnly(nombre, orgName)
 }
 

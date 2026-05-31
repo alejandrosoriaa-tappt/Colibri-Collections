@@ -9,7 +9,7 @@ import supabase, {
 } from '../services/supabase.js'
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { sendOperationalNotification } from '../services/notifier.js'
-import { bienvenidaComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
+import { bienvenidaTenantComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -337,9 +337,9 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       // {{1}} = org name (who's being welcomed), {{2}} = "Kollybry" (the platform)
       const welcomeResult = await sendWhatsAppTemplate(
         admin_phone,
-        TEMPLATE_NAMES.BIENVENIDA,
+        TEMPLATE_NAMES.BIENVENIDA_TENANT,
         'es',
-        bienvenidaComponents({ nombre: org_name, orgName: 'Kollybry' })
+        bienvenidaTenantComponents({ nombre: org_name, orgName: 'Kollybry' })
       )
       whatsappSent = welcomeResult.success
 
