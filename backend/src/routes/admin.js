@@ -7,8 +7,9 @@ import supabase, {
   getTenant,
   getActiveTenants
 } from '../services/supabase.js'
-import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { sendOperationalNotification } from '../services/notifier.js'
+import { bienvenidaComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -329,12 +330,25 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       .insert({ tenant_id: tenant.id, user_id: authUser.id, role: 'owner' })
     if (linkErr) throw new Error(`Error vinculando usuario: ${linkErr.message}`)
 
-    // 4. Send welcome WhatsApp (if phone provided and flag is true)
+    // 4. Send welcome WhatsApp using approved template (required for first contact with new numbers)
     let whatsappSent = false
     if (send_whatsapp && admin_phone) {
-      const welcomeText = `¡Bienvenido a Kollybry! 🎉\n\nHola, aquí están tus credenciales de acceso:\n\n📧 Usuario: ${email}\n🔑 Contraseña temporal: ${password}\n\n🔗 Accede en: https://app.kollybry.com\n\n⚠️ Te recomendamos cambiar tu contraseña en Configuración al entrar por primera vez.\n\n¿Dudas? Estamos aquí para ayudarte.`
-      const result = await sendWhatsAppMessage(admin_phone, welcomeText)
-      whatsappSent = result.success
+      // Step 1: Send bienvenida template (Meta requires templates for first contact)
+      // {{1}} = org name (who's being welcomed), {{2}} = "Kollybry" (the platform)
+      const welcomeResult = await sendWhatsAppTemplate(
+        admin_phone,
+        TEMPLATE_NAMES.BIENVENIDA,
+        'es',
+        bienvenidaComponents({ nombre: org_name, orgName: 'Kollybry' })
+      )
+      whatsappSent = welcomeResult.success
+
+      // Step 2: If template sent successfully, follow up with credentials as free-form
+      // (now allowed because the template opened a 24h session window)
+      if (welcomeResult.success) {
+        const credText = `Aquí están tus credenciales de acceso:\n\n📧 Usuario: ${email}\n🔑 Contraseña temporal: ${password}\n\n🔗 https://app.kollybry.com\n\n⚠️ Cambia tu contraseña en Configuración al entrar por primera vez.`
+        await sendWhatsAppMessage(admin_phone, credText)
+      }
     }
 
     return res.json({ tenant, user: { id: authUser.id, email }, whatsapp_sent: whatsappSent })
