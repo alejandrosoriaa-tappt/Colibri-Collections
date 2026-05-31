@@ -4,6 +4,8 @@ import { Megaphone, Plus, Loader2, X, AlertCircle, Users } from 'lucide-react'
 import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import StatusBadge from '../components/shared/StatusBadge.jsx'
 import { campaignsAPI, contactsAPI, broadcastsAPI } from '../lib/api.js'
+import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 const STATUS_FILTERS = [
   { value: '', label: 'Todas' },
@@ -11,23 +13,6 @@ const STATUS_FILTERS = [
   { value: 'draft', label: 'Borradores' },
   { value: 'paused', label: 'Pausadas' },
   { value: 'completed', label: 'Completadas' }
-]
-
-const CONCEPTOS = [
-  'Colegiatura',
-  'Reinscripción',
-  'Cuota de Materiales',
-  'Seguro Escolar',
-  'Actividades Extraescolares',
-  'Regularización Académica',
-  'Campamento Escolar',
-  'Mensualidad',
-  'Membresía',
-  'Cuota',
-  'Renta',
-  'Servicio',
-  'Inscripción',
-  'Otro'
 ]
 
 const MESES = [
@@ -63,6 +48,8 @@ const EMPTY_FORM = {
 }
 
 export default function CampaignsPage() {
+  const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [searchParams, setSearchParams] = useSearchParams()
   const [campaigns, setCampaigns] = useState([])
   const [groups, setGroups] = useState([])
@@ -154,7 +141,7 @@ export default function CampaignsPage() {
           className="btn-primary flex items-center gap-2 text-sm"
         >
           <Plus size={16} />
-          Nueva campaña de cobro
+          Nueva campaña
         </button>
       </div>
 
@@ -191,7 +178,7 @@ export default function CampaignsPage() {
               onClick={() => { setShowForm(true); setFormError(null) }}
               className="btn-primary inline-flex items-center gap-2 mt-4 text-sm"
             >
-              <Plus size={15} /> Crear primera campaña de cobro
+              <Plus size={15} /> Crear primera campaña
             </button>
           )}
         </div>
@@ -208,7 +195,7 @@ export default function CampaignsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900">Nueva campaña de cobro</h2>
+              <h2 className="text-lg font-semibold text-gray-900">Nueva campaña</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
@@ -226,7 +213,7 @@ export default function CampaignsPage() {
                 <label className="label">Nombre de la campaña *</label>
                 <input
                   className="input"
-                  placeholder="Ej. Mensualidades Mayo 2025"
+                  placeholder={orgConfig.campaignPlaceholder}
                   value={form.name}
                   onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                   required
@@ -234,7 +221,7 @@ export default function CampaignsPage() {
               </div>
 
               <div>
-                <label className="label">Concepto de mensaje *</label>
+                <label className="label">Concepto *</label>
                 <select
                   className="input"
                   value={form.concept}
@@ -242,7 +229,7 @@ export default function CampaignsPage() {
                   required
                 >
                   <option value="">-- Selecciona un concepto --</option>
-                  {CONCEPTOS.map(c => (
+                  {orgConfig.conceptos.map(c => (
                     <option key={c} value={c.toLowerCase()}>{c}</option>
                   ))}
                 </select>
@@ -295,14 +282,14 @@ export default function CampaignsPage() {
 
               <div>
                 <label className="label">
-                  Segmento / Grupo <span className="text-gray-400 font-normal">(opcional)</span>
+                  {orgConfig.groupLabel} <span className="text-gray-400 font-normal">(opcional)</span>
                 </label>
                 <select
                   className="input"
                   value={form.grupo_filter}
                   onChange={e => setForm(f => ({ ...f, grupo_filter: e.target.value }))}
                 >
-                  <option value="">— Todos los contactos —</option>
+                  <option value="">— Todos los {orgConfig.contactLabelPlural.toLowerCase()} —</option>
                   {groups.map(g => (
                     <option key={g} value={g}>{g}</option>
                   ))}
@@ -311,7 +298,7 @@ export default function CampaignsPage() {
                   <div className="flex items-center gap-1.5 mt-1.5">
                     <Users size={12} className="text-colibri" />
                     <p className="text-xs text-colibri font-medium">
-                      {groupContactCount} contacto{groupContactCount !== 1 ? 's' : ''} {form.grupo_filter ? `en "${form.grupo_filter}"` : 'en total'}
+                      {groupContactCount} {groupContactCount !== 1 ? orgConfig.contactLabelPlural.toLowerCase() : orgConfig.contactLabel.toLowerCase()} {form.grupo_filter ? `en "${form.grupo_filter}"` : 'en total'}
                     </p>
                   </div>
                 )}

@@ -5,9 +5,11 @@ import CampaignCard from '../components/campaigns/CampaignCard.jsx'
 import KpiBar from '../components/shared/KpiBar.jsx'
 import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 export default function DashboardPage() {
   const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [campaigns, setCampaigns] = useState([])
   const [broadcasts, setBroadcasts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -72,7 +74,7 @@ export default function DashboardPage() {
           </div>
           <p className="font-semibold text-md-on-surface text-lg">¡Bienvenido a Kollybry!</p>
           <p className="text-md-on-surface-variant text-sm mt-2 max-w-xs mx-auto">
-            Envía tu primer mensaje a tus contactos. Puedes crear comunicados generales o recordatorios de cobro.
+            Envía tu primer mensaje a tus {orgConfig.contactLabelPlural.toLowerCase()}. Puedes crear comunicados generales o recordatorios de {orgConfig.amountLabel.toLowerCase()}.
           </p>
           <Link to="/mensajes" className="btn-primary inline-flex mt-6 text-sm gap-2">
             <Plus size={16} />
@@ -85,7 +87,7 @@ export default function DashboardPage() {
       {activeCampaigns.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-md-on-surface">Campañas de cobro activas</h2>
+            <h2 className="text-base font-semibold text-md-on-surface">Campañas activas</h2>
             <Link to="/campaigns" className="text-sm text-md-primary hover:text-md-primary/80 flex items-center gap-1 font-medium">
               Ver todas <ArrowRight size={14} />
             </Link>
