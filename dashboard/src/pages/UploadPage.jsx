@@ -8,10 +8,12 @@ import {
 import FileUploadZone from '../components/upload/FileUploadZone.jsx'
 import { campaignsAPI, sheetsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 // ── Google Sheets tab ─────────────────────────────────────────────
 function SheetsImporter({ campaignId, campaignName, onSuccess }) {
   const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [url, setUrl]                 = useState(tenant?.sheets_url || '')
   const [preview, setPreview]         = useState(null)
   const [previewErr, setPreviewErr]   = useState(null)
@@ -134,7 +136,7 @@ function SheetsImporter({ campaignId, campaignName, onSuccess }) {
             {/* Group breakdown */}
             {preview.groups?.length > 0 && (
               <div className="space-y-1.5 mb-3">
-                <p className="text-xs font-medium text-md-on-surface-variant uppercase tracking-wide">Por grupo</p>
+                <p className="text-xs font-medium text-md-on-surface-variant uppercase tracking-wide">Por {orgConfig.groupLabel.toLowerCase()}</p>
                 <div className="flex flex-wrap gap-2">
                   {preview.groups.map(g => (
                     <span
@@ -262,6 +264,7 @@ function SheetsImporter({ campaignId, campaignName, onSuccess }) {
 export default function UploadPage() {
   const [searchParams] = useSearchParams()
   const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const preSelectedId = searchParams.get('campaign')
 
   const [campaigns, setCampaigns]     = useState([])
@@ -391,7 +394,7 @@ export default function UploadPage() {
               <div className="bg-md-surface-container rounded-2xl p-4 text-xs">
                 <p className="font-semibold text-md-on-surface mb-2">Columnas del archivo</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'].map(col => (
+                  {orgConfig.uploadColumns.map(col => (
                     <span key={col} className="px-2 py-0.5 bg-white rounded-lg border border-md-outline-variant text-md-on-surface-variant">
                       {col}
                     </span>

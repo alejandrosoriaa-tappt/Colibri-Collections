@@ -6,6 +6,8 @@ import {
   Users, Calendar, FileText, ArrowRight
 } from 'lucide-react'
 import { campaignsAPI, broadcastsAPI, contactsAPI } from '../lib/api.js'
+import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 const TYPE_FILTERS = [
   { key: 'all', label: 'Todos' },
@@ -128,6 +130,8 @@ function SkeletonCard() {
 // ── Broadcast detail modal ────────────────────────────────────
 function BroadcastDetailModal({ broadcast, onClose }) {
   const navigate = useNavigate()
+  const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [groupContacts, setGroupContacts] = useState([])
   const [loadingContacts, setLoadingContacts] = useState(false)
   const [showContacts, setShowContacts] = useState(false)
@@ -245,8 +249,8 @@ function BroadcastDetailModal({ broadcast, onClose }) {
                             <p className="text-sm font-medium text-md-on-surface truncate">
                               {[c.nombre, c.apellido].filter(Boolean).join(' ')}
                             </p>
-                            {c.nombre_alumno && (
-                              <p className="text-xs text-md-on-surface-variant">Alumno: {c.nombre_alumno}</p>
+                            {c.nombre_alumno && orgConfig.hasStudent && (
+                              <p className="text-xs text-md-on-surface-variant">{orgConfig.studentLabel}: {c.nombre_alumno}</p>
                             )}
                           </div>
                           <p className="text-xs text-md-on-surface-variant font-mono flex-shrink-0">{c.telefono}</p>
@@ -257,7 +261,7 @@ function BroadcastDetailModal({ broadcast, onClose }) {
                   {groupContacts.length > 0 && (
                     <div className="px-4 py-2 border-t border-md-outline-variant/30">
                       <p className="text-xs text-md-on-surface-variant">
-                        {groupContacts.length} contacto{groupContacts.length !== 1 ? 's' : ''} en el grupo
+                        {groupContacts.length} {groupContacts.length !== 1 ? orgConfig.contactLabelPlural.toLowerCase() : orgConfig.contactLabel.toLowerCase()} en el grupo
                       </p>
                     </div>
                   )}
@@ -269,7 +273,7 @@ function BroadcastDetailModal({ broadcast, onClose }) {
           {!broadcast.group_filter && (
             <div className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
               <Users size={14} className="text-md-on-surface-variant" />
-              <span className="text-sm text-md-on-surface">Enviado a <strong>todos los contactos</strong></span>
+              <span className="text-sm text-md-on-surface">Enviado a <strong>todos los {orgConfig.contactLabelPlural.toLowerCase()}</strong></span>
             </div>
           )}
 
@@ -292,6 +296,8 @@ function BroadcastDetailModal({ broadcast, onClose }) {
 
 export default function MensajesPage() {
   const navigate = useNavigate()
+  const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [campaigns, setCampaigns] = useState([])
   const [broadcasts, setBroadcasts] = useState([])
   const [filter, setFilter] = useState('all')
@@ -318,7 +324,7 @@ export default function MensajesPage() {
       id: `campaign-${c.id}`,
       type: 'cobro',
       title: c.name,
-      subtitle: `${c.total_contacts || 0} contactos · ${c.grupo_filter || 'Sin grupo'}`,
+      subtitle: `${c.total_contacts || 0} ${orgConfig.contactLabelPlural.toLowerCase()} · ${c.grupo_filter || 'Sin grupo'}`,
       sent: c.msg_stats?.sent || 0,
       total: c.total_contacts || 0,
       status: c.status,
@@ -329,7 +335,7 @@ export default function MensajesPage() {
       id: `broadcast-${b.id}`,
       type: 'comunicado',
       title: b.title,
-      subtitle: b.group_filter ? `Grupo: ${b.group_filter}` : 'Todos los contactos',
+      subtitle: b.group_filter ? `${orgConfig.groupLabel}: ${b.group_filter}` : `Todos los ${orgConfig.contactLabelPlural.toLowerCase()}`,
       sent: b.sent_count || 0,
       total: b.total_contacts || 0,
       status: b.status || 'sent',

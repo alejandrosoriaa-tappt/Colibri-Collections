@@ -8,6 +8,8 @@ import {
 import StatusBadge from '../components/shared/StatusBadge.jsx'
 import KpiBar from '../components/shared/KpiBar.jsx'
 import { campaignsAPI, invoicesAPI, contactsAPI } from '../lib/api.js'
+import useAuthStore from '../store/authStore.js'
+import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('es-MX', {
@@ -22,7 +24,7 @@ function formatDate(dateStr) {
   })
 }
 
-function InvoiceRow({ invoice, onMarkPaid }) {
+function InvoiceRow({ invoice, onMarkPaid, orgConfig }) {
   const contact = invoice.contacts || {}
   const name = [contact.nombre, contact.apellido].filter(Boolean).join(' ') || '—'
   const isPaid = invoice.status === 'paid'
@@ -32,8 +34,8 @@ function InvoiceRow({ invoice, onMarkPaid }) {
     <tr className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
       <td className="py-3 px-4">
         <p className="text-sm font-medium text-gray-900">{name}</p>
-        {contact.nombre_alumno && (
-          <p className="text-xs text-gray-400 mt-0.5">Alumno: {contact.nombre_alumno}</p>
+        {contact.nombre_alumno && orgConfig?.hasStudent && (
+          <p className="text-xs text-gray-400 mt-0.5">{orgConfig.studentLabel}: {contact.nombre_alumno}</p>
         )}
       </td>
       <td className="py-3 px-4 text-sm text-gray-600">{contact.telefono}</td>
@@ -160,6 +162,8 @@ function MessageEditor({ msg, onSave, onSend }) {
 export default function CampaignDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { tenant } = useAuthStore()
+  const orgConfig = getOrgConfig(tenant?.org_type)
   const [campaign, setCampaign] = useState(null)
   const [messages, setMessages] = useState([])
   const [invoices, setInvoices] = useState([])
@@ -538,6 +542,7 @@ export default function CampaignDetailPage() {
                       key={inv.id}
                       invoice={inv}
                       onMarkPaid={setMarkingInvoice}
+                      orgConfig={orgConfig}
                     />
                   ))}
                 </tbody>
@@ -566,7 +571,7 @@ export default function CampaignDetailPage() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   className="input pl-9 text-sm"
-                  placeholder="Buscar por nombre, alumno, teléfono..."
+                  placeholder={orgConfig.searchPlaceholder}
                   value={contactSearch}
                   onChange={e => setContactSearch(e.target.value)}
                   autoFocus
@@ -611,8 +616,8 @@ export default function CampaignDetailPage() {
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {[c.nombre, c.apellido].filter(Boolean).join(' ')}
                         </p>
-                        {c.nombre_alumno && (
-                          <p className="text-xs text-gray-400">Alumno: {c.nombre_alumno}</p>
+                        {c.nombre_alumno && orgConfig.hasStudent && (
+                          <p className="text-xs text-gray-400">{orgConfig.studentLabel}: {c.nombre_alumno}</p>
                         )}
                         <p className="text-xs text-gray-400 font-mono">{c.telefono}</p>
                       </div>

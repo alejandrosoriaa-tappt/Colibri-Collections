@@ -18,6 +18,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Colegiatura Mayo 2025',
     searchPlaceholder: 'Buscar por familia, alumno, teléfono...',
     hasMembership: false,
+    uploadColumns: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
     conceptos: [
       'Colegiatura',
       'Reinscripción',
@@ -43,6 +44,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Mensualidad Mayo 2025',
     searchPlaceholder: 'Buscar por familia, alumno, teléfono...',
     hasMembership: false,
+    uploadColumns: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'NIVEL', 'GRUPO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
     conceptos: [
       'Mensualidad',
       'Inscripción',
@@ -67,6 +69,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Mensualidad Mayo 2025',
     searchPlaceholder: 'Buscar por nombre, membresía, teléfono...',
     hasMembership: true,
+    uploadColumns: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'SALDO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Num. Membresía'],
     conceptos: [
       'Mensualidad',
       'Membresía Anual',
@@ -92,6 +95,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Mensualidad Mayo 2025',
     searchPlaceholder: 'Buscar por nombre, membresía, teléfono...',
     hasMembership: true,
+    uploadColumns: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'CATEGORÍA', 'SALDO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Num. Membresía'],
     conceptos: [
       'Mensualidad',
       'Membresía Anual',
@@ -115,6 +119,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Mantenimiento Mayo 2025',
     searchPlaceholder: 'Buscar por nombre, torre, teléfono...',
     hasMembership: false,
+    uploadColumns: ['NOMBRE CONDÓMINO', 'TELÉFONO', 'FRACCIONAMIENTO', 'TORRE', 'NÚMERO INTERIOR', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago'],
     conceptos: [
       'Cuota de mantenimiento',
       'Cuota extraordinaria',
@@ -140,6 +145,7 @@ export const ORG_CONFIG = {
     campaignPlaceholder: 'Ej. Cobro Mayo 2025',
     searchPlaceholder: 'Buscar por nombre, teléfono...',
     hasMembership: false,
+    uploadColumns: ['NOMBRE', 'APELLIDO', 'TELÉFONO', 'GRUPO', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'ID Externo'],
     conceptos: [
       'Mensualidad',
       'Membresía',
