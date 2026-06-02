@@ -96,10 +96,56 @@ async function handleStatusUpdate(statusUpdate) {
 }
 
 async function handleIncomingMessage(message, contacts) {
-  // Log incoming messages for reference but don't act on them automatically
-  console.log('Webhook: Incoming message from', message.from, ':', message.text?.body?.substring(0, 50))
+  const from = message.from // E.164 digits without +, e.g. "5215512345678"
+  const text = (message.text?.body || message.button?.text || '').trim().toLowerCase()
 
-  // Could implement auto-response or payment confirmation logic here
+  console.log('Webhook: Incoming message from', from, ':', text.substring(0, 60))
+
+  // Detect "Recibido" quick-reply — marks tenant onboarding as confirmed
+  if (text.includes('recibido')) {
+    await handleOnboardingConfirmation(from)
+  }
+}
+
+async function handleOnboardingConfirmation(fromPhone) {
+  try {
+    // Meta sends phone without +, normalize both sides for comparison
+    // Strip non-digits from stored admin_phone to match Meta format
+    const { data: tenants, error } = await supabase
+      .from('tenants')
+      .select('id, display_name, admin_phone, whatsapp_confirmed_at')
+      .not('admin_phone', 'is', null)
+
+    if (error || !tenants?.length) return
+
+    const matched = tenants.find(t => {
+      const stored = String(t.admin_phone || '').replace(/[^\d]/g, '')
+      return stored === fromPhone || stored === `1${fromPhone}`
+    })
+
+    if (!matched) {
+      console.log('Webhook: "Recibido" reply from unknown number:', fromPhone)
+      return
+    }
+
+    if (matched.whatsapp_confirmed_at) {
+      console.log(`Webhook: Tenant ${matched.display_name} already confirmed`)
+      return
+    }
+
+    const { error: updateErr } = await supabase
+      .from('tenants')
+      .update({ whatsapp_confirmed_at: new Date().toISOString() })
+      .eq('id', matched.id)
+
+    if (updateErr) {
+      console.error('Webhook: Failed to confirm tenant onboarding:', updateErr)
+    } else {
+      console.log(`Webhook: ✅ Onboarding confirmed for tenant "${matched.display_name}" (${matched.id})`)
+    }
+  } catch (err) {
+    console.error('Webhook: Error in handleOnboardingConfirmation:', err)
+  }
 }
 
 export default router

@@ -418,9 +418,21 @@ export default function TenantsPage() {
           <ArrowLeft size={16} /> Tenants
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-2xl font-semibold text-md-on-surface">{tenant.display_name || tenant.name}</h1>
           <StatusBadge status={tenant.status} />
+          <span
+            className={`text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-full ${
+              tenant.whatsapp_confirmed_at
+                ? 'bg-green-100 text-green-700'
+                : 'bg-md-surface-container text-md-on-surface-variant'
+            }`}
+          >
+            <MessageSquare size={11} />
+            {tenant.whatsapp_confirmed_at
+              ? `WA confirmado ${new Date(tenant.whatsapp_confirmed_at).toLocaleDateString('es-MX')}`
+              : 'WA pendiente'}
+          </span>
         </div>
 
         <div className="card">
@@ -524,7 +536,22 @@ export default function TenantsPage() {
                     <p className="text-xs text-md-on-surface-variant">{t.slug} · {t.plan}</p>
                   </div>
                 </div>
-                <StatusBadge status={t.status} size="xs" />
+                <div className="flex items-center gap-2">
+                  <span
+                    title={t.whatsapp_confirmed_at
+                      ? `WA confirmado ${new Date(t.whatsapp_confirmed_at).toLocaleDateString('es-MX')}`
+                      : 'WA pendiente de confirmar'}
+                    className={`text-xs flex items-center gap-1 px-2 py-0.5 rounded-full ${
+                      t.whatsapp_confirmed_at
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-md-surface-container text-md-on-surface-variant'
+                    }`}
+                  >
+                    <MessageSquare size={10} />
+                    {t.whatsapp_confirmed_at ? '✓' : '…'}
+                  </span>
+                  <StatusBadge status={t.status} size="xs" />
+                </div>
               </div>
             ))}
           </div>
