@@ -1,36 +1,7 @@
 import axios from 'axios'
+import { normalizePhone } from '../utils/phone.js'
 
 const GRAPH_URL = 'https://graph.facebook.com/v20.0'
-
-/**
- * Normalizes a Mexican phone number to E.164 format for WhatsApp API.
- * Handles common input formats:
- *   5512345678        → +5215512345678  (10 digits, local)
- *   525512345678      → +5215512345678  (12 digits, missing the mobile 1)
- *   5215512345678     → +5215512345678  (13 digits, missing +)
- *   +5215512345678    → +5215512345678  (already correct)
- *   +525512345678     → +5215512345678  (international without mobile 1)
- */
-export function normalizePhone(phone) {
-  if (!phone) return phone
-  // Strip everything except digits and leading +
-  const digits = String(phone).replace(/[^\d]/g, '')
-
-  if (digits.length === 10) {
-    // Local Mexican number: 55XXXXXXXX → +521 55XXXXXXXX
-    return `+521${digits}`
-  }
-  if (digits.length === 12 && digits.startsWith('52')) {
-    // Missing mobile 1: 52XXXXXXXXXX → +521XXXXXXXXXX
-    return `+521${digits.slice(2)}`
-  }
-  if (digits.length === 13 && digits.startsWith('521')) {
-    // Correct but missing +
-    return `+${digits}`
-  }
-  // Already correct (+521XXXXXXXXXX) or unknown format — return as-is with +
-  return phone.startsWith('+') ? phone : `+${digits}`
-}
 
 export async function sendWhatsAppMessage(phone, text) {
   const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID

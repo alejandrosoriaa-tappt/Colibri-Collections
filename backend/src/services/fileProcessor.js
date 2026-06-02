@@ -8,6 +8,7 @@ import {
   getTenant
 } from './supabase.js'
 import { sendOperationalNotification } from './notifier.js'
+import { normalizePhone } from '../utils/phone.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
@@ -49,37 +50,6 @@ function detectColumns(headers) {
   return mapping
 }
 
-function normalizePhone(raw) {
-  if (!raw) return null
-
-  // Remove all non-digit characters except leading +
-  let phone = String(raw).trim()
-  phone = phone.replace(/[\s\-\(\)\.]/g, '')
-
-  // Remove leading + for processing
-  const hadPlus = phone.startsWith('+')
-  if (hadPlus) phone = phone.substring(1)
-
-  // Remove 52 or 521 prefix if present
-  if (phone.startsWith('521') && phone.length === 13) {
-    // Already has 521 prefix + 10 digits = 13 digits, just add +
-    return '+' + phone
-  }
-  if (phone.startsWith('52') && phone.length === 12) {
-    // 52 + 10 digits, convert to +521XXXXXXXXXX
-    return '+521' + phone.substring(2)
-  }
-  if (phone.length === 10) {
-    // Plain 10-digit Mexican number
-    return '+521' + phone
-  }
-  if (phone.length === 11 && phone.startsWith('1')) {
-    // US number starting with 1, leave as is with country code
-    return '+' + phone
-  }
-
-  return null
-}
 
 function normalizeMonto(raw) {
   if (raw === null || raw === undefined || raw === '') return null
