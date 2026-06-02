@@ -338,7 +338,7 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       const welcomeResult = await sendWhatsAppTemplate(
         admin_phone,
         TEMPLATE_NAMES.BIENVENIDA_TENANT,
-        'es',
+        'es_MX',
         bienvenidaTenantComponents({ nombre: org_name, orgName: 'Kollybry' })
       )
       whatsappSent = welcomeResult.success
