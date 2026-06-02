@@ -177,6 +177,7 @@ export const adminAPI = {
   createTenant: (data) => api.post('/api/admin/tenants', data),
   updateTenant: (id, data) => api.patch(`/api/admin/tenants/${id}`, data),
   sendMessage: (id, message) => api.post(`/api/admin/tenants/${id}/send-message`, { message }),
+  resendWelcome: (id) => api.post(`/api/admin/tenants/${id}/resend-welcome`),
   listMessages: (params) => api.get('/api/admin/messages', { params }),
   addUserToTenant: (tenantId, data) => api.post(`/api/admin/tenants/${tenantId}/add-user`, data),
   onboard: (data) => api.post('/api/admin/onboard', data)

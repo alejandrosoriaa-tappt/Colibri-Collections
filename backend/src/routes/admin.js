@@ -218,6 +218,30 @@ router.patch('/tenants/:id', authMiddleware, adminOnly, async (req, res) => {
   }
 })
 
+// POST /api/admin/tenants/:id/resend-welcome — resend onboarding WhatsApp template
+router.post('/tenants/:id/resend-welcome', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.params.id)
+    if (!tenant) return res.status(404).json({ error: 'Tenant not found' })
+
+    if (!tenant.admin_phone) {
+      return res.status(400).json({ error: 'El tenant no tiene admin_phone configurado' })
+    }
+
+    const welcomeResult = await sendWhatsAppTemplate(
+      tenant.admin_phone,
+      TEMPLATE_NAMES.BIENVENIDA_TENANT,
+      'es_MX',
+      bienvenidaTenantComponents({ nombre: tenant.display_name || tenant.name, orgName: 'Kollybry' })
+    )
+
+    return res.json({ success: welcomeResult.success, error: welcomeResult.error })
+  } catch (err) {
+    console.error('POST /admin/tenants/:id/resend-welcome error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // POST /api/admin/tenants/:id/send-message
 router.post('/tenants/:id/send-message', authMiddleware, adminOnly, async (req, res) => {
   try {

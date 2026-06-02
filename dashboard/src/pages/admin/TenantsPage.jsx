@@ -362,6 +362,8 @@ export default function TenantsPage() {
   const [msg, setMsg] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [msgSent, setMsgSent] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendResult, setResendResult] = useState(null) // 'ok' | 'error'
 
   const loadTenants = () =>
     adminAPI.listTenants()
@@ -388,6 +390,19 @@ export default function TenantsPage() {
     } catch (err) {
       setFormError(err.response?.data?.error || err.message)
     } finally { setIsSaving(false) }
+  }
+
+  const handleResendWelcome = async () => {
+    setResending(true); setResendResult(null)
+    try {
+      const res = await adminAPI.resendWelcome(id)
+      setResendResult(res.data.success ? 'ok' : 'error')
+    } catch {
+      setResendResult('error')
+    } finally {
+      setResending(false)
+      setTimeout(() => setResendResult(null), 4000)
+    }
   }
 
   const handleSendMessage = async () => {
@@ -434,6 +449,32 @@ export default function TenantsPage() {
               : 'WA pendiente'}
           </span>
         </div>
+
+        {/* Resend welcome WhatsApp */}
+        {tenant.admin_phone && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResendWelcome}
+              disabled={resending}
+              className="btn-outline text-sm flex items-center gap-2"
+            >
+              {resending
+                ? <Loader2 size={13} className="animate-spin" />
+                : <MessageSquare size={13} />}
+              {resending ? 'Enviando...' : 'Reenviar WhatsApp de bienvenida'}
+            </button>
+            {resendResult === 'ok' && (
+              <span className="text-xs text-green-700 flex items-center gap-1">
+                <CheckCircle2 size={13} /> Enviado ✓
+              </span>
+            )}
+            {resendResult === 'error' && (
+              <span className="text-xs text-red-600 flex items-center gap-1">
+                <AlertCircle size={13} /> Error al enviar
+              </span>
+            )}
+          </div>
+        )}
 
         <div className="card">
           <h2 className="text-base font-semibold text-md-on-surface mb-4">Editar organización</h2>
