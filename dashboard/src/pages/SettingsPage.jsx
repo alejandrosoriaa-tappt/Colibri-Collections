@@ -499,71 +499,22 @@ export default function SettingsPage() {
       {/* ── Plan info ── */}
       {tenant && (
         <SectionCard icon={CreditCard} title="Plan y suscripción">
-          {/* Plans comparison */}
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              {
-                key: 'basico',
-                name: 'Básico',
-                price: '$399',
-                features: ['Hasta 150 contactos', '3 recordatorios por campaña', 'Comunicados por grupos', 'Soporte por email'],
-              },
-              {
-                key: 'profesional',
-                name: 'Profesional',
-                price: '$799',
-                popular: true,
-                features: ['Hasta 500 contactos', '4 recordatorios por campaña', 'Comunicados por grupos', 'Nombre del alumno y matrícula', 'Soporte prioritario'],
-              },
-              {
-                key: 'empresarial',
-                name: 'Empresarial',
-                price: '$1,499',
-                features: ['Contactos ilimitados', '5 recordatorios por campaña', 'Comunicados por grupos', 'Reportes avanzados', 'Soporte dedicado con WhatsApp'],
-              },
-            ].map(plan => {
-              const isActive = tenant.plan?.toLowerCase().includes(plan.key) || (plan.key === 'profesional' && !tenant.plan)
-              return (
-                <div key={plan.key} className={`rounded-2xl p-4 border-2 transition-colors ${
-                  isActive
-                    ? 'border-md-primary bg-md-primary-container/20'
-                    : 'border-md-outline-variant bg-md-surface-container-low'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-semibold text-md-on-surface">{plan.name}</p>
-                    <div className="flex gap-1">
-                      {plan.popular && !isActive && (
-                        <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full">Popular</span>
-                      )}
-                      {isActive && (
-                        <span className="text-[10px] font-bold bg-md-primary text-white px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                          <CheckCircle2 size={9} /> Tu plan
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <p className="text-xl font-bold text-md-primary mb-3">
-                    {plan.price}<span className="text-xs font-normal text-md-on-surface-variant">/mes</span>
-                  </p>
-                  <ul className="space-y-1.5">
-                    {plan.features.map(f => (
-                      <li key={f} className="flex items-start gap-1.5">
-                        <CheckCircle2 size={12} className="text-md-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-xs text-md-on-surface-variant">{f}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )
-            })}
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-md-on-surface-variant">Plan actual</p>
+              <p className="text-lg font-semibold text-md-on-surface capitalize mt-0.5">
+                {tenant.plan || 'Básico'}
+              </p>
+            </div>
+            <span className="px-3 py-1 rounded-full bg-md-primary-container text-md-on-primary-container text-xs font-medium capitalize">
+              {tenant.status === 'trial' ? 'En prueba' : 'Activo'}
+            </span>
           </div>
-
           <div className="pt-3 border-t border-md-outline-variant">
-            <p className="text-sm font-medium text-md-on-surface mb-1">¿Quieres cambiar de plan?</p>
-            <p className="text-xs text-md-on-surface-variant">
-              Escríbenos y te ayudamos a hacer el cambio sin interrupciones:
+            <p className="text-xs text-md-on-surface-variant mb-2">
+              ¿Tienes preguntas sobre tu plan o necesitas ajustarlo?
             </p>
-            <div className="flex flex-wrap gap-3 mt-2">
+            <div className="flex flex-wrap gap-3">
               <a
                 href="mailto:hola@kollybry.com"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-md-primary-container text-md-on-primary-container text-xs font-medium hover:bg-md-primary hover:text-white transition-colors"
