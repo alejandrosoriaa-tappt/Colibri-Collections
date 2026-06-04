@@ -5,6 +5,7 @@ import * as XLSX from 'xlsx'
 import { parse as csvParse } from 'csv-parse/sync'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
+import { createConektaCustomer, isConektaConfigured } from '../services/conekta.js'
 import supabase, {
   getContactsByTenant,
   getContact,
@@ -184,6 +185,51 @@ router.get('/:id', authMiddleware, inferTenantGuard, async (req, res) => {
 })
 
 // ── Build auto grupo from org-specific fields ─────────────────────────────────
+/**
+ * If the tenant has SPEI add-on enabled and Conekta is configured,
+ * creates a Conekta customer and stores the CLABE on the contact.
+ * Returns the (possibly updated) contact object.
+ */
+async function maybeAssignCLABE(contact, tenantId) {
+  try {
+    if (!isConektaConfigured()) return contact
+
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('spei_addon_enabled, display_name, name')
+      .eq('id', tenantId)
+      .maybeSingle()
+
+    if (!tenant?.spei_addon_enabled) return contact
+
+    const result = await createConektaCustomer({
+      nombre: contact.nombre,
+      apellido: contact.apellido,
+      email: contact.email,
+      telefono: contact.telefono,
+      tenantName: tenant.display_name || tenant.name
+    })
+
+    if (!result.success) {
+      console.warn(`CLABE generation failed for contact ${contact.id}:`, result.error)
+      return contact
+    }
+
+    const { data: updated } = await supabase
+      .from('contacts')
+      .update({ clabe: result.clabe, conekta_customer_id: result.conekta_customer_id })
+      .eq('id', contact.id)
+      .select()
+      .single()
+
+    console.log(`CLABE assigned to contact ${contact.id}: ${result.clabe}`)
+    return updated || contact
+  } catch (err) {
+    console.error('maybeAssignCLABE error:', err)
+    return contact
+  }
+}
+
 function buildGrupo({ org_type, grupo, seccion, grado, salon, torre, num_interior, fraccionamiento }) {
   if (org_type === 'colegio' || org_type === 'academia') {
     const parts = [seccion, grado, salon].filter(Boolean)
@@ -244,7 +290,10 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       return res.status(500).json({ error: error.message })
     }
 
-    return res.status(201).json({ contact: data })
+    // Auto-generate CLABE if tenant has SPEI add-on enabled
+    const contact = await maybeAssignCLABE(data, req.tenantId)
+
+    return res.status(201).json({ contact })
   } catch (err) {
     console.error('POST /contacts error:', err)
     return res.status(500).json({ error: err.message })

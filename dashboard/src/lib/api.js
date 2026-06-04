@@ -154,7 +154,8 @@ export const notificationsAPI = {
 export const settingsAPI = {
   get: () => api.get('/api/settings'),
   update: (data) => api.patch('/api/settings', data),
-  whatsappStatus: () => api.get('/api/settings/whatsapp-status')
+  whatsappStatus: () => api.get('/api/settings/whatsapp-status'),
+  updateSPEI: (data) => api.patch('/api/settings/spei', data)
 }
 
 // ================================================================

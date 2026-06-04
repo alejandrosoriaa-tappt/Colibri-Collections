@@ -9,7 +9,7 @@ import supabase from '../services/supabase.js'
 
 const router = Router()
 
-const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,sheets_url,created_at'
+const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,sheets_url,spei_addon_enabled,payout_clabe,created_at'
 
 // GET /api/settings — return current tenant settings
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
@@ -298,6 +298,37 @@ router.delete('/users/:userId', authMiddleware, inferTenantGuard, async (req, re
     return res.json({ success: true })
   } catch (err) {
     console.error('DELETE /settings/users/:userId error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── SPEI Add-on ─────────────────────────────────────────────────────────────
+
+// PATCH /api/settings/spei — enable/disable SPEI add-on and set payout CLABE
+router.patch('/spei', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { spei_addon_enabled, payout_clabe } = req.body
+    const tenantId = req.tenantId
+
+    const updates = {}
+    if (typeof spei_addon_enabled === 'boolean') updates.spei_addon_enabled = spei_addon_enabled
+    if (payout_clabe !== undefined) updates.payout_clabe = payout_clabe || null
+
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'No fields to update' })
+    }
+
+    const { data, error } = await supabase
+      .from('tenants')
+      .update(updates)
+      .eq('id', tenantId)
+      .select('spei_addon_enabled, payout_clabe')
+      .single()
+
+    if (error) return res.status(500).json({ error: error.message })
+    return res.json({ spei_addon_enabled: data.spei_addon_enabled, payout_clabe: data.payout_clabe })
+  } catch (err) {
+    console.error('PATCH /settings/spei error:', err)
     return res.status(500).json({ error: err.message })
   }
 })

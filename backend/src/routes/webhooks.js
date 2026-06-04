@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import supabase from '../services/supabase.js'
+import { sendWhatsAppTemplate } from '../services/whatsapp.js'
+import { confirmacionPagoComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -145,6 +147,110 @@ async function handleOnboardingConfirmation(fromPhone) {
     }
   } catch (err) {
     console.error('Webhook: Error in handleOnboardingConfirmation:', err)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/webhooks/conekta — incoming SPEI payment notifications
+// ─────────────────────────────────────────────────────────────────────────────
+router.post('/conekta', async (req, res) => {
+  try {
+    res.status(200).json({ status: 'ok' })
+
+    const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body
+    const type = body?.type
+    const data = body?.data?.object
+
+    console.log(`Conekta webhook: type=${type}`)
+
+    // We care about successful SPEI payments
+    // Event types: 'payment_source.updated', 'order.paid', 'customer.payment_sources.updated'
+    if (!type || !data) return
+
+    if (type === 'customer.payment_sources.updated' || type === 'payment_source.updated') {
+      const conektaCustomerId = data.customer_id || data.parent_id
+      if (conektaCustomerId) {
+        await handleConektaSPEIPayment({ conektaCustomerId, amount: data.amount, data })
+      }
+    }
+  } catch (err) {
+    console.error('Conekta webhook error:', err)
+  }
+})
+
+async function handleConektaSPEIPayment({ conektaCustomerId, amount, data }) {
+  try {
+    // 1. Find contact by Conekta customer ID
+    const { data: contact, error: contactErr } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, tenant_id, tenants(display_name, name)')
+      .eq('conekta_customer_id', conektaCustomerId)
+      .maybeSingle()
+
+    if (contactErr || !contact) {
+      console.log(`Conekta SPEI: no contact found for customer ${conektaCustomerId}`)
+      return
+    }
+
+    const amountMXN = amount ? amount / 100 : null // Conekta amounts are in cents
+
+    // 2. Find the most recent unpaid invoice for this contact
+    const { data: invoice, error: invErr } = await supabase
+      .from('invoices')
+      .select('id, concepto, monto, campaign_id')
+      .eq('contact_id', contact.id)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (invErr || !invoice) {
+      console.log(`Conekta SPEI: no pending invoice for contact ${contact.id}`)
+      return
+    }
+
+    // 3. Mark invoice as paid
+    const paidAt = new Date().toISOString()
+    await supabase
+      .from('invoices')
+      .update({ status: 'paid', paid_at: paidAt })
+      .eq('id', invoice.id)
+
+    console.log(`Conekta SPEI: ✅ Invoice ${invoice.id} marked paid for ${contact.nombre} ${contact.apellido || ''}`)
+
+    // 4. Log the payment in message_logs
+    await supabase.from('message_logs').insert({
+      tenant_id: contact.tenant_id,
+      contact_id: contact.id,
+      campaign_id: invoice.campaign_id,
+      type: 'spei_payment',
+      status: 'received',
+      sent_at: paidAt
+    })
+
+    // 5. Send WhatsApp confirmation to the contact
+    if (contact.telefono) {
+      const orgName = contact.tenants?.display_name || contact.tenants?.name || 'tu organización'
+      const nombre = contact.nombre || 'Residente'
+      const monto = amountMXN || invoice.monto
+
+      await sendWhatsAppTemplate(
+        contact.telefono,
+        TEMPLATE_NAMES.CONFIRMACION_PAGO,
+        'es_MX',
+        confirmacionPagoComponents({
+          nombre,
+          orgName,
+          concepto: invoice.concepto,
+          monto,
+          fecha: paidAt
+        })
+      )
+
+      console.log(`Conekta SPEI: ✅ Confirmation WA sent to ${contact.telefono}`)
+    }
+  } catch (err) {
+    console.error('handleConektaSPEIPayment error:', err)
   }
 }
 

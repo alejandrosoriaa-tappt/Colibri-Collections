@@ -835,6 +835,7 @@ export default function ContactsPage() {
                       'Teléfono',
                       orgConfig.groupLabel,
                       ...(isClub ? [orgConfig.idExternoLabel] : []),
+                      ...(tenant?.spei_addon_enabled ? ['CLABE SPEI'] : []),
                       statusTab !== 'active' ? 'Inactivo desde' : 'Alta',
                       'Acciones'
                     ].map(h => (
@@ -882,6 +883,14 @@ export default function ContactsPage() {
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">{c.grupo || '—'}</td>
                         {isClub && (
                           <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.id_externo || '—'}</td>
+                        )}
+                        {tenant?.spei_addon_enabled && (
+                          <td className="py-3 px-3">
+                            {c.clabe
+                              ? <span className="font-mono text-xs text-md-on-surface bg-md-surface-container px-2 py-1 rounded-lg">{c.clabe}</span>
+                              : <span className="text-xs text-md-on-surface-variant italic">Sin CLABE</span>
+                            }
+                          </td>
                         )}
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">
                           {inactive && days !== null ? (

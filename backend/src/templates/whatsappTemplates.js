@@ -9,10 +9,12 @@ export const TEMPLATE_NAMES = {
   BIENVENIDA_TENANT:    'kollybry_bienvenida_credenciales',
   // Community: sent to each contact the first time they're added to a tenant
   BIENVENIDA_COMUNIDAD: 'kollybry_bienvenida_comunidad',
-  // Payments
+  // Payments — link-based
   RECORDATORIO_PAGO:    'kollybry_recordatorio_pago',
   AVISO_VENCIDO:        'kollybry_aviso_vencido',
   CONFIRMACION_PAGO:    'kollybry_confirmacion_pago',
+  // Payments — SPEI/CLABE (add-on)
+  RECORDATORIO_SPEI:    'kollybry_recordatorio_spei',
   // Announcements
   COMUNICADO:           'kollybry_comunicado',
   COMUNICADO_IMAGEN:    'kollybry_comunicado_imagen',
@@ -121,6 +123,21 @@ export function comunicadoImagenComponents({ titulo, orgName, cuerpo, imageUrl }
       parameters: [titulo, orgName, cuerpo].map(textParam)
     }
   ]
+}
+
+/**
+ * kollybry_recordatorio_spei  (RECORDATORIO_SPEI)
+ * For tenants with SPEI add-on enabled. Includes the contact's unique CLABE.
+ * {{1}} nombre  {{2}} orgName  {{3}} concepto  {{4}} monto  {{5}} clabe
+ */
+export function recordatorioSPEIComponents({ nombre, orgName, concepto, monto, clabe }) {
+  return bodyOnly(
+    nombre,
+    orgName,
+    concepto || 'pago mensual',
+    toMonto(monto),
+    clabe || 'Sin CLABE asignada'
+  )
 }
 
 /**

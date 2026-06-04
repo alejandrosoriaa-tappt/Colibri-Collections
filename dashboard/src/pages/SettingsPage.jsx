@@ -533,7 +533,102 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
       )}
+
+      {/* ── SPEI Add-on ── */}
+      {tenant && <SPEIAddonCard tenant={tenant} onUpdate={setTenant} />}
     </div>
+  )
+}
+
+// ── SPEI Add-on Card ───────────────────────────────────────────
+function SPEIAddonCard({ tenant, onUpdate }) {
+  const [enabled, setEnabled] = useState(tenant.spei_addon_enabled || false)
+  const [clabe, setClabe] = useState(tenant.payout_clabe || '')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(null)
+
+  const handleSave = async () => {
+    if (enabled && clabe.replace(/\D/g, '').length !== 18) {
+      setError('La CLABE debe tener 18 dígitos')
+      return
+    }
+    setSaving(true); setError(null)
+    try {
+      const res = await settingsAPI.updateSPEI({ spei_addon_enabled: enabled, payout_clabe: clabe || null })
+      onUpdate(t => ({ ...t, spei_addon_enabled: res.data.spei_addon_enabled, payout_clabe: res.data.payout_clabe }))
+      setSaved(true)
+      setTimeout(() => setSaved(false), 3000)
+    } catch (err) {
+      setError(err.response?.data?.error || err.message)
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <SectionCard icon={CreditCard} title="Cobro Automático SPEI">
+      <div className="space-y-4">
+        {/* Toggle */}
+        <label className="flex items-center justify-between p-4 rounded-2xl bg-md-surface-container cursor-pointer">
+          <div>
+            <p className="text-sm font-medium text-md-on-surface">Activar Cobro SPEI</p>
+            <p className="text-xs text-md-on-surface-variant mt-0.5">
+              Cada contacto recibe su CLABE única. Los pagos se reconcilian automáticamente.
+            </p>
+          </div>
+          <div
+            onClick={() => setEnabled(v => !v)}
+            className={`w-11 h-6 rounded-full flex-shrink-0 relative transition-colors ${enabled ? 'bg-md-primary' : 'bg-md-outline'}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+          </div>
+        </label>
+
+        {/* CLABE input */}
+        {enabled && (
+          <div>
+            <label className="label">CLABE de tu cuenta bancaria (18 dígitos)</label>
+            <input
+              className="input font-mono tracking-wider"
+              value={clabe}
+              onChange={e => setClabe(e.target.value.replace(/\D/g, '').slice(0, 18))}
+              placeholder="646180XXXXXXXXXXXX"
+              maxLength={18}
+            />
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Aquí recibirás los pagos de tus residentes/socios/familias vía SPEI.
+            </p>
+          </div>
+        )}
+
+        {/* Status pill */}
+        {enabled && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-green-50 border border-green-100">
+            <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+            <p className="text-xs text-green-700">
+              Add-on activo — tus contactos tendrán CLABE única para pagar por SPEI directo a tu cuenta.
+            </p>
+          </div>
+        )}
+
+        {error && (
+          <p className="text-xs text-md-error flex items-center gap-1.5">
+            <AlertCircle size={13} /> {error}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3">
+          <button onClick={handleSave} disabled={saving} className="btn-primary text-sm">
+            {saving ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+          {saved && <span className="text-xs text-green-700 flex items-center gap-1"><CheckCircle2 size={13} /> Guardado</span>}
+        </div>
+
+        <p className="text-xs text-md-on-surface-variant border-t border-md-outline-variant pt-3">
+          Comisión: <strong>1% por pago exitoso</strong> (mín. $20 MXN) · El monto neto llega a tu cuenta el mismo día.
+        </p>
+      </div>
+    </SectionCard>
   )
 }
 

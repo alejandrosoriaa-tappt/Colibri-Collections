@@ -133,6 +133,27 @@ const TEMPLATES = {
     ]
   },
 
+  // ── SPEI PAYMENT REMINDER (add-on) ──────────────────────────────
+  recordatorio_spei: {
+    name: 'kollybry_recordatorio_spei',
+    category: 'UTILITY',
+    language: 'es_MX',
+    components: [
+      {
+        type: 'BODY',
+        text:
+          'Hola {{1}} 👋\n\n' +
+          '*{{2}}* te recuerda que tienes pendiente tu {{3}} por *{{4}}*.\n\n' +
+          'Paga fácil con transferencia SPEI:\n' +
+          '🏦 CLABE: *{{5}}*\n' +
+          '📋 Concepto: {{3}}\n\n' +
+          'Al realizar la transferencia recibirás confirmación automática ✅\n\n' +
+          'Para cualquier duda, comunícate con nosotros.',
+        example: { body_text: [['Carlos Mendoza', 'Colegio San Pablo', 'Colegiatura Mayo', '$1,500', '646180000000000001']] }
+      }
+    ]
+  },
+
   // ── GENERAL ANNOUNCEMENT ─────────────────────────────────────────
   comunicado: {
     name: 'kollybry_comunicado',
