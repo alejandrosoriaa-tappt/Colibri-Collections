@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
-import {
+import supabase, {
   getBroadcastsByTenant,
   createBroadcast,
   updateBroadcast,
@@ -177,6 +177,25 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
+
+        // Save wa_message_id to message_logs so webhooks can update status
+        if (result.wa_message_id) {
+          try {
+            await supabase
+              .from('message_logs')
+              .insert({
+                tenant_id: req.tenantId,
+                broadcast_id: broadcast.id,
+                contact_id: contact.id,
+                phone: contact.telefono,
+                wa_message_id: result.wa_message_id,
+                status: 'sent',
+                sent_at: new Date().toISOString()
+              })
+          } catch (logErr) {
+            console.warn(`Broadcast: could not log message for ${contact.telefono}:`, logErr.message)
+          }
+        }
       } else {
         failedCount++
         console.error(`Broadcast: ✗ failed ${contact.telefono} — code:${result.error_code} msg:${result.error}`)
