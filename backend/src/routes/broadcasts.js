@@ -159,9 +159,14 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
       // Append document/link URL to the body when it's not an image
       const isDocument = media_url && !media_type?.startsWith('image')
-      const cuerpoFinal = isDocument
-        ? `${personalizedMessage}\n\n🔗 ${media_url}`
+      const withLink = isDocument
+        ? `${personalizedMessage} 🔗 ${media_url}`
         : personalizedMessage
+
+      // Meta error 132018: template params cannot have \n, \r, \t or 4+ consecutive spaces
+      const cuerpoFinal = withLink
+        .replace(/[\r\n\t]+/g, ' ')
+        .replace(/ {4,}/g, '   ')
 
       const components = useImage
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: cuerpoFinal, imageUrl: media_url })
