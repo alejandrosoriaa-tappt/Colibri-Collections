@@ -143,7 +143,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
   // Determine which template to use
   const useImage = !!(media_url && media_type?.startsWith('image'))
-  const templateName = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
+  const tpl = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
 
   for (const contact of contacts) {
     try {
@@ -167,7 +167,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: cuerpoFinal, imageUrl: media_url })
         : comunicadoComponents({ titulo: title, orgName, cuerpo: cuerpoFinal })
 
-      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
+      const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components)
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)

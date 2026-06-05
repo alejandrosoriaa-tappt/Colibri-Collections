@@ -4,20 +4,24 @@ import { formatCurrency, formatDate } from './messages.js'
 // REGISTERED META TEMPLATE NAMES
 // Must match exactly the names approved in Meta WhatsApp Manager (cuenta Kollybry).
 // ================================================================
+// Each entry: { name, lang }
+// lang must match EXACTLY how the template was registered in Meta WhatsApp Manager.
+// Old templates (created before June 2026) → Spanish = 'es'
+// New templates (created June 2026+)       → Spanish (MEX) = 'es_MX'
 export const TEMPLATE_NAMES = {
-  // Onboarding: welcome message sent to new tenant admin
-  BIENVENIDA_TENANT:    'kollybry_bienvenida_credenciales',
-  // Community: sent to each contact the first time they're added to a tenant
-  BIENVENIDA_COMUNIDAD: 'kollybry_bienvenida_comunidad',
-  // Payments — link-based
-  RECORDATORIO_PAGO:    'kollybry_recordatorio_pago',
-  AVISO_VENCIDO:        'kollybry_aviso_vencido',
-  CONFIRMACION_PAGO:    'kollybry_confirmacion_pago',
-  // Payments — SPEI/CLABE (add-on)
-  RECORDATORIO_SPEI:    'kollybry_recordatorio_spei',
-  // Announcements
-  COMUNICADO:           'kollybry_comunicado',
-  COMUNICADO_IMAGEN:    'kollybry_comunicado_imagen',
+  // Onboarding (es_MX — new)
+  BIENVENIDA_TENANT:    { name: 'kollybry_bienvenida_credenciales', lang: 'es_MX' },
+  // Community (es_MX — new)
+  BIENVENIDA_COMUNIDAD: { name: 'kollybry_bienvenida_comunidad',    lang: 'es_MX' },
+  // Payments — link-based (es — old)
+  RECORDATORIO_PAGO:    { name: 'kollybry_recordatorio_pago',       lang: 'es'    },
+  AVISO_VENCIDO:        { name: 'kollybry_aviso_vencido',           lang: 'es'    },
+  CONFIRMACION_PAGO:    { name: 'kollybry_confirmacion_pago',       lang: 'es'    },
+  // Payments — SPEI (es_MX — new)
+  RECORDATORIO_SPEI:    { name: 'kollybry_recordatorio_spei',       lang: 'es_MX' },
+  // Announcements (es — old)
+  COMUNICADO:           { name: 'kollybry_comunicado',              lang: 'es'    },
+  COMUNICADO_IMAGEN:    { name: 'kollybry_comunicado_imagen',       lang: 'es'    },
 }
 
 // ================================================================
