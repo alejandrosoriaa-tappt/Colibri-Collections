@@ -390,7 +390,24 @@ export default function BroadcastsPage() {
                   onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
                   required
                 />
-                <p className="text-xs text-gray-400 mt-1">{form.message.length} caracteres</p>
+                <div className="flex items-center justify-between mt-1">
+                  <p className="text-xs text-gray-400">{form.message.length} caracteres</p>
+                  <div className="flex gap-1.5">
+                    {['{nombre}', '{apellido}', '{nombre_completo}'].map(v => (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => setForm(f => ({ ...f, message: f.message + v }))}
+                        className="text-[11px] px-2 py-0.5 rounded-full bg-md-primary-container text-md-on-primary-container hover:bg-md-primary hover:text-white transition-colors font-mono"
+                      >
+                        {v}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-md-on-surface-variant mt-0.5">
+                  Las variables se reemplazan con el nombre de cada destinatario al enviar.
+                </p>
               </div>
 
               {/* Optional doc link */}

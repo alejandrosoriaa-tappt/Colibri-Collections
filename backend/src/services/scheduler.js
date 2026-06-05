@@ -163,7 +163,7 @@ async function sendCampaignMessage(campaign, message, tenant) {
       }
 
       // Send via approved Meta template
-      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es', components)
+      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
 
       // Log the message
       const logData = {
