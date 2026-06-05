@@ -159,76 +159,61 @@ router.post('/conekta', async (req, res) => {
 
     const body = Buffer.isBuffer(req.body) ? JSON.parse(req.body.toString()) : req.body
     const type = body?.type
-    const data = body?.data?.object
+    const chargeData = body?.data?.object
 
     console.log(`Conekta webhook: type=${type}`)
 
-    // We care about successful SPEI payments
-    // Event types: 'payment_source.updated', 'order.paid', 'customer.payment_sources.updated'
-    if (!type || !data) return
+    // Listen for charge.paid event (SPEI payment received)
+    if (type !== 'charge.paid' || !chargeData) return
 
-    if (type === 'customer.payment_sources.updated' || type === 'payment_source.updated') {
-      const conektaCustomerId = data.customer_id || data.parent_id
-      if (conektaCustomerId) {
-        await handleConektaSPEIPayment({ conektaCustomerId, amount: data.amount, data })
-      }
+    const orderId = chargeData.order_id
+    const chargeId = chargeData.id
+    const amount = chargeData.amount // in centavos
+    const paidAt = chargeData.paid_at
+
+    if (!orderId) {
+      console.warn('Conekta webhook: charge.paid without order_id')
+      return
     }
+
+    await handleConektaSPEIPayment({ orderId, chargeId, amount, paidAt })
   } catch (err) {
     console.error('Conekta webhook error:', err)
   }
 })
 
-async function handleConektaSPEIPayment({ conektaCustomerId, amount, data }) {
+async function handleConektaSPEIPayment({ orderId, chargeId, amount, paidAt }) {
   try {
-    // 1. Find contact by Conekta customer ID
-    const { data: contact, error: contactErr } = await supabase
-      .from('contacts')
-      .select('id, nombre, apellido, telefono, tenant_id, tenants(display_name, name)')
-      .eq('conekta_customer_id', conektaCustomerId)
-      .maybeSingle()
-
-    if (contactErr || !contact) {
-      console.log(`Conekta SPEI: no contact found for customer ${conektaCustomerId}`)
-      return
-    }
-
-    const amountMXN = amount ? amount / 100 : null // Conekta amounts are in cents
-
-    // 2. Find the most recent unpaid invoice for this contact
+    // 1. Find invoice by conekta_order_id (stored when CLABE was generated)
     const { data: invoice, error: invErr } = await supabase
       .from('invoices')
-      .select('id, concepto, monto, campaign_id')
-      .eq('contact_id', contact.id)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .select('id, contact_id, tenant_id, monto, concepto, campaign_id, contacts(id, nombre, apellido, telefono, tenant_id, tenants(display_name, name))')
+      .eq('conekta_order_id', orderId)
       .maybeSingle()
 
     if (invErr || !invoice) {
-      console.log(`Conekta SPEI: no pending invoice for contact ${contact.id}`)
+      console.log(`Conekta SPEI: no invoice found for order ${orderId}`)
       return
     }
 
-    // 3. Mark invoice as paid
-    const paidAt = new Date().toISOString()
-    await supabase
+    const contact = invoice.contacts
+    const amountMXN = amount ? amount / 100 : null // Conekta amounts are in centavos
+    const paidAtISO = new Date(paidAt * 1000).toISOString()
+
+    // 2. Mark invoice as paid
+    const { error: updateErr } = await supabase
       .from('invoices')
-      .update({ status: 'paid', paid_at: paidAt })
+      .update({ status: 'paid', paid_at: paidAtISO, conekta_charge_id: chargeId })
       .eq('id', invoice.id)
+
+    if (updateErr) {
+      console.error(`Conekta SPEI: Failed to mark invoice ${invoice.id} as paid:`, updateErr)
+      return
+    }
 
     console.log(`Conekta SPEI: ✅ Invoice ${invoice.id} marked paid for ${contact.nombre} ${contact.apellido || ''}`)
 
-    // 4. Log the payment in message_logs
-    await supabase.from('message_logs').insert({
-      tenant_id: contact.tenant_id,
-      contact_id: contact.id,
-      campaign_id: invoice.campaign_id,
-      type: 'spei_payment',
-      status: 'received',
-      sent_at: paidAt
-    })
-
-    // 5. Send WhatsApp confirmation to the contact
+    // 3. Send WhatsApp confirmation to the contact
     if (contact.telefono) {
       const orgName = contact.tenants?.display_name || contact.tenants?.name || 'tu organización'
       const nombre = contact.nombre || 'Residente'
@@ -243,7 +228,7 @@ async function handleConektaSPEIPayment({ conektaCustomerId, amount, data }) {
           orgName,
           concepto: invoice.concepto,
           monto,
-          fecha: paidAt
+          fecha: paidAtISO
         })
       )
 
