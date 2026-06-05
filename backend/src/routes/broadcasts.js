@@ -157,9 +157,15 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         .replace(/\{nombre\}/gi, nombre)
         .replace(/\{apellido\}/gi, apellido)
 
+      // Append document/link URL to the body when it's not an image
+      const isDocument = media_url && !media_type?.startsWith('image')
+      const cuerpoFinal = isDocument
+        ? `${personalizedMessage}\n\n🔗 ${media_url}`
+        : personalizedMessage
+
       const components = useImage
-        ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
-        : comunicadoComponents({ titulo: title, orgName, cuerpo: personalizedMessage })
+        ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: cuerpoFinal, imageUrl: media_url })
+        : comunicadoComponents({ titulo: title, orgName, cuerpo: cuerpoFinal })
 
       const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
       if (result.success) {
