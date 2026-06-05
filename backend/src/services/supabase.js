@@ -442,7 +442,7 @@ export async function getContactGroupsByTenant(tenantId) {
 export async function getContactsForBroadcast(tenantId, groupFilter = null) {
   let query = supabase
     .from('contacts')
-    .select('id, nombre, telefono, grupo')
+    .select('id, nombre, apellido, telefono, grupo')
     .eq('tenant_id', tenantId)
     .eq('status', 'active')
     .not('telefono', 'is', null)

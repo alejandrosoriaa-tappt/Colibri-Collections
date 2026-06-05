@@ -393,7 +393,7 @@ export default function BroadcastsPage() {
                 <div className="flex items-center justify-between mt-1">
                   <p className="text-xs text-gray-400">{form.message.length} caracteres</p>
                   <div className="flex gap-1.5">
-                    {['{nombre}', '{apellido}', '{nombre_completo}'].map(v => (
+                    {['{nombre}', '{apellido}', '{nombre_completo}', '{grupo}'].map(v => (
                       <button
                         key={v}
                         type="button"

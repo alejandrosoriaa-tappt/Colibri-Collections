@@ -156,6 +156,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         .replace(/\{nombre_completo\}/gi, [nombre, apellido].filter(Boolean).join(' '))
         .replace(/\{nombre\}/gi, nombre)
         .replace(/\{apellido\}/gi, apellido)
+        .replace(/\{grupo\}/gi, contact.grupo || '')
 
       // Append document/link URL to the body when it's not an image
       const isDocument = media_url && !media_type?.startsWith('image')
