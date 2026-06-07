@@ -105,6 +105,19 @@ async function createTablesIfNotExist() {
     await p.query(`ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS clave_sirah TEXT`);
     await p.query(`CREATE INDEX IF NOT EXISTS idx_exp_clave ON expedientes (clave_sirah)`);
     console.log('✓ Tablas verificadas (PostgreSQL Railway)');
+
+    // Backfill claves for existing records that have none
+    const { rows: [{ cnt }] } = await p.query(`SELECT COUNT(*)::int AS cnt FROM expedientes WHERE clave_sirah IS NULL`);
+    if (cnt > 0) {
+      console.log(`🔄 Generando claves SIRAH para ${cnt} expedientes sin clave…`);
+      const seqRes = await p.query(`SELECT nextval('sirah_exp_seq') AS seq FROM generate_series(1,$1)`, [cnt]);
+      const seqs   = seqRes.rows.map(r => Number(r.seq));
+      const { rows: toFill } = await p.query(`SELECT id, estado_geo FROM expedientes WHERE clave_sirah IS NULL ORDER BY id ASC`);
+      for (let i = 0; i < toFill.length; i++) {
+        await p.query(`UPDATE expedientes SET clave_sirah=$1 WHERE id=$2`, [buildClave(toFill[i].estado_geo, seqs[i]), toFill[i].id]);
+      }
+      console.log(`✓ ${cnt} claves SIRAH generadas`);
+    }
   } catch (err) {
     console.error('✗ Error creando tablas:', err.message);
     pool = null;

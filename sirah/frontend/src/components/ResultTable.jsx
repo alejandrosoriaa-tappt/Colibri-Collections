@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import useAppStore from '../store/appStore';
 import { useAPI } from '../hooks/useAPI';
 import ExpedienteModal from './ExpedienteModal.jsx';
+import { calcScore, scoreMeta } from '../utils/sirahScore.js';
 
 const PAGE_OPTIONS = [10, 20, 50];
 
@@ -13,6 +14,23 @@ function useMobile() {
     return () => window.removeEventListener('resize', fn);
   }, []);
   return m;
+}
+
+function ScoreBadge({ score }) {
+  const { label, color, bar } = scoreMeta(score);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', minWidth: '70px' }}>
+      <div style={{ fontSize: '17px', fontWeight: 800, color, fontFamily: 'Roboto Mono, monospace', lineHeight: 1 }}>
+        {score}
+      </div>
+      <div style={{ width: '54px', height: '5px', borderRadius: '3px', background: '#e0e0e0', overflow: 'hidden' }}>
+        <div style={{ width: `${score}%`, height: '100%', background: bar, borderRadius: '3px', transition: 'width 0.3s' }} />
+      </div>
+      <div style={{ fontSize: '9px', fontWeight: 800, color, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+        {label}
+      </div>
+    </div>
+  );
 }
 
 const fmtMXN = (v) =>
@@ -77,14 +95,20 @@ export default function ResultTable() {
   const [sortField, setSortField]     = useState('estado_geo');
   const [sortDir, setSortDir]         = useState('asc');
   const [search, setSearch]           = useState('');
-  const [estadoFilter, setEstadoFilter] = useState('');
-  const [soloFavoritos, setSoloFavoritos] = useState(false);
-  const [selected, setSelected]       = useState(null);
+  const [estadoFilter, setEstadoFilter]     = useState('');
+  const [municipioFilter, setMunicipioFilter] = useState('');
+  const [soloFavoritos, setSoloFavoritos]   = useState(false);
+  const [selected, setSelected]             = useState(null);
 
   const estados = useMemo(
     () => [...new Set(expedientes.map(e => e.estado_geo).filter(Boolean))].sort(),
     [expedientes]
   );
+
+  const municipios = useMemo(() => {
+    const base = estadoFilter ? expedientes.filter(e => e.estado_geo === estadoFilter) : expedientes;
+    return [...new Set(base.map(e => e.municipio).filter(Boolean))].sort();
+  }, [expedientes, estadoFilter]);
 
   const filtered = useMemo(() => {
     let d = [...expedientes];
@@ -96,8 +120,9 @@ export default function ResultTable() {
           .some(v => v?.toLowerCase().includes(q))
       );
     }
-    if (estadoFilter)  d = d.filter(e => e.estado_geo === estadoFilter);
-    if (soloFavoritos) d = d.filter(e => e.favorito);
+    if (estadoFilter)    d = d.filter(e => e.estado_geo === estadoFilter);
+    if (municipioFilter) d = d.filter(e => e.municipio  === municipioFilter);
+    if (soloFavoritos)   d = d.filter(e => e.favorito);
     d.sort((a, b) => {
       let va = a[sortField] ?? '', vb = b[sortField] ?? '';
       if (typeof va === 'string') va = va.toLowerCase();
@@ -196,15 +221,31 @@ export default function ResultTable() {
             onBlur={e  => e.target.style.border = '1.5px solid #bdbdbd'}
           />
 
-          <select value={estadoFilter} onChange={e => { setEstadoFilter(e.target.value); setPage(1); }}
+          <select
+            value={estadoFilter}
+            onChange={e => { setEstadoFilter(e.target.value); setMunicipioFilter(''); setPage(1); }}
             style={{
               padding: '7px 10px', borderRadius: '6px',
               border: '1.5px solid #bdbdbd', background: '#ffffff',
               color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
-              maxWidth: isMobile ? '140px' : '180px'
+              maxWidth: isMobile ? '130px' : '170px'
             }}>
             <option value="">Todos los estados</option>
             {estados.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+
+          <select
+            value={municipioFilter}
+            onChange={e => { setMunicipioFilter(e.target.value); setPage(1); }}
+            style={{
+              padding: '7px 10px', borderRadius: '6px',
+              border: '1.5px solid #bdbdbd', background: '#ffffff',
+              color: municipioFilter ? '#212121' : '#9e9e9e',
+              fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              maxWidth: isMobile ? '130px' : '170px'
+            }}>
+            <option value="">Todos los municipios</option>
+            {municipios.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
         </div>
       </div>
@@ -215,7 +256,10 @@ export default function ResultTable() {
           <thead>
             <tr>
               <th style={{ padding: '10px 8px', background: '#f5f5f5', borderBottom: '2px solid #bdbdbd', width: '36px' }} />
-              <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Exp.</Th>
+              <th style={{ padding: '10px 12px', background: '#f5f5f5', borderBottom: '2px solid #1565c0', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#1565c0', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
+                Pond. IA
+              </th>
+              <Th field="clave_sirah" {...{sortField,sortDir,onSort:sort}}>Clave / Exp.</Th>
               <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
               <Th field="estado_geo"        {...{sortField,sortDir,onSort:sort}}>Estado</Th>
@@ -232,7 +276,7 @@ export default function ResultTable() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={14} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
+              <tr><td colSpan={15} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
                 Sin resultados para esta búsqueda
               </td></tr>
             ) : rows.map((e, i) => (
@@ -255,6 +299,11 @@ export default function ResultTable() {
                   >
                     {e.favorito ? '★' : '☆'}
                   </span>
+                </td>
+
+                {/* Ponderación IA */}
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', textAlign: 'center' }}>
+                  <ScoreBadge score={calcScore(e)} />
                 </td>
 
                 {/* Clave SIRAH + expediente interno */}

@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAPI } from '../hooks/useAPI';
+import { calcScore, scoreMeta } from '../utils/sirahScore.js';
 
 const fmtMXN = (v) =>
   v != null && !isNaN(v)
@@ -90,6 +91,9 @@ export default function ExpedienteModal({ expediente, onClose }) {
     ? (Number(e.rentabilidad) >= 0 ? '#1b5e20' : '#b71c1c')
     : undefined;
 
+  const score = calcScore(e);
+  const meta  = scoreMeta(score);
+
   return (
     /* Backdrop */
     <div
@@ -151,7 +155,24 @@ export default function ExpedienteModal({ expediente, onClose }) {
               </div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: '10px', flexShrink: 0, alignItems: 'center' }}>
+            {/* Ponderación IA badge */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px',
+              padding: '6px 10px', borderRadius: '10px',
+              background: meta.bg, border: `1.5px solid ${meta.border}`
+            }}>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: meta.color, fontFamily: 'Roboto Mono, monospace', lineHeight: 1 }}>
+                {score}
+              </div>
+              <div style={{ width: '40px', height: '4px', borderRadius: '2px', background: '#e0e0e0', overflow: 'hidden' }}>
+                <div style={{ width: `${score}%`, height: '100%', background: meta.bar, borderRadius: '2px' }} />
+              </div>
+              <div style={{ fontSize: '9px', fontWeight: 800, color: meta.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                {meta.label}
+              </div>
+            </div>
+
             <button
               onClick={() => toggleFavorito(e.id)}
               title={e.favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
