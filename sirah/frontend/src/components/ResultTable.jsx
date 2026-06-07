@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import useAppStore from '../store/appStore';
 import { useAPI } from '../hooks/useAPI';
 
-const PAGE = 15;
+const PAGE_OPTIONS = [10, 20, 50];
 
 const fmtMXN = (v) =>
   v !== null && v !== undefined && !isNaN(v)
@@ -61,6 +61,7 @@ export default function ResultTable() {
   const { exportarCSV }  = useAPI();
 
   const [page, setPage]           = useState(1);
+  const [pageSize, setPageSize]   = useState(20);
   const [sortField, setSortField] = useState('estado_geo');
   const [sortDir, setSortDir]     = useState('asc');
   const [search, setSearch]       = useState('');
@@ -93,8 +94,8 @@ export default function ResultTable() {
     return d;
   }, [expedientes, search, estadoFilter, sortField, sortDir]);
 
-  const totalPages = Math.ceil(filtered.length / PAGE);
-  const rows = filtered.slice((page-1)*PAGE, page*PAGE);
+  const totalPages = Math.ceil(filtered.length / pageSize);
+  const rows = filtered.slice((page-1)*pageSize, page*pageSize);
 
   function sort(field) {
     setSortDir(d => sortField===field ? (d==='asc'?'desc':'asc') : 'asc');
@@ -152,6 +153,15 @@ export default function ResultTable() {
           }}>
           <option value="">Todos los estados</option>
           {estados.map(b => <option key={b} value={b}>{b}</option>)}
+        </select>
+
+        <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+          style={{
+            padding: '8px 12px', borderRadius: '6px',
+            border: '1.5px solid #bdbdbd', background: '#ffffff',
+            color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+          }}>
+          {PAGE_OPTIONS.map(n => <option key={n} value={n}>{n} por página</option>)}
         </select>
 
         <button onClick={() => exportarCSV(filtered)} style={{
@@ -288,7 +298,7 @@ export default function ResultTable() {
           background: '#fafafa'
         }}>
           <span style={{ fontSize: '13px', color: '#424242', fontWeight: 700 }}>
-            {(page-1)*PAGE+1}–{Math.min(page*PAGE, filtered.length)} de {filtered.length.toLocaleString()}
+            {(page-1)*pageSize+1}–{Math.min(page*pageSize, filtered.length)} de {filtered.length.toLocaleString()}
           </span>
           <div style={{ display: 'flex', gap: '4px' }}>
             {[
