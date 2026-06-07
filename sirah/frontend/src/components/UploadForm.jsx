@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useAPI } from '../hooks/useAPI';
 import useAppStore from '../store/appStore';
 
-export default function UploadForm() {
+export default function UploadForm({ onProcesado }) {
   const [file,       setFile]       = useState(null);
   const [dragOver,   setDragOver]   = useState(false);
   const [resultado,  setResultado]  = useState(null);
@@ -53,6 +53,7 @@ export default function UploadForm() {
         mapeo:           data.mapeo_columnas      || [],
         hoja_usada:      data.hoja_usada
       });
+      onProcesado?.();
     } catch { /* manejado por store */ }
   }
 

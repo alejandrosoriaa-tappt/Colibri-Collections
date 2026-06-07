@@ -26,7 +26,8 @@ function useMobile() {
 export default function Dashboard() {
   const { fetchEstadisticas, fetchArchivos } = useAPI();
   const { loading, expedientes } = useAppStore();
-  const [section, setSection] = useState('cartera');
+  const [section, setSection]       = useState('cartera');
+  const [showUpload, setShowUpload] = useState(false);
   const isMobile = useMobile();
 
   useEffect(() => { fetchEstadisticas(); fetchArchivos(); }, []);
@@ -186,25 +187,50 @@ export default function Dashboard() {
           ) : (
             /* ── Cartera activa ── */
             <div style={{ marginTop: isMobile ? '20px' : '32px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b' }}>Cartera activa</h2>
+
+              {/* Section header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b', flex: 1 }}>Cartera activa</h2>
+
+                <button
+                  onClick={() => setShowUpload(v => !v)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    padding: '7px 14px',
+                    background: showUpload ? '#f5f5f5' : '#1565c0',
+                    color:      showUpload ? '#424242' : '#ffffff',
+                    border: showUpload ? '1.5px solid #e0e0e0' : 'none',
+                    borderRadius: '8px', fontSize: '13px', fontWeight: 700,
+                    cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s'
+                  }}
+                >
+                  {showUpload ? '✕ Cerrar' : '＋ Subir archivo'}
+                </button>
+
                 <span
                   onClick={() => setSection('archivos')}
-                  style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer', fontWeight: 700 }}
+                  style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer', fontWeight: 700, whiteSpace: 'nowrap' }}
                 >
-                  🗂 Ver archivos →
+                  🗂 Archivos →
                 </span>
               </div>
 
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
-                gap: isMobile ? '16px' : '20px',
-                alignItems: 'start'
-              }}>
-                <UploadForm onProcesado={() => fetchArchivos()} />
-                <ResultTable />
-              </div>
+              {/* Collapsible upload panel */}
+              {showUpload && (
+                <div style={{
+                  marginBottom: '16px',
+                  maxWidth: isMobile ? '100%' : '420px',
+                  animation: 'slideDown 0.18s ease'
+                }}>
+                  <UploadForm onProcesado={() => {
+                    fetchArchivos();
+                    setShowUpload(false);
+                  }} />
+                </div>
+              )}
+
+              {/* Full-width table */}
+              <ResultTable />
             </div>
           )}
         </div>
@@ -242,7 +268,10 @@ export default function Dashboard() {
         </nav>
       )}
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }
