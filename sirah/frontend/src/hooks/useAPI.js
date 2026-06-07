@@ -55,6 +55,17 @@ export function useAPI() {
     }
   }, [store]);
 
+  // ── leerHojas ─────────────────────────────────────────────────────────────
+  const leerHojas = useCallback(async (archivo) => {
+    const form = new FormData();
+    form.append('archivo', archivo);
+    const { data } = await axios.post(`${BASE}/leer-hojas`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 30_000
+    });
+    return data;
+  }, []);
+
   // ── fetchExpedientes ───────────────────────────────────────────────────────
   const fetchExpedientes = useCallback(async (filters = {}) => {
     store.setLoading(true);
@@ -95,6 +106,9 @@ export function useAPI() {
     if (!expedientes?.length) return;
 
     const COLS = [
+      ['nombre_archivo',    'Archivo Fuente'],
+      ['tipo_cartera',      'Pestaña/Tipo'],
+      ['folio_banco',       'Folio Banco'],
       ['numero_expediente', 'Expediente'],
       ['banco',             'Banco'],
       ['ubicacion',         'Ubicación'],
@@ -129,5 +143,5 @@ export function useAPI() {
     URL.revokeObjectURL(url);
   }, []);
 
-  return { procesarCartera, fetchExpedientes, fetchEstadisticas, exportarCSV };
+  return { procesarCartera, leerHojas, fetchExpedientes, fetchEstadisticas, exportarCSV };
 }
