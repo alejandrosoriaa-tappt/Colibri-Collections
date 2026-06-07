@@ -121,28 +121,71 @@ export default function UploadForm() {
         )}
 
         {preview && preview.hojas?.length > 0 && (
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#5f6368', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '6px' }}>
-              Hojas detectadas
+          <div style={{ marginTop: '14px' }}>
+            {/* Section header */}
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#212121', textTransform: 'uppercase', letterSpacing: '0.6px' }}>
+                Hojas detectadas
+              </span>
+              <span style={{ fontSize: '12px', color: '#424242', fontWeight: 600 }}>
+                — {preview.hojas.length} pestañas con datos
+              </span>
             </div>
-            {preview.hojas.map((h, i) => (
-              <div key={i} style={{
-                background: '#f8f9fa', border: '1px solid #e8eaed',
-                borderRadius: '6px', padding: '8px 12px', marginBottom: '4px',
-                fontSize: '12px'
-              }}>
-                <div style={{ fontWeight: 700, color: '#0d2a6b' }}>
-                  📋 {h.nombre}
-                  <span style={{ fontWeight: 400, color: '#9aa0a6', marginLeft: '8px' }}>{h.filas} filas</span>
-                </div>
-                {h.columnas?.length > 0 && (
-                  <div style={{ color: '#9aa0a6', marginTop: '3px', fontFamily: 'Roboto Mono, monospace', fontSize: '10px', lineHeight: 1.6 }}>
-                    {h.columnas.slice(0, 8).join(' · ')}
-                    {h.columnas.length > 8 && ` +${h.columnas.length - 8} más`}
+
+            {preview.hojas.map((h, i) => {
+              const ACCENT = ['#1565c0','#2e7d32','#e65100','#6a1b9a','#00695c','#c62828'];
+              const accent = ACCENT[i % ACCENT.length];
+              return (
+                <div key={i} style={{
+                  background: '#ffffff',
+                  border: '1px solid #e0e0e0',
+                  borderLeft: `4px solid ${accent}`,
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '6px',
+                }}>
+                  {/* Sheet name + row count */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: h.columnas?.length ? '8px' : 0 }}>
+                    <span style={{
+                      background: accent, color: '#ffffff',
+                      fontSize: '12px', fontWeight: 800,
+                      padding: '2px 10px', borderRadius: '20px',
+                      letterSpacing: '0.3px'
+                    }}>
+                      {h.nombre}
+                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#212121' }}>
+                      {h.filas.toLocaleString()} filas de datos
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {/* Column tags */}
+                  {h.columnas?.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {h.columnas.slice(0, 8).map((col, j) => (
+                        <span key={j} style={{
+                          fontSize: '11px', fontWeight: 600,
+                          color: '#424242', background: '#f5f5f5',
+                          border: '1px solid #e0e0e0',
+                          padding: '2px 8px', borderRadius: '12px',
+                        }}>
+                          {col}
+                        </span>
+                      ))}
+                      {h.columnas.length > 8 && (
+                        <span style={{
+                          fontSize: '11px', fontWeight: 700, color: accent,
+                          background: '#fafafa', border: `1px solid ${accent}`,
+                          padding: '2px 8px', borderRadius: '12px'
+                        }}>
+                          +{h.columnas.length - 8} más
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -174,11 +217,16 @@ export default function UploadForm() {
 
             {/* Resumen por hoja */}
             {resultado.hojas?.length > 0 && (
-              <div style={{ marginTop: '8px' }}>
+              <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {resultado.hojas.map((h, i) => (
-                  <div key={i} style={{ fontSize: '11px', fontWeight: 600, color: '#137333', marginTop: '2px' }}>
-                    📋 {h.hoja}: {h.total} registros
-                  </div>
+                  <span key={i} style={{
+                    fontSize: '12px', fontWeight: 700,
+                    color: '#1b5e20', background: '#c8e6c9',
+                    border: '1px solid #a5d6a7',
+                    padding: '3px 10px', borderRadius: '20px'
+                  }}>
+                    {h.hoja}: {h.total.toLocaleString()} registros
+                  </span>
                 ))}
               </div>
             )}
@@ -188,31 +236,33 @@ export default function UploadForm() {
         {/* Mapeo de columnas detectadas */}
         {resultado?.mapeo?.length > 0 && (
           <details style={{ marginTop: '10px' }}>
-            <summary style={{ cursor: 'pointer', fontSize: '11px', fontWeight: 700, color: '#1a73e8', userSelect: 'none' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '12px', fontWeight: 700, color: '#1565c0', userSelect: 'none' }}>
               Ver mapeo de columnas detectadas
             </summary>
             <div style={{
               marginTop: '6px', padding: '10px',
-              background: '#f8f9fa', borderRadius: '6px',
-              border: '1px solid #e8eaed', maxHeight: '200px', overflowY: 'auto'
+              background: '#fafafa', borderRadius: '6px',
+              border: '1px solid #e0e0e0', maxHeight: '220px', overflowY: 'auto'
             }}>
               {resultado.mapeo.map((m, i) => (
                 <div key={i} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  fontSize: '11px', padding: '3px 0',
-                  borderBottom: i < resultado.mapeo.length - 1 ? '1px solid #f1f3f4' : 'none'
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                  fontSize: '12px', padding: '4px 0',
+                  borderBottom: i < resultado.mapeo.length - 1 ? '1px solid #eeeeee' : 'none'
                 }}>
-                  <span style={{ fontFamily: 'Roboto Mono, monospace', color: '#9aa0a6' }}>{m.columna_original}</span>
-                  <span style={{ color: '#5f6368', margin: '0 6px' }}>→</span>
+                  <span style={{ fontFamily: 'Roboto Mono, monospace', color: '#424242', fontWeight: 600, flex: 1 }}>{m.columna_original}</span>
+                  <span style={{ color: '#757575', fontWeight: 700 }}>→</span>
                   <span style={{
-                    fontFamily: 'Roboto Mono, monospace', fontWeight: 700,
-                    color: m.campo_mapeado === m.columna_original ? '#e37400' : '#1a73e8'
+                    fontFamily: 'Roboto Mono, monospace', fontWeight: 800,
+                    color: m.campo_mapeado === m.columna_original ? '#e65100' : '#1565c0',
+                    flex: 1
                   }}>{m.campo_mapeado}</span>
                   <span style={{
-                    marginLeft: '6px', fontSize: '10px', padding: '1px 6px',
-                    borderRadius: '10px', fontWeight: 600,
-                    background: m.metodo === 'contenido' ? '#e8f0fe' : '#f1f3f4',
-                    color: m.metodo === 'contenido' ? '#1557b0' : '#9aa0a6'
+                    fontSize: '11px', padding: '2px 7px',
+                    borderRadius: '10px', fontWeight: 700,
+                    background: m.metodo === 'contenido' ? '#e3f2fd' : '#f5f5f5',
+                    color: m.metodo === 'contenido' ? '#1565c0' : '#616161',
+                    border: `1px solid ${m.metodo === 'contenido' ? '#90caf9' : '#e0e0e0'}`
                   }}>{m.confianza}%</span>
                 </div>
               ))}
