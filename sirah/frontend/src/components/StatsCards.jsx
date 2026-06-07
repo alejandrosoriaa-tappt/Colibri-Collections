@@ -1,5 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import useAppStore from '../store/appStore';
+
+function useMobile() {
+  const [m, setM] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return m;
+}
 
 const fmtCurrency = (n) => {
   if (!n && n !== 0) return '$0';
@@ -23,13 +33,12 @@ const CARDS_CONFIG = [
 ];
 
 function KPICard({ bg, text, sub, icon, label, value, extra }) {
+  const isMobile = useMobile();
   return (
     <div style={{
       background:   bg,
       borderRadius: '14px',
-      padding:      '22px 24px',
-      flex:         '1 1 180px',
-      minWidth:     '150px',
+      padding:      isMobile ? '16px' : '22px 24px',
       position:     'relative',
       overflow:     'hidden',
       transition:   'transform 0.18s, box-shadow 0.18s',
@@ -46,21 +55,22 @@ function KPICard({ bg, text, sub, icon, label, value, extra }) {
         background: 'rgba(255,255,255,0.1)'
       }} />
 
-      <div style={{ fontSize: '22px', marginBottom: '12px', opacity: 0.8 }}>{icon}</div>
-      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: sub, textTransform: 'uppercase', marginBottom: '6px' }}>
+      <div style={{ fontSize: isMobile ? '16px' : '22px', marginBottom: isMobile ? '8px' : '12px', opacity: 0.8 }}>{icon}</div>
+      <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.5px', color: sub, textTransform: 'uppercase', marginBottom: '4px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '30px', fontWeight: 700, fontFamily: 'Roboto Mono, monospace', color: text, lineHeight: 1.1 }}>
+      <div style={{ fontSize: isMobile ? '22px' : '30px', fontWeight: 700, fontFamily: 'Roboto Mono, monospace', color: text, lineHeight: 1.1 }}>
         {value}
       </div>
       {extra && (
-        <div style={{ fontSize: '12px', color: sub, marginTop: '6px', fontWeight: 600 }}>{extra}</div>
+        <div style={{ fontSize: isMobile ? '10px' : '12px', color: sub, marginTop: '5px', fontWeight: 600 }}>{extra}</div>
       )}
     </div>
   );
 }
 
 export default function StatsCards() {
+  const isMobile = useMobile();
   const { estadisticas, expedientes } = useAppStore();
   const total    = estadisticas.total || expedientes.length || 0;
   const porBanco = estadisticas.por_banco || {};
@@ -75,7 +85,11 @@ export default function StatsCards() {
   ];
 
   return (
-    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+      gap: isMobile ? '12px' : '16px'
+    }}>
       {cards.map((c, i) => (
         <KPICard key={i} {...CARDS_CONFIG[i]} {...c} />
       ))}
