@@ -1,0 +1,16 @@
+numero_expediente,banco,ubicacion,valor_catastral,monto_adeudo,fecha_inicio,status_juridico,antiguedad_inmueble,contacto,notas
+EXP-2024-001,BBVA,Polanco CDMX,4500000,3200000,2018-03-15,En proceso - Primera audiencia programada,18,lic.garcia@bbva.mx,Departamento 3 recamaras sin inquilinos
+EXP-2024-002,Santander,Condesa CDMX,3200000,2800000,2019-07-22,Embargo ejecutado - Remate proximo,12,garcia.j@santander.mx,Acceso inmediato
+EXP-2024-003,Banamex,Coyoacan CDMX,2800000,2100000,2020-01-10,Amparo - Suspension temporal,8,mrodriguez@banamex.mx,Casa habitacion 4 recamaras
+EXP-2024-004,HSBC,Zapopan Jalisco,2100000,1800000,2017-09-05,Sentencia favorable - En ejecucion,25,legal@hsbc.mx,Comercial planta baja esquina
+EXP-2024-005,Banorte,San Pedro Garza Garcia NL,5200000,4100000,2016-12-20,Juicio oral mercantil en curso,30,recupera@banorte.mx,Casa residencial con alberca
+EXP-2024-006,Scotiabank,Roma Norte CDMX,2900000,2400000,2021-04-01,Diligencias de ejecucion en tramite,15,jlopez@scotiabank.mx,Loft moderno 2 recamaras
+EXP-2024-007,BBVA,Providencia Guadalajara,1800000,1500000,2019-11-15,Convenio de pago - Suspendido temporalmente,20,rperez@bbva.mx,Casa 3 recamaras colonia residencial
+EXP-2024-008,Banorte,Angelopolis Puebla,1600000,1350000,2020-08-30,Sentencia favorable - En ejecucion,10,dluna@banorte.mx,Departamento planta baja
+EXP-2024-009,HSBC,Valle Monterrey NL,2300000,1900000,2018-06-12,Apelacion pendiente - Tribunal Superior,22,ablanco@hsbc.mx,Casa sola en fraccionamiento cerrado
+EXP-2024-010,Banamex,Narvarte CDMX,2200000,1750000,2017-03-28,En proceso - Primera audiencia programada,35,mfuentes@banamex.mx,Casa antigua 4 recamaras 2 plantas
+EXP-2024-011,Santander,Cumbres Monterrey NL,1900000,1600000,2022-01-05,Embargo ejecutado - Remate proximo,5,agarcia@santander.mx,Casa nueva sin estrenar
+EXP-2024-012,Scotiabank,Queretaro Centro,1450000,1200000,2019-09-18,Juicio oral mercantil en curso,28,mcastillo@scotiabank.mx,Local comercial 120 m2
+EXP-2024-013,BBVA,Benito Juarez CDMX,3100000,2600000,2020-05-22,Amparo - Suspension temporal,14,lhernandez@bbva.mx,Departamento piso 8 con vista
+EXP-2024-014,Banorte,Zapopan Jalisco,2400000,2000000,2018-11-30,Diligencias de ejecucion en tramite,18,dvargas@banorte.mx,Casa 4 recamaras 2 banos
+EXP-2024-015,Banamex,Santa Fe CDMX,6800000,5500000,2017-07-15,Sentencia favorable - En ejecucion,12,cmorales@banamex.mx,Penthouse 280 m2 con terraza
