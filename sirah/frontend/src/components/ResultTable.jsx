@@ -73,7 +73,7 @@ export default function ResultTable() {
     let d = [...expedientes];
     if (search) {
       const q = search.toLowerCase();
-      d = d.filter(e => [e.numero_expediente, e.banco, e.ubicacion, e.contacto, e.status_juridico]
+      d = d.filter(e => [e.numero_expediente, e.banco, e.estado_geo, e.municipio, e.ubicacion, e.contacto, e.status_juridico, e.nombre_archivo]
         .some(v => v?.toLowerCase().includes(q)));
     }
     if (banco) d = d.filter(e => e.banco === banco);
@@ -167,10 +167,12 @@ export default function ResultTable() {
           <thead>
             <tr>
               <Th field="nombre_archivo"    {...{sortField,sortDir,onSort:sort}}>Archivo</Th>
-              <Th field="tipo_cartera"      {...{sortField,sortDir,onSort:sort}}>Tipo</Th>
+              <Th field="tipo_cartera"      {...{sortField,sortDir,onSort:sort}}>Pestaña</Th>
               <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
-              <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio Banco</Th>
+              <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
+              <Th field="estado_geo"        {...{sortField,sortDir,onSort:sort}}>Estado</Th>
+              <Th field="municipio"         {...{sortField,sortDir,onSort:sort}}>Municipio</Th>
               <Th field="ubicacion"         {...{sortField,sortDir,onSort:sort}}>Ubicación</Th>
               <Th field="monto_adeudo"      {...{sortField,sortDir,onSort:sort}} align="right">Adeudo</Th>
               <Th field="valor_estimado"    {...{sortField,sortDir,onSort:sort}} align="right">Valor Est.</Th>
@@ -182,7 +184,7 @@ export default function ResultTable() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={12} style={{...td, textAlign:'center', color:'#9aa0a6', padding:'40px'}}>
+              <tr><td colSpan={14} style={{...td, textAlign:'center', color:'#9aa0a6', padding:'40px'}}>
                 Sin resultados
               </td></tr>
             ) : rows.map((e, i) => (
@@ -219,6 +221,12 @@ export default function ResultTable() {
                   {e.banco
                     ? <span style={{ fontSize:'12px', color:'#5f6368', background:'#f1f3f4', padding:'2px 8px', borderRadius:'12px' }}>{e.banco}</span>
                     : <span style={{color:'#dadce0'}}>—</span>}
+                </td>
+                <td style={{...td, fontSize:'12px'}}>
+                  {e.estado_geo || <span style={{color:'#dadce0'}}>—</span>}
+                </td>
+                <td style={{...td, fontSize:'12px'}}>
+                  {e.municipio || <span style={{color:'#dadce0'}}>—</span>}
                 </td>
                 <td style={{...td, maxWidth:'160px'}}>
                   <span title={e.ubicacion} style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:'12px' }}>

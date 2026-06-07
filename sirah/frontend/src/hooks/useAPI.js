@@ -111,6 +111,8 @@ export function useAPI() {
       ['folio_banco',       'Folio Banco'],
       ['numero_expediente', 'Expediente'],
       ['banco',             'Banco'],
+      ['estado_geo',        'Estado'],
+      ['municipio',         'Municipio'],
       ['ubicacion',         'Ubicación'],
       ['valor_catastral',   'Valor Catastral'],
       ['monto_adeudo',      'Monto Adeudo'],

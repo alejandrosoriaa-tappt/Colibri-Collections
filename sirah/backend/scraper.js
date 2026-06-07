@@ -276,56 +276,136 @@ function normHeader(h) {
 
 function autoMap(h) {
   const map = {
-    expediente:          'numero_expediente',
-    num_expediente:      'numero_expediente',
-    numero:              'numero_expediente',
-    no_expediente:       'numero_expediente',
-    id_expediente:       'numero_expediente',
-    // folio / id son IDs internos del banco, no el número de expediente judicial
-    folio:               'folio_banco',
-    id:                  'folio_banco',
-    id_credito:          'folio_banco',
-    numero_credito:      'folio_banco',
-    num_credito:         'folio_banco',
-    clave:               'folio_banco',
-    clave_credito:       'folio_banco',
-    cuenta:              'folio_banco',
-    num_cuenta:          'folio_banco',
-    institucion:         'banco',
-    acreedor:            'banco',
-    prestamista:         'banco',
-    direccion:           'ubicacion',
-    domicilio:           'ubicacion',
-    ciudad:              'ubicacion',
-    zona:                'ubicacion',
-    colonia:             'ubicacion',
-    municipio:           'ubicacion',
-    catastral:           'valor_catastral',
-    valor_avaluo:        'valor_catastral',
-    avaluo:              'valor_catastral',
-    valor_fiscal:        'valor_catastral',
-    monto:               'monto_adeudo',
-    adeudo:              'monto_adeudo',
-    deuda:               'monto_adeudo',
-    saldo:               'monto_adeudo',
-    credito:             'monto_adeudo',
-    prestamo:            'monto_adeudo',
-    saldo_insoluto:      'monto_adeudo',
-    fecha:               'fecha_inicio',
-    fecha_apertura:      'fecha_inicio',
-    fecha_credito:       'fecha_inicio',
-    status:              'status_juridico',
-    estatus:             'status_juridico',
-    estado:              'status_juridico',
-    etapa:               'status_juridico',
-    antiguedad:          'antiguedad_inmueble',
-    anos:                'antiguedad_inmueble',
-    age:                 'antiguedad_inmueble',
-    telefono:            'contacto',
-    email:               'contacto',
-    responsable:         'contacto',
-    observaciones:       'notas',
-    comentarios:         'notas'
+    // ── Expediente judicial ───────────────────────────────────────────────────
+    expediente:                    'numero_expediente',
+    num_expediente:                'numero_expediente',
+    no_expediente:                 'numero_expediente',
+    id_expediente:                 'numero_expediente',
+    numero_expediente:             'numero_expediente',
+
+    // ── Folio banco (ID interno, NO es el expediente judicial) ───────────────
+    folio:                         'folio_banco',
+    nb:                            'folio_banco',  // "Número de Bien"
+    id:                            'folio_banco',
+    id_credito:                    'folio_banco',
+    id_inmueble:                   'folio_banco',
+    numero_credito:                'folio_banco',
+    num_credito:                   'folio_banco',
+    clave:                         'folio_banco',
+    clave_credito:                 'folio_banco',
+    cuenta:                        'folio_banco',
+    num_cuenta:                    'folio_banco',
+    po_registri:                   'folio_banco',  // "PO Registro"
+    numero_bien:                   'folio_banco',
+
+    // ── Banco / Administradora ────────────────────────────────────────────────
+    institucion:                   'banco',
+    acreedor:                      'banco',
+    prestamista:                   'banco',
+    ssg_o_gla:                     'banco',        // clave de institución
+    origen:                        'banco',        // origen de cartera
+
+    // ── Ubicación (campo primario) ────────────────────────────────────────────
+    direccion:                     'ubicacion',
+    domicilio:                     'ubicacion',
+    calle:                         'ubicacion',
+    ubicacion_domicilio:           'ubicacion',    // "UBICACIÓN / DOMICILIO"
+    ubicacion_slash_domicilio:     'ubicacion',
+    domicilio_inmueble:            'ubicacion',
+    ubicacion_inmueble:            'ubicacion',
+    domicilio_del_inmueble:        'ubicacion',
+
+    // ── Municipio y complementos de ubicación ────────────────────────────────
+    // municipio y estado_geo son campos independientes del schema
+    municipio:                     'municipio',
+    localidad:                     '_loc_localidad',  // se concatena a ubicacion
+    colonia:                       '_loc_colonia',    // se concatena a ubicacion
+    colonia_fraccionamiento:       '_loc_colonia',
+    fraccionamiento:               '_loc_colonia',
+    ciudad:                        '_loc_ciudad',
+    zona:                          '_loc_zona',
+    // "estado" en archivos bancarios = estado geográfico (Querétaro), NO estatus jurídico
+    estado:                        'estado_geo',
+
+    // ── Valor ─────────────────────────────────────────────────────────────────
+    catastral:                     'valor_catastral',
+    valor_avaluo:                  'valor_catastral',
+    avaluo:                        'valor_catastral',
+    valor_fiscal:                  'valor_catastral',
+    val_comer:                     'valor_catastral',  // "valor comercial"
+    valor_comercial:               'valor_catastral',
+    valor_estimado:                'valor_catastral',
+    valor_de_mercado:              'valor_catastral',
+    valor_garantia:                'valor_catastral',
+    precio_piso:                   'valor_catastral',  // precio mínimo de venta
+    precio_promocion:              'valor_catastral',  // precio de oferta
+
+    // ── Adeudo ────────────────────────────────────────────────────────────────
+    monto:                         'monto_adeudo',
+    adeudo:                        'monto_adeudo',
+    deuda:                         'monto_adeudo',
+    saldo:                         'monto_adeudo',
+    credito:                       'monto_adeudo',
+    prestamo:                      'monto_adeudo',
+    saldo_insoluto:                'monto_adeudo',
+
+    // ── Fecha ─────────────────────────────────────────────────────────────────
+    fecha:                         'fecha_inicio',
+    fecha_apertura:                'fecha_inicio',
+    fecha_credito:                 'fecha_inicio',
+    fecha_aval:                    'fecha_inicio',  // "fecha de avalúo"
+    fecha_avaluo:                  'fecha_inicio',
+
+    // ── Status jurídico ───────────────────────────────────────────────────────
+    status:                        'status_juridico',
+    estatus:                       'status_juridico',
+    estatus_juridico:              'status_juridico',
+    situacion_juridica:            'status_juridico',
+    etapa:                         'status_juridico',
+    etapa_procesal:                'status_juridico',
+    tipo_de_proceso_o_juicio:      'status_juridico',
+    tipo_proceso_o_juicio:         'status_juridico',
+    posesion_juridi:               'status_juridico',  // "POSESION_JURIDI"
+    posesion_juridica:             'status_juridico',
+    iosesio:                       'status_juridico',  // "en posesión"
+
+    // ── Antigüedad ────────────────────────────────────────────────────────────
+    antiguedad:                    'antiguedad_inmueble',
+    anos:                          'antiguedad_inmueble',
+    age:                           'antiguedad_inmueble',
+
+    // ── Contacto ─────────────────────────────────────────────────────────────
+    telefono:                      'contacto',
+    email:                         'contacto',
+    responsable:                   'contacto',
+
+    // ── Notas (campos extra que vale la pena conservar) ───────────────────────
+    observaciones:                 'notas',
+    comentarios:                   'notas',
+    descripcion:                   'notas',
+    descrip4:                      'notas',
+    descripcion4:                  'notas',
+    tipo_bien:                     'notas',
+    tipo_inmueble:                 'notas',
+    tipo_inmuebles:                'notas',
+    tipo_de_inmueble:              'notas',
+    tipo_de_venta:                 'notas',
+    tipo_garantia:                 'notas',
+    tipo_gravamen:                 'notas',
+    tipo_escritura:                'notas',
+    tipo_de_operacion:             'notas',
+    tipo_de_operacion_para_la_venta: 'notas',
+    tipo_operacion:                'notas',
+    escritura:                     'notas',
+    escrituras:                    'notas',
+    sup_terr:                      'notas',
+    sup_const:                     'notas',
+    terreno_m2:                    'notas',
+    const_m2:                      'notas',
+    m2_terreno:                    'notas',
+    m2_construccion:               'notas',
+    cuenta_pred:                   'notas',
+    vias_de_acceso:                'notas',
   };
   return map[h] || h;
 }
@@ -735,8 +815,11 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
         const raw = String(row[idx] ?? '').trim();
         if (!raw) return;
 
-        if (campo.startsWith('_dup_')) {
-          // Columna duplicada: guardar con nombre original en notas
+        if (campo.startsWith('_loc_')) {
+          // Complemento de ubicación: acumular para concatenar después
+          if (!obj._loc) obj._loc = [];
+          obj._loc.push(raw);
+        } else if (campo.startsWith('_dup_')) {
           if (!obj._extra) obj._extra = {};
           obj._extra[columnasOriginales[idx]] = raw;
         } else if (campo === columnasOriginales[idx] && !CAMPOS_SCHEMA.includes(campo)) {
@@ -747,15 +830,19 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
         }
       });
 
-      // Si no tiene numero_expediente, intentar generar uno desde otros campos
+      // Concatenar complementos de ubicación (colonia, municipio, estado, etc.)
+      if (obj._loc?.length > 0) {
+        const partes = [obj.ubicacion, ...obj._loc].filter(Boolean);
+        obj.ubicacion = partes.join(', ');
+        delete obj._loc;
+      }
+
+      // Si no tiene numero_expediente, generarlo desde folio_banco o índice
       if (!obj.numero_expediente) {
-        const posibleId = finalMappedHeaders.findIndex(h =>
-          ['folio_banco', 'clave', 'referencia', 'ref', 'num', 'numero'].includes(h)
-        );
-        if (posibleId >= 0 && row[posibleId]) {
-          obj.numero_expediente = `${nombreHoja}-${String(row[posibleId]).trim()}`;
+        if (obj.folio_banco) {
+          obj.numero_expediente = `${nombreHoja}-${obj.folio_banco}`;
         } else {
-          obj.numero_expediente = `${nombreHoja}-${i}`;
+          obj.numero_expediente = `${nombreHoja}-${i + 1}`;
         }
       }
 
@@ -845,7 +932,8 @@ function _desambiguarNumericos(finalMappedHeaders, originalMappedHeaders, rawHea
 
 // Campos que pertenecen al schema de expedientes
 const CAMPOS_SCHEMA = [
-  'numero_expediente','folio_banco','nombre_archivo','banco','ubicacion',
+  'numero_expediente','folio_banco','nombre_archivo','banco',
+  'estado_geo','municipio','ubicacion',
   'valor_catastral','monto_adeudo','fecha_inicio','status_juridico',
   'antiguedad_inmueble','contacto','notas','tipo_cartera'
 ];
