@@ -12,39 +12,33 @@ export default function Dashboard() {
   useEffect(() => { fetchEstadisticas(); }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fafafa' }}>
+    <div style={{ minHeight: '100vh', background: '#f0f4ff' }}>
 
-      {/* ─── Top App Bar — Google style ──────────────────────────────────────── */}
+      {/* ─── Top App Bar ─────────────────────────────────────────────────────── */}
       <header style={{
-        background:   '#ffffff',
-        borderBottom: '1px solid #e0e0e0',
-        position:     'sticky',
-        top:          0,
-        zIndex:       200,
-        padding:      '0 24px'
+        background: 'linear-gradient(135deg, #1557b0 0%, #1a73e8 100%)',
+        position: 'sticky', top: 0, zIndex: 200,
+        padding: '0 24px',
+        boxShadow: '0 2px 8px rgba(21,87,176,0.3)'
       }}>
         <div style={{
           maxWidth: '1400px', margin: '0 auto',
-          height: '64px', display: 'flex',
+          height: '60px', display: 'flex',
           alignItems: 'center', justifyContent: 'space-between'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            {/* Logo mark */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             <div style={{
               width: '36px', height: '36px',
-              background: '#1a73e8',
-              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.2)',
+              borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 700, fontSize: '16px',
-              fontFamily: 'Roboto, sans-serif', letterSpacing: '-0.5px'
-            }}>
-              S
-            </div>
+              color: 'white', fontWeight: 700, fontSize: '16px'
+            }}>S</div>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: 400, color: '#202124', letterSpacing: '-0.2px' }}>
+              <div style={{ fontSize: '18px', fontWeight: 500, color: '#ffffff', letterSpacing: '0.2px' }}>
                 SIRAH
               </div>
-              <div style={{ fontSize: '11px', color: '#9aa0a6', letterSpacing: '0.2px', marginTop: '-2px' }}>
+              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', letterSpacing: '0.3px', marginTop: '-2px' }}>
                 Remates Hipotecarios
               </div>
             </div>
@@ -52,29 +46,30 @@ export default function Dashboard() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#9aa0a6', fontSize: '13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
                 <span style={{
                   display: 'inline-block', width: '14px', height: '14px',
-                  border: '2px solid #e8eaed', borderTop: '2px solid #1a73e8',
+                  border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white',
                   borderRadius: '50%', animation: 'spin 0.8s linear infinite'
                 }} />
                 Procesando
               </div>
             )}
-            <span style={{ fontSize: '12px', color: '#dadce0', fontFamily: 'Roboto Mono, monospace' }}>
-              v1.0
-            </span>
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Roboto Mono, monospace' }}>v1.0</span>
           </div>
         </div>
       </header>
 
-      {/* ─── Stats banner ────────────────────────────────────────────────────── */}
-      <div style={{ background: '#ffffff', borderBottom: '1px solid #e8eaed', padding: '28px 24px 32px' }}>
+      {/* ─── Hero banner ─────────────────────────────────────────────────────── */}
+      <div style={{
+        background: 'linear-gradient(180deg, #1a73e8 0%, #1e88e5 60%, #f0f4ff 100%)',
+        padding: '32px 24px 48px'
+      }}>
         <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 26px)', fontWeight: 400, color: '#202124', marginBottom: '4px' }}>
+          <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 300, color: '#ffffff', marginBottom: '4px' }}>
             Análisis de carteras hipotecarias
           </h1>
-          <p style={{ color: '#9aa0a6', fontSize: '13px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
             Valuación comercial · Status jurídico PJV · Exportación CSV
           </p>
           <StatsCards />
@@ -83,11 +78,12 @@ export default function Dashboard() {
 
       {/* ─── Main ────────────────────────────────────────────────────────────── */}
       <main className="md-sidebar-layout" style={{
-        maxWidth: '1400px', margin: '0 auto', padding: '24px',
+        maxWidth: '1400px', margin: '-16px auto 0',
+        padding: '0 24px 24px',
         display: 'grid', gridTemplateColumns: '320px 1fr',
         gap: '20px', alignItems: 'start'
       }}>
-        <div className="md-sticky" style={{ position: 'sticky', top: '80px' }}>
+        <div className="md-sticky" style={{ position: 'sticky', top: '76px' }}>
           <UploadForm />
           <Steps />
         </div>
@@ -96,9 +92,9 @@ export default function Dashboard() {
 
       <footer style={{
         padding: '24px', textAlign: 'center',
-        color: '#dadce0', fontSize: '11px',
+        color: '#9aa0a6', fontSize: '11px',
         fontFamily: 'Roboto Mono, monospace',
-        borderTop: '1px solid #e8eaed', marginTop: '40px'
+        borderTop: '1px solid #e3eaff', marginTop: '40px'
       }}>
         SIRAH · v1.0.0 · {new Date().getFullYear()}
       </footer>
@@ -117,16 +113,22 @@ function Steps() {
   ];
   return (
     <div style={{
-      background: '#ffffff', border: '1px solid #e0e0e0',
-      borderRadius: '12px', padding: '20px', marginTop: '12px'
+      background: '#ffffff', border: '1px solid #dbeafe',
+      borderRadius: '12px', padding: '20px', marginTop: '12px',
+      boxShadow: '0 1px 4px rgba(26,115,232,0.08)'
     }}>
-      <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#9aa0a6', marginBottom: '16px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#1a73e8', marginBottom: '16px' }}>
         Cómo funciona
       </div>
       {items.map(([n, title, desc]) => (
         <div key={n} style={{ display: 'flex', gap: '14px', marginBottom: '14px', alignItems: 'flex-start' }}>
-          <span style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '11px', color: '#dadce0', paddingTop: '2px', minWidth: '22px' }}>
-            {n}
+          <span style={{
+            width: '22px', height: '22px', borderRadius: '50%',
+            background: '#e8f0fe', color: '#1a73e8',
+            fontSize: '10px', fontWeight: 700, fontFamily: 'Roboto Mono, monospace',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+          }}>
+            {n.replace('0','')}
           </span>
           <div>
             <div style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>{title}</div>

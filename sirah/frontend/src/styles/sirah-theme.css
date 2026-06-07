@@ -2,9 +2,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap');
 
 :root {
-  --md-bg:        #fafafa;
+  --md-bg:        #f0f4ff;
   --md-surface-1: #ffffff;
-  --md-surface-2: #f5f5f5;
+  --md-surface-2: #e8f0fe;
   --md-surface-3: #eeeeee;
   --md-hover:     rgba(0,0,0,0.04);
 
