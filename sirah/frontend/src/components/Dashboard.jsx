@@ -1,141 +1,171 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import UploadForm  from './UploadForm.jsx';
 import ResultTable from './ResultTable.jsx';
 import StatsCards  from './StatsCards.jsx';
 import { useAPI }  from '../hooks/useAPI';
 import useAppStore from '../store/appStore';
 
+const NAV = [
+  { key: 'inicio',   icon: '⊞', label: 'Inicio' },
+  { key: 'cartera',  icon: '📂', label: 'Cartera' },
+  { key: 'analisis', icon: '📊', label: 'Análisis' },
+  { key: 'config',   icon: '⚙',  label: 'Configuración' }
+];
+
 export default function Dashboard() {
   const { fetchEstadisticas } = useAPI();
-  const { loading } = useAppStore();
+  const { loading, expedientes } = useAppStore();
+  const [section, setSection] = useState('inicio');
 
   useEffect(() => { fetchEstadisticas(); }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f0f4ff' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8faff', fontFamily: 'Roboto, sans-serif' }}>
 
-      {/* ─── Top App Bar ─────────────────────────────────────────────────────── */}
-      <header style={{
-        background: 'linear-gradient(135deg, #1557b0 0%, #1a73e8 100%)',
-        position: 'sticky', top: 0, zIndex: 200,
-        padding: '0 24px',
-        boxShadow: '0 2px 8px rgba(21,87,176,0.3)'
+      {/* ─── Sidebar ─────────────────────────────────────────────────────────── */}
+      <aside style={{
+        width: '220px', flexShrink: 0,
+        background: '#ffffff',
+        borderRight: '1px solid #e3eeff',
+        display: 'flex', flexDirection: 'column',
+        padding: '0 0 24px',
+        position: 'sticky', top: 0, height: '100vh',
+        overflowY: 'auto'
       }}>
-        <div style={{
-          maxWidth: '1400px', margin: '0 auto',
-          height: '60px', display: 'flex',
-          alignItems: 'center', justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+        {/* Logo */}
+        <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid #e3eeff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{
-              width: '36px', height: '36px',
-              background: 'rgba(255,255,255,0.2)',
-              borderRadius: '8px', border: '1px solid rgba(255,255,255,0.3)',
+              width: '34px', height: '34px',
+              background: 'linear-gradient(135deg, #1565c0, #42a5f5)',
+              borderRadius: '8px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: 'white', fontWeight: 700, fontSize: '16px'
+              color: 'white', fontWeight: 700, fontSize: '15px'
             }}>S</div>
             <div>
-              <div style={{ fontSize: '18px', fontWeight: 500, color: '#ffffff', letterSpacing: '0.2px' }}>
-                SIRAH
-              </div>
-              <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)', letterSpacing: '0.3px', marginTop: '-2px' }}>
-                Remates Hipotecarios
-              </div>
+              <div style={{ fontSize: '15px', fontWeight: 600, color: '#0d2a6b' }}>SIRAH</div>
+              <div style={{ fontSize: '10px', color: '#90a4c8', marginTop: '-1px' }}>Remates Hipotecarios</div>
             </div>
           </div>
+        </div>
 
+        {/* Nav items */}
+        <nav style={{ padding: '12px 10px', flex: 1 }}>
+          {NAV.map(({ key, icon, label }) => {
+            const active = section === key;
+            return (
+              <div key={key} onClick={() => setSection(key)} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '10px 12px', borderRadius: '8px',
+                marginBottom: '2px', cursor: 'pointer',
+                background: active ? '#e8f0fe' : 'transparent',
+                color: active ? '#1565c0' : '#5c7099',
+                fontWeight: active ? 600 : 400,
+                fontSize: '14px', transition: 'all 0.15s'
+              }}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#f0f4ff'; }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+              >
+                <span style={{ fontSize: '16px', opacity: active ? 1 : 0.6 }}>{icon}</span>
+                {label}
+                {active && <div style={{ marginLeft: 'auto', width: '4px', height: '4px', borderRadius: '50%', background: '#1565c0' }} />}
+              </div>
+            );
+          })}
+        </nav>
+
+        {/* User */}
+        <div style={{ padding: '12px 16px', borderTop: '1px solid #e3eeff' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              width: '30px', height: '30px', borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1976d2, #64b5f6)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', fontSize: '13px', fontWeight: 600
+            }}>U</div>
+            <div>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#0d2a6b' }}>Usuario</div>
+              <div style={{ fontSize: '10px', color: '#90a4c8' }}>Inversionista</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* ─── Main ────────────────────────────────────────────────────────────── */}
+      <div style={{ flex: 1, overflow: 'auto' }}>
+
+        {/* Top bar */}
+        <div style={{
+          background: '#ffffff', borderBottom: '1px solid #e3eeff',
+          padding: '0 28px', height: '60px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          position: 'sticky', top: 0, zIndex: 100
+        }}>
+          <div style={{ fontSize: '15px', color: '#5c7099' }}>
+            {NAV.find(n => n.key === section)?.label}
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '7px', color: '#90a4c8', fontSize: '12px' }}>
                 <span style={{
-                  display: 'inline-block', width: '14px', height: '14px',
-                  border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white',
+                  display: 'inline-block', width: '13px', height: '13px',
+                  border: '2px solid #dbeafe', borderTop: '2px solid #1976d2',
                   borderRadius: '50%', animation: 'spin 0.8s linear infinite'
                 }} />
                 Procesando
               </div>
             )}
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', fontFamily: 'Roboto Mono, monospace' }}>v1.0</span>
+            <div style={{
+              background: '#e8f0fe', color: '#1565c0',
+              padding: '5px 14px', borderRadius: '20px',
+              fontSize: '12px', fontWeight: 500
+            }}>
+              {expedientes.length} expedientes
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* ─── Hero banner ─────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(180deg, #1a73e8 0%, #1e88e5 60%, #f0f4ff 100%)',
-        padding: '32px 24px 48px'
-      }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 300, color: '#ffffff', marginBottom: '4px' }}>
-            Análisis de carteras hipotecarias
-          </h1>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '13px' }}>
-            Valuación comercial · Status jurídico PJV · Exportación CSV
-          </p>
+        {/* Content */}
+        <div style={{ padding: '28px' }}>
+
+          {/* Greeting */}
+          <div style={{ marginBottom: '24px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 400, color: '#0d2a6b', marginBottom: '4px' }}>
+              Hola, SIRAH 👋
+            </h1>
+            <p style={{ fontSize: '13px', color: '#90a4c8' }}>Resumen de cartera hipotecaria</p>
+          </div>
+
+          {/* KPI cards */}
           <StatsCards />
-        </div>
-      </div>
 
-      {/* ─── Main ────────────────────────────────────────────────────────────── */}
-      <main className="md-sidebar-layout" style={{
-        maxWidth: '1400px', margin: '-16px auto 0',
-        padding: '0 24px 24px',
-        display: 'grid', gridTemplateColumns: '320px 1fr',
-        gap: '20px', alignItems: 'start'
-      }}>
-        <div className="md-sticky" style={{ position: 'sticky', top: '76px' }}>
-          <UploadForm />
-          <Steps />
-        </div>
-        <ResultTable />
-      </main>
+          {/* Cartera activa */}
+          <div style={{ marginTop: '32px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 500, color: '#0d2a6b' }}>Cartera activa</h2>
+              {expedientes.length > 0 && (
+                <span style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer' }}>
+                  Ver todas →
+                </span>
+              )}
+            </div>
 
-      <footer style={{
-        padding: '24px', textAlign: 'center',
-        color: '#9aa0a6', fontSize: '11px',
-        fontFamily: 'Roboto Mono, monospace',
-        borderTop: '1px solid #e3eaff', marginTop: '40px'
-      }}>
-        SIRAH · v1.0.0 · {new Date().getFullYear()}
-      </footer>
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-}
-
-function Steps() {
-  const items = [
-    ['01', 'Sube el CSV',     'Cartera del banco'],
-    ['02', 'Valuación + PJV', 'Automático'],
-    ['03', 'Revisa la tabla', 'Ordena y filtra'],
-    ['04', 'Exporta',         'CSV con análisis']
-  ];
-  return (
-    <div style={{
-      background: '#ffffff', border: '1px solid #dbeafe',
-      borderRadius: '12px', padding: '20px', marginTop: '12px',
-      boxShadow: '0 1px 4px rgba(26,115,232,0.08)'
-    }}>
-      <div style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#1a73e8', marginBottom: '16px' }}>
-        Cómo funciona
-      </div>
-      {items.map(([n, title, desc]) => (
-        <div key={n} style={{ display: 'flex', gap: '14px', marginBottom: '14px', alignItems: 'flex-start' }}>
-          <span style={{
-            width: '22px', height: '22px', borderRadius: '50%',
-            background: '#e8f0fe', color: '#1a73e8',
-            fontSize: '10px', fontWeight: 700, fontFamily: 'Roboto Mono, monospace',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
-          }}>
-            {n.replace('0','')}
-          </span>
-          <div>
-            <div style={{ fontSize: '13px', color: '#202124', fontWeight: 500 }}>{title}</div>
-            <div style={{ fontSize: '12px', color: '#9aa0a6' }}>{desc}</div>
+            {/* Upload + table */}
+            <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px', alignItems: 'start' }}>
+              <UploadForm />
+              <ResultTable />
+            </div>
           </div>
         </div>
-      ))}
+      </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (max-width: 900px) {
+          aside { display: none; }
+          div[style*="grid-template-columns: 300px"] { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
