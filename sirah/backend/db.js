@@ -15,10 +15,43 @@ function getPool() {
 // ─── In-memory fallback (sin DATABASE_URL) ────────────────────────────────────
 let memArchivos    = [];
 let memExpedientes = [];
-let memId = 1;
+let memId  = 1;
+let memSeq = 1;
+
+// ─── Estado → abreviatura oficial ────────────────────────────────────────────
+const ESTADO_ABBR = {
+  'AGUASCALIENTES': 'AGS', 'BAJA CALIFORNIA': 'BC', 'BAJA CALIFORNIA SUR': 'BCS',
+  'CAMPECHE': 'CAM', 'CHIAPAS': 'CHIS', 'CHIHUAHUA': 'CHIH',
+  'CIUDAD DE MEXICO': 'CDMX', 'CDMX': 'CDMX', 'COAHUILA': 'COAH',
+  'COLIMA': 'COL', 'DURANGO': 'DGO', 'GUANAJUATO': 'GTO',
+  'GUERRERO': 'GRO', 'HIDALGO': 'HGO', 'JALISCO': 'JAL',
+  'MEXICO': 'MEX', 'ESTADO DE MEXICO': 'MEX', 'EDO. DE MEXICO': 'MEX',
+  'MICHOACAN': 'MICH', 'MICHOACÁN': 'MICH', 'MORELOS': 'MOR',
+  'NAYARIT': 'NAY', 'NUEVO LEON': 'NL', 'NUEVO LEÓN': 'NL',
+  'OAXACA': 'OAX', 'PUEBLA': 'PUE', 'QUERETARO': 'QRO', 'QUERÉTARO': 'QRO',
+  'QUINTANA ROO': 'QROO', 'SAN LUIS POTOSI': 'SLP', 'SAN LUIS POTOSÍ': 'SLP',
+  'SINALOA': 'SIN', 'SONORA': 'SON', 'TABASCO': 'TAB',
+  'TAMAULIPAS': 'TAMS', 'TLAXCALA': 'TLAX', 'VERACRUZ': 'VER',
+  'YUCATAN': 'YUC', 'YUCATÁN': 'YUC', 'ZACATECAS': 'ZAC',
+};
+
+function estadoAbbr(estado) {
+  if (!estado) return 'XX';
+  const key = estado.toUpperCase().trim()
+    .normalize('NFD').replace(/[̀-ͯ]/g, ''); // remove accents for lookup
+  return ESTADO_ABBR[estado.toUpperCase().trim()] || ESTADO_ABBR[key] || key.slice(0, 3);
+}
+
+function buildClave(estadoGeo, seq) {
+  const yy   = String(new Date().getFullYear()).slice(-2);
+  const abbr = estadoAbbr(estadoGeo);
+  return `SIRAH-${abbr}-${yy}-${String(seq).padStart(5, '0')}`;
+}
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const SQL_SCHEMA = `
+  CREATE SEQUENCE IF NOT EXISTS sirah_exp_seq START 1;
+
   CREATE TABLE IF NOT EXISTS archivos (
     id             SERIAL PRIMARY KEY,
     nombre         TEXT NOT NULL,
@@ -68,8 +101,9 @@ async function createTablesIfNotExist() {
   }
   try {
     await p.query(SQL_SCHEMA);
-    // Migration: add favorito column if missing (safe on existing tables)
-    await p.query(`ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS favorito BOOLEAN DEFAULT FALSE`);
+    await p.query(`ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS favorito    BOOLEAN DEFAULT FALSE`);
+    await p.query(`ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS clave_sirah TEXT`);
+    await p.query(`CREATE INDEX IF NOT EXISTS idx_exp_clave ON expedientes (clave_sirah)`);
     console.log('✓ Tablas verificadas (PostgreSQL Railway)');
   } catch (err) {
     console.error('✗ Error creando tablas:', err.message);
@@ -165,6 +199,7 @@ async function deleteArchivo(id) {
 
 // ─── insertExpedientes ────────────────────────────────────────────────────────
 const EXP_COLS = [
+  'clave_sirah',
   'archivo_id','numero_expediente','folio_banco','nombre_archivo',
   'banco','estado_geo','municipio','ubicacion',
   'valor_catastral','monto_adeudo','fecha_inicio','status_juridico',
@@ -172,8 +207,9 @@ const EXP_COLS = [
   'valor_estimado','rentabilidad','factores','status_pjv','detalles_pjv'
 ];
 
-function rowParams(row, archivoId) {
+function rowParams(row, archivoId, clave) {
   return [
+    clave,
     archivoId,
     row.numero_expediente   || null,
     row.folio_banco         || null,
@@ -202,7 +238,11 @@ async function insertExpedientes(rows, archivoId) {
   const p = getPool();
   if (!p) {
     const inserted = rows.map(r => ({
-      ...r, id: memId++, archivo_id: archivoId, created_at: new Date().toISOString()
+      ...r,
+      id: memId++,
+      archivo_id:  archivoId,
+      clave_sirah: buildClave(r.estado_geo, memSeq++),
+      created_at:  new Date().toISOString()
     }));
     memExpedientes.push(...inserted);
     return { data: inserted, error: null };
@@ -210,12 +250,21 @@ async function insertExpedientes(rows, archivoId) {
   const CHUNK = 100;
   const all = [];
   try {
+    // Obtain a block of sequence values in one query
+    const seqRes = await p.query(
+      `SELECT nextval('sirah_exp_seq') AS seq FROM generate_series(1, $1)`,
+      [rows.length]
+    );
+    const seqs = seqRes.rows.map(r => Number(r.seq));
+
     for (let i = 0; i < rows.length; i += CHUNK) {
       const chunk = rows.slice(i, i + CHUNK);
       const vals = [], params = [];
       let pi = 1;
-      for (const row of chunk) {
-        const rp = rowParams(row, archivoId);
+      for (let j = 0; j < chunk.length; j++) {
+        const row   = chunk[j];
+        const clave = buildClave(row.estado_geo, seqs[i + j]);
+        const rp    = rowParams(row, archivoId, clave);
         vals.push(`(${rp.map(() => `$${pi++}`).join(',')})`);
         params.push(...rp);
       }

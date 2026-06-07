@@ -121,12 +121,30 @@ export default function ExpedienteModal({ expediente, onClose }) {
           borderRadius: '16px 16px 0 0'
         }}>
           <div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#9e9e9e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
-              Expediente
-            </div>
-            <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d2a6b', fontFamily: 'Roboto Mono, monospace', lineHeight: 1.1 }}>
-              {e.numero_expediente || '—'}
-            </div>
+            {e.clave_sirah ? (
+              <>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9e9e9e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                  Clave SIRAH
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d2a6b', fontFamily: 'Roboto Mono, monospace', lineHeight: 1.1, letterSpacing: '0.5px' }}>
+                  {e.clave_sirah}
+                </div>
+                {e.numero_expediente && (
+                  <div style={{ fontSize: '11px', color: '#9e9e9e', fontWeight: 600, marginTop: '3px' }}>
+                    Exp. interno: {e.numero_expediente}
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9e9e9e', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>
+                  Expediente
+                </div>
+                <div style={{ fontSize: '20px', fontWeight: 800, color: '#0d2a6b', fontFamily: 'Roboto Mono, monospace', lineHeight: 1.1 }}>
+                  {e.numero_expediente || '—'}
+                </div>
+              </>
+            )}
             {e.folio_banco && (
               <div style={{ fontSize: '12px', color: '#757575', fontWeight: 600, marginTop: '4px' }}>
                 Folio banco: {e.folio_banco}

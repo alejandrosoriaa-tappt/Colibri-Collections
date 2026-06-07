@@ -91,7 +91,7 @@ export default function ResultTable() {
     if (search) {
       const q = search.toLowerCase();
       d = d.filter(e =>
-        [e.numero_expediente, e.folio_banco, e.banco, e.estado_geo, e.municipio,
+        [e.clave_sirah, e.numero_expediente, e.folio_banco, e.banco, e.estado_geo, e.municipio,
          e.ubicacion, e.contacto, e.status_juridico, e.nombre_archivo]
           .some(v => v?.toLowerCase().includes(q))
       );
@@ -257,15 +257,32 @@ export default function ResultTable() {
                   </span>
                 </td>
 
-                {/* Expediente */}
+                {/* Clave SIRAH + expediente interno */}
                 <td style={tdMono}>
-                  <code style={{
-                    color: '#1565c0', fontWeight: 800, fontSize: '12px',
-                    textDecoration: 'underline', textDecorationStyle: 'dotted',
-                    textUnderlineOffset: '3px'
-                  }}>
-                    {e.numero_expediente||'—'}
-                  </code>
+                  {e.clave_sirah ? (
+                    <div>
+                      <code style={{
+                        color: '#1565c0', fontWeight: 800, fontSize: '12px',
+                        textDecoration: 'underline', textDecorationStyle: 'dotted',
+                        textUnderlineOffset: '3px', letterSpacing: '0.3px'
+                      }}>
+                        {e.clave_sirah}
+                      </code>
+                      {e.numero_expediente && (
+                        <div style={{ fontSize: '10px', color: '#9e9e9e', fontWeight: 600, marginTop: '1px' }}>
+                          {e.numero_expediente}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <code style={{
+                      color: '#1565c0', fontWeight: 800, fontSize: '12px',
+                      textDecoration: 'underline', textDecorationStyle: 'dotted',
+                      textUnderlineOffset: '3px'
+                    }}>
+                      {e.numero_expediente||'—'}
+                    </code>
+                  )}
                 </td>
 
                 {/* Folio banco */}
