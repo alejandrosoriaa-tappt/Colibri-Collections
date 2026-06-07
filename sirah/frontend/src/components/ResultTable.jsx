@@ -1,10 +1,21 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import useAppStore from '../store/appStore';
 import { useAPI } from '../hooks/useAPI';
 import ExpedienteModal from './ExpedienteModal.jsx';
 import { calcScore, scoreMeta } from '../utils/sirahScore.js';
 
 const PAGE_OPTIONS = [10, 20, 50];
+
+function seededShuffle(arr, seed) {
+  const result = [...arr];
+  let s = Math.floor(seed * 2147483647);
+  for (let i = result.length - 1; i > 0; i--) {
+    s = ((s * 1664525) + 1013904223) & 0x7fffffff;
+    const j = s % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
 
 function useMobile() {
   const [m, setM] = useState(() => window.innerWidth < 768);
@@ -151,6 +162,10 @@ export default function ResultTable() {
   const [municipioFilter, setMunicipioFilter] = useState('');
   const [soloFavoritos, setSoloFavoritos]   = useState(false);
   const [selected, setSelected]             = useState(null);
+  const [hasManualSort, setHasManualSort]   = useState(false);
+
+  // Stable shuffle seed — same random order for the whole session
+  const shuffleSeed = useRef(Math.random());
 
   const estados = useMemo(
     () => [...new Set(expedientes.map(e => e.estado_geo).filter(Boolean))].sort(),
@@ -161,6 +176,8 @@ export default function ResultTable() {
     const base = estadoFilter ? expedientes.filter(e => e.estado_geo === estadoFilter) : expedientes;
     return [...new Set(base.map(e => e.municipio).filter(Boolean))].sort();
   }, [expedientes, estadoFilter]);
+
+  const isFiltered = !!estadoFilter || !!municipioFilter;
 
   const filtered = useMemo(() => {
     let d = [...expedientes];
@@ -175,21 +192,33 @@ export default function ResultTable() {
     if (estadoFilter)    d = d.filter(e => e.estado_geo === estadoFilter);
     if (municipioFilter) d = d.filter(e => e.municipio  === municipioFilter);
     if (soloFavoritos)   d = d.filter(e => e.favorito);
-    d.sort((a, b) => {
-      let va = a[sortField] ?? '', vb = b[sortField] ?? '';
-      if (typeof va === 'string') va = va.toLowerCase();
-      if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va < vb) return sortDir==='asc' ? -1 : 1;
-      if (va > vb) return sortDir==='asc' ?  1 : -1;
-      return 0;
-    });
+
+    if (hasManualSort) {
+      // User clicked a column header — respect their choice
+      d.sort((a, b) => {
+        let va = a[sortField] ?? '', vb = b[sortField] ?? '';
+        if (typeof va === 'string') va = va.toLowerCase();
+        if (typeof vb === 'string') vb = vb.toLowerCase();
+        if (va < vb) return sortDir==='asc' ? -1 : 1;
+        if (va > vb) return sortDir==='asc' ?  1 : -1;
+        return 0;
+      });
+    } else if (isFiltered) {
+      // Filter active → always surface highest-scored opportunities first
+      d.sort((a, b) => calcScore(b) - calcScore(a));
+    } else {
+      // No filter, no manual sort → stable random mix per session
+      d = seededShuffle(d, shuffleSeed.current);
+    }
     return d;
-  }, [expedientes, search, estadoFilter, soloFavoritos, sortField, sortDir]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expedientes, search, estadoFilter, municipioFilter, soloFavoritos, sortField, sortDir, hasManualSort]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const rows = filtered.slice((page-1)*pageSize, page*pageSize);
 
   function sort(field) {
+    setHasManualSort(true);
     setSortDir(d => sortField===field ? (d==='asc'?'desc':'asc') : 'asc');
     setSortField(field); setPage(1);
   }
@@ -332,11 +361,16 @@ export default function ResultTable() {
               <tr><td colSpan={16} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
                 Sin resultados para esta búsqueda
               </td></tr>
-            ) : rows.map((e, i) => (
+            ) : rows.map((e, i) => {
+              const isTop3 = isFiltered && !hasManualSort && page === 1 && i < 3;
+              const rowBg  = isTop3
+                ? (i === 0 ? '#fffde7' : '#fffef5')
+                : (i%2===0 ? '#ffffff' : '#fafafa');
+              return (
               <tr key={e.id||e.numero_expediente||i}
-                style={{ background: i%2===0 ? '#ffffff' : '#fafafa', transition: 'background 0.1s', cursor: 'pointer' }}
-                onMouseEnter={ev => ev.currentTarget.style.background = '#e3f2fd'}
-                onMouseLeave={ev => ev.currentTarget.style.background = i%2===0 ? '#ffffff' : '#fafafa'}
+                style={{ background: rowBg, transition: 'background 0.1s', cursor: 'pointer' }}
+                onMouseEnter={ev => ev.currentTarget.style.background = isTop3 ? '#fff9c4' : '#e3f2fd'}
+                onMouseLeave={ev => ev.currentTarget.style.background = rowBg}
                 onClick={() => setSelected(e)}
               >
                 {/* Favorito star */}
@@ -355,7 +389,17 @@ export default function ResultTable() {
                 </td>
 
                 {/* Ponderación IA */}
-                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', textAlign: 'center' }}>
+                <td style={{ padding: '8px 12px', borderBottom: '1px solid #e0e0e0', textAlign: 'center', position: 'relative' }}>
+                  {isTop3 && (
+                    <div style={{
+                      position: 'absolute', top: '4px', right: '4px',
+                      fontSize: '10px', fontWeight: 800,
+                      color: ['#b8860b','#9e9e9e','#bf7a3a'][i],
+                      lineHeight: 1
+                    }}>
+                      {['🥇','🥈','🥉'][i]}
+                    </div>
+                  )}
                   <ScoreBadge score={calcScore(e)} />
                 </td>
 
@@ -449,7 +493,8 @@ export default function ResultTable() {
                     : <span style={{color:'#bdbdbd'}}>—</span>}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>
