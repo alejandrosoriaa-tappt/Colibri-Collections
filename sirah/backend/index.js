@@ -15,12 +15,15 @@ const PORT = process.env.PORT || 3000;
 // ─── CORS ──────────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:3000'];
+  : null; // null = permitir todos (útil en Railway sin configurar la variable)
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Allow requests with no origin (curl, Postman, server-to-server)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    // Sin ALLOWED_ORIGINS configurado → abrir para todos (Railway, Vercel, dev)
+    if (!allowedOrigins) return cb(null, true);
+    // Con origen no definido (curl, Postman, server-to-server) → permitir
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
     cb(new Error(`Origen no permitido por CORS: ${origin}`));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
