@@ -1,8 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import useAppStore from '../store/appStore';
 import { useAPI } from '../hooks/useAPI';
 
 const PAGE_OPTIONS = [10, 20, 50];
+
+function useMobile() {
+  const [m, setM] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const fn = () => setM(window.innerWidth < 768);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+  return m;
+}
 
 const fmtMXN = (v) =>
   v !== null && v !== undefined && !isNaN(v)
@@ -59,6 +69,7 @@ function Th({ children, field, sortField, sortDir, onSort, align = 'left' }) {
 export default function ResultTable() {
   const { expedientes } = useAppStore();
   const { exportarCSV }  = useAPI();
+  const isMobile = useMobile();
 
   const [page, setPage]           = useState(1);
   const [pageSize, setPageSize]   = useState(20);
@@ -124,54 +135,59 @@ export default function ResultTable() {
     <div style={{ background: '#ffffff', border: '1px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden' }}>
 
       {/* Toolbar */}
-      <div style={{
-        padding: '12px 16px', borderBottom: '1px solid #e0e0e0',
-        display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center',
-        background: '#fafafa'
-      }}>
-        <span style={{ fontSize: '14px', color: '#212121', fontWeight: 800, flex: 1 }}>
-          {filtered.length.toLocaleString()} de {expedientes.length.toLocaleString()} expedientes
-        </span>
+      <div style={{ padding: '10px 14px', borderBottom: '1px solid #e0e0e0', background: '#fafafa', display: 'flex', flexDirection: 'column', gap: '8px' }}>
 
-        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="🔍 Buscar por estado, municipio, folio…"
-          style={{
-            padding: '8px 14px', borderRadius: '24px',
-            border: '1.5px solid #bdbdbd', background: '#ffffff',
-            color: '#212121', fontSize: '13px', fontWeight: 600, width: '260px',
-            outline: 'none'
-          }}
-          onFocus={e => e.target.style.border = '1.5px solid #1565c0'}
-          onBlur={e  => e.target.style.border = '1.5px solid #bdbdbd'}
-        />
+        {/* Row 1: count + page size + export */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', color: '#212121', fontWeight: 800, flex: 1, whiteSpace: 'nowrap' }}>
+            {filtered.length.toLocaleString()} de {expedientes.length.toLocaleString()} expedientes
+          </span>
 
-        <select value={estadoFilter} onChange={e => { setEstadoFilter(e.target.value); setPage(1); }}
-          style={{
-            padding: '8px 12px', borderRadius: '6px',
-            border: '1.5px solid #bdbdbd', background: '#ffffff',
-            color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+          <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+            style={{
+              padding: '7px 10px', borderRadius: '6px',
+              border: '1.5px solid #bdbdbd', background: '#ffffff',
+              color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
+            }}>
+            {PAGE_OPTIONS.map(n => <option key={n} value={n}>{n} / pág.</option>)}
+          </select>
+
+          <button onClick={() => exportarCSV(filtered)} style={{
+            padding: '7px 14px', background: '#1565c0',
+            color: '#ffffff', border: 'none',
+            borderRadius: '6px', fontSize: '13px', fontWeight: 700,
+            cursor: 'pointer', whiteSpace: 'nowrap'
           }}>
-          <option value="">Todos los estados</option>
-          {estados.map(b => <option key={b} value={b}>{b}</option>)}
-        </select>
+            ↓ CSV
+          </button>
+        </div>
 
-        <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-          style={{
-            padding: '8px 12px', borderRadius: '6px',
-            border: '1.5px solid #bdbdbd', background: '#ffffff',
-            color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer'
-          }}>
-          {PAGE_OPTIONS.map(n => <option key={n} value={n}>{n} por página</option>)}
-        </select>
+        {/* Row 2: search + estado filter */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+            placeholder="🔍 Buscar por estado, municipio, folio…"
+            style={{
+              flex: 1, minWidth: '160px',
+              padding: '7px 14px', borderRadius: '24px',
+              border: '1.5px solid #bdbdbd', background: '#ffffff',
+              color: '#212121', fontSize: '13px', fontWeight: 600,
+              outline: 'none'
+            }}
+            onFocus={e => e.target.style.border = '1.5px solid #1565c0'}
+            onBlur={e  => e.target.style.border = '1.5px solid #bdbdbd'}
+          />
 
-        <button onClick={() => exportarCSV(filtered)} style={{
-          padding: '8px 18px', background: '#1565c0',
-          color: '#ffffff', border: 'none',
-          borderRadius: '6px', fontSize: '13px', fontWeight: 700,
-          cursor: 'pointer'
-        }}>
-          ↓ Exportar CSV
-        </button>
+          <select value={estadoFilter} onChange={e => { setEstadoFilter(e.target.value); setPage(1); }}
+            style={{
+              padding: '7px 10px', borderRadius: '6px',
+              border: '1.5px solid #bdbdbd', background: '#ffffff',
+              color: '#212121', fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+              maxWidth: isMobile ? '140px' : '180px'
+            }}>
+            <option value="">Todos los estados</option>
+            {estados.map(b => <option key={b} value={b}>{b}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Table */}
