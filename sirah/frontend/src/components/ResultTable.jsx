@@ -259,7 +259,8 @@ export default function ResultTable() {
               <th style={{ padding: '10px 12px', background: '#f5f5f5', borderBottom: '2px solid #1565c0', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#1565c0', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
                 Pond. IA
               </th>
-              <Th field="clave_sirah" {...{sortField,sortDir,onSort:sort}}>Clave / Exp.</Th>
+              <Th field="clave_sirah"       {...{sortField,sortDir,onSort:sort}}>Clave SIRAH</Th>
+              <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
               <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
               <Th field="estado_geo"        {...{sortField,sortDir,onSort:sort}}>Estado</Th>
@@ -276,7 +277,7 @@ export default function ResultTable() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={15} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
+              <tr><td colSpan={16} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
                 Sin resultados para esta búsqueda
               </td></tr>
             ) : rows.map((e, i) => (
@@ -306,32 +307,21 @@ export default function ResultTable() {
                   <ScoreBadge score={calcScore(e)} />
                 </td>
 
-                {/* Clave SIRAH + expediente interno */}
+                {/* Clave SIRAH */}
                 <td style={tdMono}>
-                  {e.clave_sirah ? (
-                    <div>
-                      <code style={{
-                        color: '#1565c0', fontWeight: 800, fontSize: '12px',
-                        textDecoration: 'underline', textDecorationStyle: 'dotted',
-                        textUnderlineOffset: '3px', letterSpacing: '0.3px'
-                      }}>
-                        {e.clave_sirah}
-                      </code>
-                      {e.numero_expediente && (
-                        <div style={{ fontSize: '10px', color: '#9e9e9e', fontWeight: 600, marginTop: '1px' }}>
-                          {e.numero_expediente}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <code style={{
-                      color: '#1565c0', fontWeight: 800, fontSize: '12px',
-                      textDecoration: 'underline', textDecorationStyle: 'dotted',
-                      textUnderlineOffset: '3px'
-                    }}>
-                      {e.numero_expediente||'—'}
-                    </code>
-                  )}
+                  <code style={{
+                    color: '#1565c0', fontWeight: 800, fontSize: '12px',
+                    letterSpacing: '0.3px'
+                  }}>
+                    {e.clave_sirah || '—'}
+                  </code>
+                </td>
+
+                {/* Expediente interno */}
+                <td style={tdMono}>
+                  <span style={{ color: '#424242', fontSize: '12px', fontWeight: 600 }}>
+                    {e.numero_expediente || '—'}
+                  </span>
                 </td>
 
                 {/* Folio banco */}
