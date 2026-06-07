@@ -2,7 +2,11 @@ import { useCallback } from 'react';
 import axios from 'axios';
 import useAppStore from '../store/appStore';
 
-const BASE = '/api';
+// En dev usa el proxy de Vite → localhost:3000
+// En producción Railway usa VITE_API_URL (ej: https://sirah-backend.up.railway.app)
+const BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 /**
  * Hook centralizado para todas las llamadas a la API de SIRAH.
