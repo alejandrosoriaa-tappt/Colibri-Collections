@@ -590,11 +590,40 @@ class AnalizadorColumnas {
   }
 }
 
+// ─── Detectar fila real de encabezados ───────────────────────────────────────
+// Muchos archivos bancarios tienen filas de título antes de los encabezados reales.
+// Busca la primera fila con ≥3 celdas no vacías de texto corto (< 60 chars, no solo números).
+function encontrarFilaHeader(rows) {
+  for (let i = 0; i < Math.min(15, rows.length); i++) {
+    const row = rows[i];
+    if (!row) continue;
+    const noVacias = row.filter(v => v !== '' && v !== null && v !== undefined);
+    if (noVacias.length < 2) continue;
+    const parecenHeaders = noVacias.filter(v => {
+      const s = String(v).trim();
+      if (s.length === 0 || s.length > 80) return false;
+      // Descarta valores que son solo números o fechas
+      const sinFormato = s.replace(/[$,.\s]/g, '');
+      if (!isNaN(Number(sinFormato)) && sinFormato.length > 0) return false;
+      return true;
+    });
+    if (parecenHeaders.length >= Math.max(2, noVacias.length * 0.5)) {
+      if (i > 0) console.log(`  ℹ️  Filas de título detectadas: ${i} fila(s) antes de encabezados`);
+      return i;
+    }
+  }
+  return 0;
+}
+
 // ─── ParsearHoja (una hoja de Excel) ─────────────────────────────────────────
 function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
   if (!rows || rows.length < 2) return { expedientes: [], errores: [], total: 0, mapeo_columnas: [] };
 
-  const rawHeaders    = rows[0].map(h => String(h ?? '').trim());
+  const headerRowIdx  = encontrarFilaHeader(rows);
+  const dataRows      = rows.slice(headerRowIdx + 1).filter(r => r && !r.every(v => v === '' || v === null || v === undefined));
+  if (dataRows.length === 0) return { expedientes: [], errores: [], total: 0, mapeo_columnas: [] };
+
+  const rawHeaders    = rows[headerRowIdx].map(h => String(h ?? '').trim());
   const headers       = rawHeaders.map(h => normHeader(h.toLowerCase()));
   const mappedHeaders = headers.map(autoMap);
 
@@ -602,10 +631,8 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
   const columnasOriginales = rawHeaders;
 
   // ── Análisis semántico de columnas por contenido ──────────────────────────
-  // Recopilar hasta 20 valores no vacíos de las primeras 30 filas de datos
-  const sampleRows = rows.slice(1, 31);
+  const sampleRows = dataRows.slice(0, 30);
 
-  // Detectar pares de columnas numéricas_grande para desambiguar con el header
   const reporteMapeo = [];
   const finalMappedHeaders = mappedHeaders.map((headerMap, colIdx) => {
     const valoresMuestra = sampleRows
@@ -634,21 +661,27 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
     let metodo;
     let confianzaFinal;
 
-    if (headerEsSchema && contentConf < 0.55) {
+    // folio_banco es una regla de negocio explícita: el folio del banco NO es el
+    // expediente judicial aunque el contenido parezca un ID. Nunca dejar que el
+    // content scorer lo convierta en numero_expediente.
+    const CAMPOS_FIJOS = ['folio_banco', 'nombre_archivo'];
+
+    if (CAMPOS_FIJOS.includes(headerMap)) {
+      tipoFinal      = headerMap;
+      metodo         = 'encabezado-fijo';
+      confianzaFinal = 1.0;
+    } else if (headerEsSchema && contentConf < 0.55) {
       // Encabezado reconocido y contenido no aporta nada mejor → mantener header
       tipoFinal      = headerMap;
       metodo         = 'encabezado';
       confianzaFinal = 0.95;
     } else if (!headerEsSchema && contentConf >= 0.55) {
       // Encabezado no reconocido pero contenido da buena señal → usar contenido
-      // Resolver numerico_grande → valor_catastral o monto_adeudo con hint del header
       tipoFinal      = resolverNumericoGrande(contentTipo, headerMap, rawHeaders[colIdx]);
       metodo         = 'contenido';
       confianzaFinal = contentConf;
     } else if (headerEsSchema && contentConf >= 0.55 && contentTipo !== headerMap) {
-      // Encabezado reconocido Y contenido sugiere otro tipo con buena confianza
-      // Dar preferencia al contenido solo si su confianza supera 0.55
-      const headerConf = 0.60; // confianza base para mapping por header
+      const headerConf = 0.60;
       if (contentConf > headerConf) {
         tipoFinal      = resolverNumericoGrande(contentTipo, headerMap, rawHeaders[colIdx]);
         metodo         = 'contenido';
@@ -680,22 +713,33 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
   // Caso especial: dos columnas compiten como numerico_grande → desambiguar por header
   _desambiguarNumericos(finalMappedHeaders, mappedHeaders, rawHeaders, reporteMapeo);
 
+  // Desambiguar duplicados: si dos columnas mapean al mismo campo schema,
+  // marcar la segunda como _dup_<campo> para guardarla en notas
+  const camposUsados = {};
+  const finalMappedHeadersDedup = finalMappedHeaders.map((campo, idx) => {
+    if (!CAMPOS_SCHEMA.includes(campo)) return campo;
+    if (camposUsados[campo] === undefined) { camposUsados[campo] = idx; return campo; }
+    return `_dup_${campo}`;
+  });
+
   const expedientes = [];
   const errores     = [];
 
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!row || row.every(v => v === '' || v === null || v === undefined)) continue;
+  for (let i = 0; i < dataRows.length; i++) {
+    const row = dataRows[i];
 
     try {
       const obj = { tipo_cartera: nombreHoja, nombre_archivo: nombreArchivo || null };
 
-      finalMappedHeaders.forEach((campo, idx) => {
+      finalMappedHeadersDedup.forEach((campo, idx) => {
         const raw = String(row[idx] ?? '').trim();
         if (!raw) return;
 
-        if (campo === columnasOriginales[idx] && !CAMPOS_SCHEMA.includes(campo)) {
-          // Columna no reconocida — guardar en notas_extra
+        if (campo.startsWith('_dup_')) {
+          // Columna duplicada: guardar con nombre original en notas
+          if (!obj._extra) obj._extra = {};
+          obj._extra[columnasOriginales[idx]] = raw;
+        } else if (campo === columnasOriginales[idx] && !CAMPOS_SCHEMA.includes(campo)) {
           if (!obj._extra) obj._extra = {};
           obj._extra[columnasOriginales[idx]] = raw;
         } else {
@@ -708,8 +752,8 @@ function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
         const posibleId = finalMappedHeaders.findIndex(h =>
           ['folio_banco', 'clave', 'referencia', 'ref', 'num', 'numero'].includes(h)
         );
-        if (posibleId >= 0 && rows[i][posibleId]) {
-          obj.numero_expediente = `${nombreHoja}-${String(rows[i][posibleId]).trim()}`;
+        if (posibleId >= 0 && row[posibleId]) {
+          obj.numero_expediente = `${nombreHoja}-${String(row[posibleId]).trim()}`;
         } else {
           obj.numero_expediente = `${nombreHoja}-${i}`;
         }
