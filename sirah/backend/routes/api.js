@@ -9,7 +9,7 @@ const {
   getEstadisticas
 } = require('../db');
 
-const { EstimadorValorComercial, PJVQuery, ParsearArchivo } = require('../scraper');
+const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel } = require('../scraper');
 
 const router    = express.Router();
 const estimador = new EstimadorValorComercial();
@@ -45,18 +45,23 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
     const tamano  = (req.file.size / 1024).toFixed(1);
     console.log(`📂 Procesando: ${nombre} (${tamano} KB)`);
 
-    // 1 — Parsear archivo (CSV o Excel)
-    const { expedientes, errores, total } = ParsearArchivo(req.file.buffer, req.file.originalname);
+    // 1 — Parsear archivo (CSV o Excel), opcionalmente una hoja específica
+    const hoja = req.body.hoja || null; // nombre de pestaña seleccionada
+    const { expedientes, errores, total, columnas_detectadas, hoja_usada } =
+      ParsearArchivo(req.file.buffer, req.file.originalname, hoja);
 
     if (total === 0) {
       return res.status(422).json({
-        error:   true,
-        message: 'El CSV no contiene filas válidas',
-        errores
+        error:             true,
+        message:           'No se encontraron expedientes válidos en el archivo',
+        errores,
+        columnas_detectadas,
+        hoja_usada,
+        sugerencia:        'Verifica que haya una columna llamada "numero_expediente", "expediente", "folio" o similar'
       });
     }
 
-    console.log(`✓ CSV válido: ${total} expedientes, ${errores.length} errores`);
+    console.log(`✓ Archivo válido (hoja: ${hoja_usada}): ${total} expedientes, ${errores.length} errores`);
 
     // 2 — Estimar valores + consultar PJV (concurrente, máx 5)
     const procesados = await Promise.all(
@@ -90,18 +95,33 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
       : 0;
 
     res.json({
-      success:     true,
-      mensaje:     `${total} expedientes procesados exitosamente`,
+      success:         true,
+      mensaje:         `${total} expedientes procesados exitosamente`,
       total,
-      errores_csv: errores,
-      expedientes: guardados || procesados,
+      hoja_usada,
+      hojas_procesadas: expedientes.hojas_procesadas || null,
+      errores_csv:      errores,
+      expedientes:      guardados || procesados,
       estadisticas: {
         total,
-        valor_total:          valorTotal,
+        valor_total:           valorTotal,
         promedio_rentabilidad: Math.round(rentProm * 10) / 10
       }
     });
 
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/leer-hojas ─────────────────────────────────────────────────────
+// Recibe el archivo y devuelve las pestañas + columnas de cada hoja sin procesar
+router.post('/leer-hojas', upload.single('archivo'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: true, message: 'No se recibió archivo' });
+
+    const hojas = LeerHojasExcel(req.file.buffer, req.file.originalname);
+    res.json({ success: true, hojas });
   } catch (err) {
     next(err);
   }

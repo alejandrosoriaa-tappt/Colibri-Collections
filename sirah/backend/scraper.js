@@ -342,80 +342,170 @@ function fechaAleatoria(diasAtras) {
   return d.toISOString().split('T')[0];
 }
 
-// ─── ParsearExcel ─────────────────────────────────────────────────────────────
+// ─── LeerHojasExcel ──────────────────────────────────────────────────────────
 /**
- * Parsea un buffer de archivo Excel (.xlsx / .xls) a array de expedientes.
- * Usa la primera hoja del libro.
+ * Lee un Excel y devuelve metadata de cada hoja: nombre, filas, columnas detectadas.
+ * No parsea — solo inspecciona.
  */
-function ParsearExcel(buffer) {
-  let workbook;
-  try {
-    workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
-  } catch (e) {
-    throw new Error(`No se pudo leer el archivo Excel: ${e.message}`);
+function LeerHojasExcel(buffer, filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (!['xlsx', 'xls'].includes(ext)) {
+    return [{ nombre: 'CSV', filas: '—', columnas: [], es_csv: true }];
   }
 
-  const sheetName = workbook.SheetNames[0];
-  if (!sheetName) throw new Error('El archivo Excel no contiene hojas');
+  let wb;
+  try { wb = XLSX.read(buffer, { type: 'buffer', sheetRows: 3 }); }
+  catch (e) { throw new Error(`No se pudo leer el Excel: ${e.message}`); }
 
-  const sheet = workbook.Sheets[sheetName];
-  // header:1 → primera fila como array de encabezados
-  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+  return wb.SheetNames.map(nombre => {
+    const sheet = wb.Sheets[nombre];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    const cols  = rows[0]
+      ? rows[0].map(h => String(h).trim()).filter(Boolean)
+      : [];
+    return {
+      nombre,
+      filas:    Math.max(0, rows.length - 1),
+      columnas: cols,
+      mapeo:    cols.map(c => ({ original: c, mapeado: autoMap(normHeader(c.toLowerCase())) }))
+    };
+  });
+}
 
-  if (rows.length < 2) {
-    throw new Error('La hoja debe tener encabezados y al menos una fila de datos');
-  }
+// ─── ParsearHoja (una hoja de Excel) ─────────────────────────────────────────
+function ParsearHoja(rows, nombreHoja) {
+  if (!rows || rows.length < 2) return { expedientes: [], errores: [], total: 0 };
 
-  const headers       = rows[0].map(h => normHeader(String(h).trim().toLowerCase()));
+  const rawHeaders    = rows[0].map(h => String(h ?? '').trim());
+  const headers       = rawHeaders.map(h => normHeader(h.toLowerCase()));
   const mappedHeaders = headers.map(autoMap);
 
-  if (!mappedHeaders.includes('numero_expediente')) {
-    throw new Error(
-      `No se encontró columna de expediente. Columnas detectadas: [${headers.join(', ')}]. ` +
-      `Renombra la columna a "numero_expediente", "expediente" o "folio".`
-    );
-  }
+  // Guardar columnas originales no mapeadas como campo extra
+  const columnasOriginales = rawHeaders;
 
   const expedientes = [];
   const errores     = [];
 
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
-    // Saltar filas completamente vacías
-    if (row.every(v => v === '' || v === null || v === undefined)) continue;
+    if (!row || row.every(v => v === '' || v === null || v === undefined)) continue;
 
     try {
-      const obj = {};
+      const obj = { tipo_cartera: nombreHoja };
+
       mappedHeaders.forEach((campo, idx) => {
         const raw = String(row[idx] ?? '').trim();
-        obj[campo] = limpiarValor(campo, raw);
+        if (!raw) return;
+
+        if (campo === columnasOriginales[idx] && !CAMPOS_SCHEMA.includes(campo)) {
+          // Columna no reconocida — guardar en notas_extra
+          if (!obj._extra) obj._extra = {};
+          obj._extra[columnasOriginales[idx]] = raw;
+        } else {
+          obj[campo] = limpiarValor(campo, raw);
+        }
       });
 
+      // Si no tiene numero_expediente, intentar generar uno desde otros campos
       if (!obj.numero_expediente) {
-        errores.push({ linea: i + 1, error: 'Número de expediente vacío — fila omitida' });
-        continue;
+        // Buscar cualquier campo que parezca un ID
+        const posibleId = mappedHeaders.findIndex(h =>
+          ['id', 'clave', 'referencia', 'ref', 'num', 'numero'].includes(h)
+        );
+        if (posibleId >= 0 && rows[i][posibleId]) {
+          obj.numero_expediente = `${nombreHoja}-${String(rows[i][posibleId]).trim()}`;
+        } else {
+          obj.numero_expediente = `${nombreHoja}-${i}`;
+        }
       }
+
+      // Mover columnas extra a notas si no hay campo notas
+      if (obj._extra && !obj.notas) {
+        obj.notas = Object.entries(obj._extra)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(' | ');
+      }
+      delete obj._extra;
+
       expedientes.push(obj);
     } catch (e) {
-      errores.push({ linea: i + 1, error: e.message });
+      errores.push({ hoja: nombreHoja, linea: i + 1, error: e.message });
     }
   }
 
-  return { expedientes, errores, total: expedientes.length };
+  return {
+    expedientes,
+    errores,
+    total:              expedientes.length,
+    columnas_detectadas: columnasOriginales,
+    hoja_usada:          nombreHoja
+  };
+}
+
+// Campos que pertenecen al schema de expedientes
+const CAMPOS_SCHEMA = [
+  'numero_expediente','banco','ubicacion','valor_catastral','monto_adeudo',
+  'fecha_inicio','status_juridico','antiguedad_inmueble','contacto','notas','tipo_cartera'
+];
+
+// ─── ParsearExcel (todas las hojas o una específica) ─────────────────────────
+function ParsearExcel(buffer, hojaSeleccionada = null) {
+  let wb;
+  try {
+    wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  } catch (e) {
+    throw new Error(`No se pudo leer el archivo Excel: ${e.message}`);
+  }
+
+  if (!wb.SheetNames.length) throw new Error('El archivo Excel no contiene hojas');
+
+  // Filtrar hojas a procesar
+  const hojasAProcesar = hojaSeleccionada
+    ? wb.SheetNames.filter(n => n === hojaSeleccionada)
+    : wb.SheetNames;
+
+  if (!hojasAProcesar.length) {
+    throw new Error(`Hoja "${hojaSeleccionada}" no encontrada. Hojas disponibles: ${wb.SheetNames.join(', ')}`);
+  }
+
+  const todosExpedientes = [];
+  const todosErrores     = [];
+  const resumenHojas     = [];
+
+  for (const nombre of hojasAProcesar) {
+    const sheet = wb.Sheets[nombre];
+    const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    const resultado = ParsearHoja(rows, nombre);
+    todosExpedientes.push(...resultado.expedientes);
+    todosErrores.push(...resultado.errores);
+    resumenHojas.push({
+      hoja:     nombre,
+      total:    resultado.total,
+      columnas: resultado.columnas_detectadas
+    });
+
+    console.log(`  📋 Hoja "${nombre}": ${resultado.total} registros`);
+  }
+
+  return {
+    expedientes:         todosExpedientes,
+    errores:             todosErrores,
+    total:               todosExpedientes.length,
+    hojas_procesadas:    resumenHojas,
+    hoja_usada:          hojasAProcesar.join(', '),
+    columnas_detectadas: resumenHojas.flatMap(h => h.columnas)
+  };
 }
 
 // ─── ParsearArchivo (unificado CSV + Excel) ───────────────────────────────────
-/**
- * Detecta el tipo de archivo por extensión y parsea con el método correcto.
- * @param {Buffer} buffer   Contenido del archivo
- * @param {string} filename Nombre original del archivo
- */
-function ParsearArchivo(buffer, filename) {
+function ParsearArchivo(buffer, filename, hojaSeleccionada = null) {
   const ext = (filename || '').split('.').pop().toLowerCase();
   if (ext === 'xlsx' || ext === 'xls') {
-    return ParsearExcel(buffer);
+    return ParsearExcel(buffer, hojaSeleccionada);
   }
-  return ParsearCSV(buffer.toString('utf-8'));
+  const resultado = ParsearCSV(buffer.toString('utf-8'));
+  return { ...resultado, hoja_usada: 'CSV', columnas_detectadas: [] };
 }
 
-module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV, ParsearExcel, ParsearArchivo };
+module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV, ParsearExcel, ParsearArchivo, LeerHojasExcel };

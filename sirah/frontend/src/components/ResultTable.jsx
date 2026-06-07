@@ -166,6 +166,7 @@ export default function ResultTable() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
+              <Th field="tipo_cartera"       {...{sortField,sortDir,onSort:sort}}>Tipo</Th>
               <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
               <Th field="ubicacion"         {...{sortField,sortDir,onSort:sort}}>Ubicación</Th>
@@ -188,6 +189,13 @@ export default function ResultTable() {
                 onMouseEnter={ev => ev.currentTarget.style.background = '#f8f9fa'}
                 onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
               >
+                <td style={td}>
+                  {e.tipo_cartera
+                    ? <span style={{ fontSize:'11px', color:'#1557b0', background:'#dbeafe', padding:'2px 8px', borderRadius:'12px', fontWeight:500 }}>
+                        {e.tipo_cartera}
+                      </span>
+                    : <span style={{color:'#dadce0'}}>—</span>}
+                </td>
                 <td style={td}>
                   <code style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '12px', color: '#1a73e8' }}>
                     {e.numero_expediente||'—'}
