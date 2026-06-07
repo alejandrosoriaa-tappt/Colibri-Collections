@@ -9,7 +9,7 @@ const {
   getEstadisticas
 } = require('../db');
 
-const { EstimadorValorComercial, PJVQuery, ParsearCSV } = require('../scraper');
+const { EstimadorValorComercial, PJVQuery, ParsearArchivo } = require('../scraper');
 
 const router    = express.Router();
 const estimador = new EstimadorValorComercial();
@@ -17,14 +17,20 @@ const pjv       = new PJVQuery();
 const limit     = pLimit(5); // máx 5 consultas PJV simultáneas
 
 // ─── Multer — memoria, sólo CSV ───────────────────────────────────────────────
+const EXCEL_MIMES = new Set([
+  'text/csv',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/octet-stream'
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 10 * 1024 * 1024 },
+  limits:  { fileSize: 20 * 1024 * 1024 }, // 20 MB para Excel con imágenes
   fileFilter: (_req, file, cb) => {
-    const ok = file.mimetype === 'text/csv' ||
-               file.mimetype === 'application/vnd.ms-excel' ||
-               file.originalname.toLowerCase().endsWith('.csv');
-    ok ? cb(null, true) : cb(new Error('Solo se aceptan archivos CSV (.csv)'));
+    const ext = file.originalname.toLowerCase().split('.').pop();
+    const ok  = EXCEL_MIMES.has(file.mimetype) || ['csv','xlsx','xls'].includes(ext);
+    ok ? cb(null, true) : cb(new Error('Solo se aceptan archivos CSV (.csv) o Excel (.xlsx, .xls)'));
   }
 });
 
@@ -39,9 +45,8 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
     const tamano  = (req.file.size / 1024).toFixed(1);
     console.log(`📂 Procesando: ${nombre} (${tamano} KB)`);
 
-    // 1 — Parsear CSV
-    const contenido = req.file.buffer.toString('utf-8');
-    const { expedientes, errores, total } = ParsearCSV(contenido);
+    // 1 — Parsear archivo (CSV o Excel)
+    const { expedientes, errores, total } = ParsearArchivo(req.file.buffer, req.file.originalname);
 
     if (total === 0) {
       return res.status(422).json({

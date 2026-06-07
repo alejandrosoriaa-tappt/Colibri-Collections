@@ -1,4 +1,5 @@
 const NodeCache = require('node-cache');
+const XLSX      = require('xlsx');
 
 const pjvCache = new NodeCache({ stdTTL: 3600 }); // 1 h
 
@@ -341,4 +342,80 @@ function fechaAleatoria(diasAtras) {
   return d.toISOString().split('T')[0];
 }
 
-module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV };
+// ─── ParsearExcel ─────────────────────────────────────────────────────────────
+/**
+ * Parsea un buffer de archivo Excel (.xlsx / .xls) a array de expedientes.
+ * Usa la primera hoja del libro.
+ */
+function ParsearExcel(buffer) {
+  let workbook;
+  try {
+    workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true });
+  } catch (e) {
+    throw new Error(`No se pudo leer el archivo Excel: ${e.message}`);
+  }
+
+  const sheetName = workbook.SheetNames[0];
+  if (!sheetName) throw new Error('El archivo Excel no contiene hojas');
+
+  const sheet = workbook.Sheets[sheetName];
+  // header:1 → primera fila como array de encabezados
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  if (rows.length < 2) {
+    throw new Error('La hoja debe tener encabezados y al menos una fila de datos');
+  }
+
+  const headers       = rows[0].map(h => normHeader(String(h).trim().toLowerCase()));
+  const mappedHeaders = headers.map(autoMap);
+
+  if (!mappedHeaders.includes('numero_expediente')) {
+    throw new Error(
+      `No se encontró columna de expediente. Columnas detectadas: [${headers.join(', ')}]. ` +
+      `Renombra la columna a "numero_expediente", "expediente" o "folio".`
+    );
+  }
+
+  const expedientes = [];
+  const errores     = [];
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    // Saltar filas completamente vacías
+    if (row.every(v => v === '' || v === null || v === undefined)) continue;
+
+    try {
+      const obj = {};
+      mappedHeaders.forEach((campo, idx) => {
+        const raw = String(row[idx] ?? '').trim();
+        obj[campo] = limpiarValor(campo, raw);
+      });
+
+      if (!obj.numero_expediente) {
+        errores.push({ linea: i + 1, error: 'Número de expediente vacío — fila omitida' });
+        continue;
+      }
+      expedientes.push(obj);
+    } catch (e) {
+      errores.push({ linea: i + 1, error: e.message });
+    }
+  }
+
+  return { expedientes, errores, total: expedientes.length };
+}
+
+// ─── ParsearArchivo (unificado CSV + Excel) ───────────────────────────────────
+/**
+ * Detecta el tipo de archivo por extensión y parsea con el método correcto.
+ * @param {Buffer} buffer   Contenido del archivo
+ * @param {string} filename Nombre original del archivo
+ */
+function ParsearArchivo(buffer, filename) {
+  const ext = (filename || '').split('.').pop().toLowerCase();
+  if (ext === 'xlsx' || ext === 'xls') {
+    return ParsearExcel(buffer);
+  }
+  return ParsearCSV(buffer.toString('utf-8'));
+}
+
+module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV, ParsearExcel, ParsearArchivo };

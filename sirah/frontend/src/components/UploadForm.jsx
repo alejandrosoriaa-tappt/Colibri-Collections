@@ -13,8 +13,9 @@ export default function UploadForm() {
 
   function pickFile(f) {
     if (!f) return;
-    if (!f.name.toLowerCase().endsWith('.csv')) {
-      useAppStore.getState().setError('Solo se aceptan archivos .csv');
+    const ext = f.name.toLowerCase().split('.').pop();
+    if (!['csv', 'xlsx', 'xls'].includes(ext)) {
+      useAppStore.getState().setError('Solo se aceptan archivos CSV o Excel (.csv, .xlsx, .xls)');
       return;
     }
     clearError(); setResultado(null); setFile(f);
@@ -62,7 +63,8 @@ export default function UploadForm() {
             background: dropBg, transition: 'all 0.18s'
           }}
         >
-          <input ref={inputRef} type="file" accept=".csv,text/csv"
+          <input ref={inputRef} type="file"
+            accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             style={{ display: 'none' }} onChange={e => pickFile(e.target.files[0])} />
 
           <div style={{ fontSize: '28px', marginBottom: '10px', opacity: 0.35 }}>
@@ -81,10 +83,10 @@ export default function UploadForm() {
           ) : (
             <>
               <div style={{ fontSize: '14px', color: '#5f6368', fontWeight: 400 }}>
-                Arrastra o selecciona un CSV
+                Arrastra o selecciona archivo
               </div>
               <div style={{ fontSize: '11px', color: '#9aa0a6', marginTop: '4px' }}>
-                Máximo 10 MB
+                CSV · Excel (.xlsx · .xls) · Máx. 20 MB
               </div>
             </>
           )}
