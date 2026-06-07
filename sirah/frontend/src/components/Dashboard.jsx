@@ -20,7 +20,7 @@ export default function Dashboard() {
   useEffect(() => { fetchEstadisticas(); }, []);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8faff', fontFamily: 'Roboto, sans-serif' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8faff', fontFamily: 'Roboto, sans-serif', fontWeight: 500 }}>
 
       {/* ─── Sidebar ─────────────────────────────────────────────────────────── */}
       <aside style={{
@@ -43,8 +43,8 @@ export default function Dashboard() {
               color: 'white', fontWeight: 700, fontSize: '15px'
             }}>S</div>
             <div>
-              <div style={{ fontSize: '15px', fontWeight: 600, color: '#0d2a6b' }}>SIRAH</div>
-              <div style={{ fontSize: '10px', color: '#90a4c8', marginTop: '-1px' }}>Remates Hipotecarios</div>
+              <div style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b' }}>SIRAH</div>
+              <div style={{ fontSize: '9px', color: '#5c7099', marginTop: '1px', fontWeight: 600, lineHeight: 1.3, maxWidth: '140px' }}>Sistema de Información de Remates y Activos Hipotecarios</div>
             </div>
           </div>
         </div>
@@ -60,7 +60,7 @@ export default function Dashboard() {
                 marginBottom: '2px', cursor: 'pointer',
                 background: active ? '#e8f0fe' : 'transparent',
                 color: active ? '#1565c0' : '#5c7099',
-                fontWeight: active ? 600 : 400,
+                fontWeight: active ? 700 : 600,
                 fontSize: '14px', transition: 'all 0.15s'
               }}
               onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#f0f4ff'; }}
@@ -84,8 +84,8 @@ export default function Dashboard() {
               color: 'white', fontSize: '13px', fontWeight: 600
             }}>U</div>
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 500, color: '#0d2a6b' }}>Usuario</div>
-              <div style={{ fontSize: '10px', color: '#90a4c8' }}>Inversionista</div>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#0d2a6b' }}>Usuario</div>
+              <div style={{ fontSize: '10px', color: '#5c7099', fontWeight: 600 }}>Inversionista</div>
             </div>
           </div>
         </div>
@@ -101,7 +101,7 @@ export default function Dashboard() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           position: 'sticky', top: 0, zIndex: 100
         }}>
-          <div style={{ fontSize: '15px', color: '#5c7099' }}>
+          <div style={{ fontSize: '15px', color: '#5c7099', fontWeight: 600 }}>
             {NAV.find(n => n.key === section)?.label}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -118,9 +118,9 @@ export default function Dashboard() {
             <div style={{
               background: '#e8f0fe', color: '#1565c0',
               padding: '5px 14px', borderRadius: '20px',
-              fontSize: '12px', fontWeight: 500
+              fontSize: '12px', fontWeight: 700
             }}>
-              {expedientes.length} expedientes
+              {expedientes.length} expedientes&nbsp;cargados
             </div>
           </div>
         </div>
@@ -130,10 +130,10 @@ export default function Dashboard() {
 
           {/* Greeting */}
           <div style={{ marginBottom: '24px' }}>
-            <h1 style={{ fontSize: '22px', fontWeight: 400, color: '#0d2a6b', marginBottom: '4px' }}>
+            <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0d2a6b', marginBottom: '4px' }}>
               Hola, SIRAH 👋
             </h1>
-            <p style={{ fontSize: '13px', color: '#90a4c8' }}>Resumen de cartera hipotecaria</p>
+            <p style={{ fontSize: '13px', color: '#5c7099', fontWeight: 600 }}>Resumen de cartera hipotecaria</p>
           </div>
 
           {/* KPI cards */}
@@ -142,7 +142,7 @@ export default function Dashboard() {
           {/* Cartera activa */}
           <div style={{ marginTop: '32px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 500, color: '#0d2a6b' }}>Cartera activa</h2>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b' }}>Cartera activa</h2>
               {expedientes.length > 0 && (
                 <span style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer' }}>
                   Ver todas →

@@ -9,7 +9,7 @@ const {
   getEstadisticas
 } = require('../db');
 
-const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel } = require('../scraper');
+const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel, AnalizadorColumnas } = require('../scraper');
 
 const router    = express.Router();
 const estimador = new EstimadorValorComercial();
@@ -47,7 +47,7 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
 
     // 1 — Parsear archivo (CSV o Excel), opcionalmente una hoja específica
     const hoja = req.body.hoja || null; // nombre de pestaña seleccionada
-    const { expedientes, errores, total, columnas_detectadas, hoja_usada } =
+    const { expedientes, errores, total, columnas_detectadas, hoja_usada, mapeo_columnas } =
       ParsearArchivo(req.file.buffer, req.file.originalname, hoja);
 
     if (total === 0) {
@@ -102,6 +102,7 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
       hojas_procesadas: expedientes.hojas_procesadas || null,
       errores_csv:      errores,
       expedientes:      guardados || procesados,
+      mapeo_columnas:   mapeo_columnas || [],
       estadisticas: {
         total,
         valor_total:           valorTotal,

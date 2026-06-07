@@ -97,7 +97,7 @@ export default function ResultTable() {
   }
 
   const td = {
-    padding: '12px 16px', fontSize: '13px',
+    padding: '12px 16px', fontSize: '13px', fontWeight: 500,
     borderBottom: '1px solid #f1f3f4', verticalAlign: 'middle', color: '#3c4043'
   };
 
@@ -122,7 +122,7 @@ export default function ResultTable() {
         display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center',
         background: '#ffffff'
       }}>
-        <span style={{ fontSize: '13px', color: '#5f6368', flex: 1 }}>
+        <span style={{ fontSize: '13px', color: '#5f6368', fontWeight: 600, flex: 1 }}>
           {filtered.length} de {expedientes.length} expedientes
         </span>
 
@@ -166,8 +166,10 @@ export default function ResultTable() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <Th field="tipo_cartera"       {...{sortField,sortDir,onSort:sort}}>Tipo</Th>
+              <Th field="nombre_archivo"    {...{sortField,sortDir,onSort:sort}}>Archivo</Th>
+              <Th field="tipo_cartera"      {...{sortField,sortDir,onSort:sort}}>Tipo</Th>
               <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
+              <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio Banco</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
               <Th field="ubicacion"         {...{sortField,sortDir,onSort:sort}}>Ubicación</Th>
               <Th field="monto_adeudo"      {...{sortField,sortDir,onSort:sort}} align="right">Adeudo</Th>
@@ -180,7 +182,7 @@ export default function ResultTable() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={9} style={{...td, textAlign:'center', color:'#9aa0a6', padding:'40px'}}>
+              <tr><td colSpan={12} style={{...td, textAlign:'center', color:'#9aa0a6', padding:'40px'}}>
                 Sin resultados
               </td></tr>
             ) : rows.map((e, i) => (
@@ -189,6 +191,13 @@ export default function ResultTable() {
                 onMouseEnter={ev => ev.currentTarget.style.background = '#f8f9fa'}
                 onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
               >
+                <td style={{...td, maxWidth:'140px'}}>
+                  {e.nombre_archivo
+                    ? <span title={e.nombre_archivo} style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', fontSize:'11px', color:'#5f6368', background:'#f1f3f4', padding:'2px 8px', borderRadius:'12px', fontWeight:600 }}>
+                        {e.nombre_archivo.replace(/\.[^/.]+$/, '')}
+                      </span>
+                    : <span style={{color:'#dadce0'}}>—</span>}
+                </td>
                 <td style={td}>
                   {e.tipo_cartera
                     ? <span style={{ fontSize:'11px', color:'#1557b0', background:'#dbeafe', padding:'2px 8px', borderRadius:'12px', fontWeight:500 }}>
@@ -197,9 +206,14 @@ export default function ResultTable() {
                     : <span style={{color:'#dadce0'}}>—</span>}
                 </td>
                 <td style={td}>
-                  <code style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '12px', color: '#1a73e8' }}>
+                  <code style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '12px', color: '#1a73e8', fontWeight: 600 }}>
                     {e.numero_expediente||'—'}
                   </code>
+                </td>
+                <td style={td}>
+                  {e.folio_banco
+                    ? <code style={{ fontFamily:'Roboto Mono, monospace', fontSize:'11px', color:'#9aa0a6', fontWeight:500 }}>{e.folio_banco}</code>
+                    : <span style={{color:'#dadce0'}}>—</span>}
                 </td>
                 <td style={td}>
                   {e.banco

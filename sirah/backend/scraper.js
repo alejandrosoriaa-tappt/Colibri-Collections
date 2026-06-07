@@ -280,8 +280,17 @@ function autoMap(h) {
     num_expediente:      'numero_expediente',
     numero:              'numero_expediente',
     no_expediente:       'numero_expediente',
-    folio:               'numero_expediente',
     id_expediente:       'numero_expediente',
+    // folio / id son IDs internos del banco, no el número de expediente judicial
+    folio:               'folio_banco',
+    id:                  'folio_banco',
+    id_credito:          'folio_banco',
+    numero_credito:      'folio_banco',
+    num_credito:         'folio_banco',
+    clave:               'folio_banco',
+    clave_credito:       'folio_banco',
+    cuenta:              'folio_banco',
+    num_cuenta:          'folio_banco',
     institucion:         'banco',
     acreedor:            'banco',
     prestamista:         'banco',
@@ -372,9 +381,218 @@ function LeerHojasExcel(buffer, filename) {
   });
 }
 
+// ─── AnalizadorColumnas ───────────────────────────────────────────────────────
+/**
+ * Analiza los valores reales de una columna para inferir su tipo semántico,
+ * independientemente del nombre del encabezado.
+ */
+class AnalizadorColumnas {
+  /**
+   * Analiza una muestra de valores y devuelve el tipo inferido con su confianza.
+   * @param {string[]} valores  Array de valores (hasta 20 no vacíos)
+   * @returns {{ tipo: string, confianza: number, scores: object, muestra: string[] }}
+   */
+  static analizar(valores) {
+    // Filtrar valores vacíos y tomar hasta 20 muestras
+    const muestra = valores
+      .map(v => String(v ?? '').trim())
+      .filter(v => v !== '')
+      .slice(0, 20);
+
+    if (muestra.length === 0) {
+      return { tipo: 'desconocido', confianza: 0, scores: {}, muestra: [] };
+    }
+
+    const scores = {
+      numero_expediente: AnalizadorColumnas._scoreExpediente(muestra),
+      banco:             AnalizadorColumnas._scoreBanco(muestra),
+      ubicacion:         AnalizadorColumnas._scoreUbicacion(muestra),
+      numerico_grande:   AnalizadorColumnas._scoreNumericoGrande(muestra),
+      fecha_inicio:      AnalizadorColumnas._scoreFecha(muestra),
+      status_juridico:   AnalizadorColumnas._scoreStatus(muestra),
+      antiguedad_inmueble: AnalizadorColumnas._scoreAntiguedad(muestra),
+      contacto:          AnalizadorColumnas._scoreContacto(muestra)
+    };
+
+    // Encontrar el tipo con mayor score
+    const [tipo, confianza] = Object.entries(scores)
+      .sort((a, b) => b[1] - a[1])[0];
+
+    return { tipo, confianza, scores, muestra };
+  }
+
+  // ── Scoring helpers ────────────────────────────────────────────────────────
+
+  static _scoreExpediente(muestra) {
+    const patrones = [
+      /^\d{1,8}\/\d{4}/,
+      /^[A-Za-z]{1,5}-?\d{3,}/i,
+      /^\d{4,15}$/,
+      /^\w+\/\w+\/\w+$/
+    ];
+
+    // Patterns that disqualify a value from being an expediente
+    const patronesFecha = [
+      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,   // dd/mm/yyyy
+      /^\d{4}-\d{2}-\d{2}$/,             // yyyy-mm-dd
+      /^\d{2}-\d{2}-\d{4}$/,             // dd-mm-yyyy
+      /^\d{1,2}-[a-z]{3}-\d{2,4}$/i      // dd-mon-yy
+    ];
+
+    let coincidencias = 0;
+    for (const v of muestra) {
+      const vTrim = v.trim();
+
+      // Exclude values that are clearly dates
+      if (patronesFecha.some(p => p.test(vTrim))) continue;
+
+      // Exclude pure numeric values > 10,000 (those are amounts, not expedientes)
+      const n = parseFloat(vTrim.replace(/[$,\s]/g, ''));
+      if (!isNaN(n) && n > 10000 && /^\d+$/.test(vTrim)) continue;
+
+      if (patrones.some(p => p.test(vTrim))) coincidencias++;
+    }
+
+    // Penalizar si hay valores repetidos (expedientes son únicos)
+    const unicos = new Set(muestra).size;
+    const unicidadFactor = muestra.length > 1 ? unicos / muestra.length : 1;
+
+    return (coincidencias / muestra.length) * unicidadFactor;
+  }
+
+  static _scoreBanco(muestra) {
+    const bancos = [
+      'bbva', 'santander', 'banamex', 'citibanamex', 'hsbc', 'banorte',
+      'scotiabank', 'inbursa', 'banbajio', 'banregio', 'afirme', 'bancoppel',
+      'azteca', 'nafin', 'fovissste', 'infonavit'
+    ];
+
+    let coincidencias = 0;
+    for (const v of muestra) {
+      const vLow = v.toLowerCase();
+      if (bancos.some(b => vLow.includes(b))) coincidencias++;
+    }
+
+    return coincidencias / muestra.length;
+  }
+
+  static _scoreUbicacion(muestra) {
+    const palabrasClave = [
+      'calle', 'avenida', 'av.', 'blvd', 'boulevard', 'fracc', 'colonia',
+      'col.', 'municipio', 'interior', 'int.', 'km.', 'carretera', 'privada',
+      'callejon', 'andador', 'circuito', 'paseo'
+    ];
+
+    let scoreTotal = 0;
+    for (const v of muestra) {
+      const vLow = v.toLowerCase();
+      let scoreValor = 0;
+
+      // Tiene palabras clave de dirección
+      if (palabrasClave.some(p => vLow.includes(p))) scoreValor += 0.5;
+      // Longitud > 20 caracteres
+      if (v.length > 20) scoreValor += 0.3;
+      // Mezcla dígitos con letras
+      if (/[a-zA-Z]/.test(v) && /\d/.test(v)) scoreValor += 0.2;
+      // Contiene comas
+      if (v.includes(',')) scoreValor += 0.1;
+
+      scoreTotal += Math.min(scoreValor, 1.0);
+    }
+
+    return scoreTotal / muestra.length;
+  }
+
+  static _scoreNumericoGrande(muestra) {
+    let coincidencias = 0;
+    for (const v of muestra) {
+      const limpio = v.replace(/[$,\s]/g, '').replace(/MXN|USD|mx/gi, '');
+      const n = parseFloat(limpio);
+      if (!isNaN(n) && n > 10000) coincidencias++;
+    }
+    return coincidencias / muestra.length;
+  }
+
+  static _scoreFecha(muestra) {
+    const patrones = [
+      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,
+      /^\d{4}-\d{2}-\d{2}$/,
+      /^\d{2}-\d{2}-\d{4}$/,
+      /^\d{1,2}-[a-z]{3}-\d{2,4}$/i
+    ];
+
+    let coincidencias = 0;
+    for (const v of muestra) {
+      const vTrim = v.trim();
+      // Verificar patrones de fecha textual
+      if (patrones.some(p => p.test(vTrim))) {
+        coincidencias++;
+        continue;
+      }
+      // Números seriales de Excel (enteros entre 30000-50000)
+      const n = parseInt(vTrim, 10);
+      if (!isNaN(n) && n >= 30000 && n <= 50000 && String(n) === vTrim) {
+        coincidencias++;
+      }
+    }
+    return coincidencias / muestra.length;
+  }
+
+  static _scoreStatus(muestra) {
+    const terminos = [
+      'embargo', 'juicio', 'amparo', 'remate', 'demanda', 'ejecucion',
+      'sentencia', 'apelacion', 'convenio', 'suspension', 'adjudicado',
+      'diligencia', 'audiencia', 'juzgado', 'gravamen', 'hipoteca'
+    ];
+
+    let coincidencias = 0;
+    for (const v of muestra) {
+      const vLow = v.toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '');
+      if (terminos.some(t => vLow.includes(t))) coincidencias++;
+    }
+    return coincidencias / muestra.length;
+  }
+
+  static _scoreAntiguedad(muestra) {
+    let validos = 0;
+    let penalizar = false;
+
+    for (const v of muestra) {
+      const n = parseInt(v.trim(), 10);
+      if (!isNaN(n) && String(n) === v.trim()) {
+        if (n >= 1 && n <= 100) {
+          validos++;
+        } else {
+          penalizar = true;
+        }
+      }
+    }
+
+    if (penalizar) return 0;
+    return validos / muestra.length;
+  }
+
+  static _scoreContacto(muestra) {
+    let scoreTotal = 0;
+    for (const v of muestra) {
+      // Contiene @  → email
+      if (/@/.test(v)) { scoreTotal += 1.0; continue; }
+      // 10 dígitos consecutivos → teléfono
+      if (/\d{10}/.test(v.replace(/[\s\-().]/g, ''))) { scoreTotal += 0.8; continue; }
+      // Nombre de persona: solo letras, 2 palabras, 5-40 chars
+      if (/^[A-Za-záéíóúÁÉÍÓÚñÑ\s.]+$/.test(v) && v.length >= 5 && v.length <= 40) {
+        const palabras = v.trim().split(/\s+/);
+        if (palabras.length >= 2) scoreTotal += 0.3;
+      }
+    }
+    return scoreTotal / muestra.length;
+  }
+}
+
 // ─── ParsearHoja (una hoja de Excel) ─────────────────────────────────────────
-function ParsearHoja(rows, nombreHoja) {
-  if (!rows || rows.length < 2) return { expedientes: [], errores: [], total: 0 };
+function ParsearHoja(rows, nombreHoja, nombreArchivo = null) {
+  if (!rows || rows.length < 2) return { expedientes: [], errores: [], total: 0, mapeo_columnas: [] };
 
   const rawHeaders    = rows[0].map(h => String(h ?? '').trim());
   const headers       = rawHeaders.map(h => normHeader(h.toLowerCase()));
@@ -382,6 +600,85 @@ function ParsearHoja(rows, nombreHoja) {
 
   // Guardar columnas originales no mapeadas como campo extra
   const columnasOriginales = rawHeaders;
+
+  // ── Análisis semántico de columnas por contenido ──────────────────────────
+  // Recopilar hasta 20 valores no vacíos de las primeras 30 filas de datos
+  const sampleRows = rows.slice(1, 31);
+
+  // Detectar pares de columnas numéricas_grande para desambiguar con el header
+  const reporteMapeo = [];
+  const finalMappedHeaders = mappedHeaders.map((headerMap, colIdx) => {
+    const valoresMuestra = sampleRows
+      .map(r => String(r?.[colIdx] ?? '').trim())
+      .filter(v => v !== '')
+      .slice(0, 20);
+
+    if (valoresMuestra.length === 0) {
+      reporteMapeo.push({
+        columna_original: rawHeaders[colIdx],
+        campo_mapeado:    headerMap,
+        metodo:           'encabezado',
+        confianza:        0
+      });
+      return headerMap;
+    }
+
+    const analisis  = AnalizadorColumnas.analizar(valoresMuestra);
+    const contentTipo = analisis.tipo;
+    const contentConf = analisis.confianza;
+
+    // Determinar si el mapeo por encabezado es a un campo schema conocido
+    const headerEsSchema = CAMPOS_SCHEMA.includes(headerMap);
+
+    let tipoFinal;
+    let metodo;
+    let confianzaFinal;
+
+    if (headerEsSchema && contentConf < 0.55) {
+      // Encabezado reconocido y contenido no aporta nada mejor → mantener header
+      tipoFinal      = headerMap;
+      metodo         = 'encabezado';
+      confianzaFinal = 0.95;
+    } else if (!headerEsSchema && contentConf >= 0.55) {
+      // Encabezado no reconocido pero contenido da buena señal → usar contenido
+      // Resolver numerico_grande → valor_catastral o monto_adeudo con hint del header
+      tipoFinal      = resolverNumericoGrande(contentTipo, headerMap, rawHeaders[colIdx]);
+      metodo         = 'contenido';
+      confianzaFinal = contentConf;
+    } else if (headerEsSchema && contentConf >= 0.55 && contentTipo !== headerMap) {
+      // Encabezado reconocido Y contenido sugiere otro tipo con buena confianza
+      // Dar preferencia al contenido solo si su confianza supera 0.55
+      const headerConf = 0.60; // confianza base para mapping por header
+      if (contentConf > headerConf) {
+        tipoFinal      = resolverNumericoGrande(contentTipo, headerMap, rawHeaders[colIdx]);
+        metodo         = 'contenido';
+        confianzaFinal = contentConf;
+      } else {
+        tipoFinal      = headerMap;
+        metodo         = 'encabezado';
+        confianzaFinal = headerConf;
+      }
+    } else {
+      // Default: mantener header mapping
+      tipoFinal      = headerMap;
+      metodo         = 'encabezado';
+      confianzaFinal = headerEsSchema ? 0.95 : 0.30;
+    }
+
+    console.log(`  🔍 "${rawHeaders[colIdx]}" → "${tipoFinal}" (header: ${headerMap}, contenido: ${contentTipo} ${Math.round(contentConf * 100)}%)`);
+
+    reporteMapeo.push({
+      columna_original: rawHeaders[colIdx],
+      campo_mapeado:    tipoFinal,
+      metodo,
+      confianza:        Math.round(confianzaFinal * 100)
+    });
+
+    return tipoFinal;
+  });
+
+  // Caso especial: dos columnas compiten como numerico_grande → desambiguar por header
+  _desambiguarNumericos(finalMappedHeaders, mappedHeaders, rawHeaders, reporteMapeo);
 
   const expedientes = [];
   const errores     = [];
@@ -391,9 +688,9 @@ function ParsearHoja(rows, nombreHoja) {
     if (!row || row.every(v => v === '' || v === null || v === undefined)) continue;
 
     try {
-      const obj = { tipo_cartera: nombreHoja };
+      const obj = { tipo_cartera: nombreHoja, nombre_archivo: nombreArchivo || null };
 
-      mappedHeaders.forEach((campo, idx) => {
+      finalMappedHeaders.forEach((campo, idx) => {
         const raw = String(row[idx] ?? '').trim();
         if (!raw) return;
 
@@ -408,9 +705,8 @@ function ParsearHoja(rows, nombreHoja) {
 
       // Si no tiene numero_expediente, intentar generar uno desde otros campos
       if (!obj.numero_expediente) {
-        // Buscar cualquier campo que parezca un ID
-        const posibleId = mappedHeaders.findIndex(h =>
-          ['id', 'clave', 'referencia', 'ref', 'num', 'numero'].includes(h)
+        const posibleId = finalMappedHeaders.findIndex(h =>
+          ['folio_banco', 'clave', 'referencia', 'ref', 'num', 'numero'].includes(h)
         );
         if (posibleId >= 0 && rows[i][posibleId]) {
           obj.numero_expediente = `${nombreHoja}-${String(rows[i][posibleId]).trim()}`;
@@ -436,20 +732,82 @@ function ParsearHoja(rows, nombreHoja) {
   return {
     expedientes,
     errores,
-    total:              expedientes.length,
+    total:               expedientes.length,
     columnas_detectadas: columnasOriginales,
-    hoja_usada:          nombreHoja
+    hoja_usada:          nombreHoja,
+    mapeo_columnas:      reporteMapeo
   };
+}
+
+/**
+ * Resuelve el tipo "numerico_grande" a "valor_catastral" o "monto_adeudo"
+ * usando el nombre del encabezado como tiebreaker.
+ */
+function resolverNumericoGrande(tipo, headerMap, rawHeader) {
+  if (tipo !== 'numerico_grande') return tipo;
+
+  const h = (rawHeader || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+
+  const palabrasCatastral = ['avaluo', 'catastral', 'comercial', 'fiscal', 'valor'];
+  const palabrasAdeudo    = ['saldo', 'adeudo', 'monto', 'deuda', 'credito', 'prestamo', 'insoluto'];
+
+  if (palabrasCatastral.some(p => h.includes(p))) return 'valor_catastral';
+  if (palabrasAdeudo.some(p => h.includes(p)))    return 'monto_adeudo';
+  if (headerMap === 'valor_catastral' || headerMap === 'monto_adeudo') return headerMap;
+
+  // Default para numérico_grande sin contexto adicional
+  return 'monto_adeudo';
+}
+
+/**
+ * Si hay múltiples columnas mapeadas como numerico_grande, las diferencia
+ * usando el nombre del encabezado original como desambiguador.
+ */
+function _desambiguarNumericos(finalMappedHeaders, originalMappedHeaders, rawHeaders, reporteMapeo) {
+  const indicesNumericos = finalMappedHeaders.reduce((acc, tipo, idx) => {
+    if (tipo === 'numerico_grande') acc.push(idx);
+    return acc;
+  }, []);
+
+  if (indicesNumericos.length < 2) return;
+
+  let tieneValorCatastral = false;
+  let tieneMonto          = false;
+
+  for (const idx of indicesNumericos) {
+    const resolved = resolverNumericoGrande('numerico_grande', originalMappedHeaders[idx], rawHeaders[idx]);
+    finalMappedHeaders[idx] = resolved;
+    if (resolved === 'valor_catastral') tieneValorCatastral = true;
+    if (resolved === 'monto_adeudo')    tieneMonto = true;
+
+    // Actualizar reporte
+    const entrada = reporteMapeo.find(r => r.columna_original === rawHeaders[idx]);
+    if (entrada) entrada.campo_mapeado = resolved;
+  }
+
+  // Si todos quedaron igual (no se pudo diferenciar), asignar por posición
+  if (!tieneValorCatastral && indicesNumericos.length >= 1) {
+    finalMappedHeaders[indicesNumericos[0]] = 'valor_catastral';
+    const entrada = reporteMapeo.find(r => r.columna_original === rawHeaders[indicesNumericos[0]]);
+    if (entrada) entrada.campo_mapeado = 'valor_catastral';
+  }
+  if (!tieneMonto && indicesNumericos.length >= 2) {
+    finalMappedHeaders[indicesNumericos[1]] = 'monto_adeudo';
+    const entrada = reporteMapeo.find(r => r.columna_original === rawHeaders[indicesNumericos[1]]);
+    if (entrada) entrada.campo_mapeado = 'monto_adeudo';
+  }
 }
 
 // Campos que pertenecen al schema de expedientes
 const CAMPOS_SCHEMA = [
-  'numero_expediente','banco','ubicacion','valor_catastral','monto_adeudo',
-  'fecha_inicio','status_juridico','antiguedad_inmueble','contacto','notas','tipo_cartera'
+  'numero_expediente','folio_banco','nombre_archivo','banco','ubicacion',
+  'valor_catastral','monto_adeudo','fecha_inicio','status_juridico',
+  'antiguedad_inmueble','contacto','notas','tipo_cartera'
 ];
 
 // ─── ParsearExcel (todas las hojas o una específica) ─────────────────────────
-function ParsearExcel(buffer, hojaSeleccionada = null) {
+function ParsearExcel(buffer, hojaSeleccionada = null, nombreArchivo = null) {
   let wb;
   try {
     wb = XLSX.read(buffer, { type: 'buffer', cellDates: true });
@@ -471,12 +829,13 @@ function ParsearExcel(buffer, hojaSeleccionada = null) {
   const todosExpedientes = [];
   const todosErrores     = [];
   const resumenHojas     = [];
+  const todoMapeoColumnas = [];
 
   for (const nombre of hojasAProcesar) {
     const sheet = wb.Sheets[nombre];
     const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-    const resultado = ParsearHoja(rows, nombre);
+    const resultado = ParsearHoja(rows, nombre, nombreArchivo);
     todosExpedientes.push(...resultado.expedientes);
     todosErrores.push(...resultado.errores);
     resumenHojas.push({
@@ -484,6 +843,7 @@ function ParsearExcel(buffer, hojaSeleccionada = null) {
       total:    resultado.total,
       columnas: resultado.columnas_detectadas
     });
+    todoMapeoColumnas.push(...(resultado.mapeo_columnas || []));
 
     console.log(`  📋 Hoja "${nombre}": ${resultado.total} registros`);
   }
@@ -494,18 +854,22 @@ function ParsearExcel(buffer, hojaSeleccionada = null) {
     total:               todosExpedientes.length,
     hojas_procesadas:    resumenHojas,
     hoja_usada:          hojasAProcesar.join(', '),
-    columnas_detectadas: resumenHojas.flatMap(h => h.columnas)
+    columnas_detectadas: resumenHojas.flatMap(h => h.columnas),
+    mapeo_columnas:      todoMapeoColumnas
   };
 }
 
 // ─── ParsearArchivo (unificado CSV + Excel) ───────────────────────────────────
 function ParsearArchivo(buffer, filename, hojaSeleccionada = null) {
-  const ext = (filename || '').split('.').pop().toLowerCase();
+  const ext          = (filename || '').split('.').pop().toLowerCase();
+  const nombreArchivo = filename || null;
   if (ext === 'xlsx' || ext === 'xls') {
-    return ParsearExcel(buffer, hojaSeleccionada);
+    return ParsearExcel(buffer, hojaSeleccionada, nombreArchivo);
   }
   const resultado = ParsearCSV(buffer.toString('utf-8'));
-  return { ...resultado, hoja_usada: 'CSV', columnas_detectadas: [] };
+  // Agregar nombre_archivo a cada registro CSV
+  resultado.expedientes.forEach(e => { e.nombre_archivo = nombreArchivo; });
+  return { ...resultado, hoja_usada: 'CSV', columnas_detectadas: [], mapeo_columnas: [] };
 }
 
-module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV, ParsearExcel, ParsearArchivo, LeerHojasExcel };
+module.exports = { EstimadorValorComercial, PJVQuery, ParsearCSV, ParsearExcel, ParsearArchivo, LeerHojasExcel, AnalizadorColumnas };

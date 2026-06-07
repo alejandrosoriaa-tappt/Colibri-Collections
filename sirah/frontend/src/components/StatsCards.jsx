@@ -47,14 +47,14 @@ function KPICard({ bg, text, sub, icon, label, value, extra }) {
       }} />
 
       <div style={{ fontSize: '22px', marginBottom: '12px', opacity: 0.8 }}>{icon}</div>
-      <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.5px', color: sub, textTransform: 'uppercase', marginBottom: '6px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.5px', color: sub, textTransform: 'uppercase', marginBottom: '6px' }}>
         {label}
       </div>
-      <div style={{ fontSize: '30px', fontWeight: 300, fontFamily: 'Roboto Mono, monospace', color: text, lineHeight: 1.1 }}>
+      <div style={{ fontSize: '30px', fontWeight: 700, fontFamily: 'Roboto Mono, monospace', color: text, lineHeight: 1.1 }}>
         {value}
       </div>
       {extra && (
-        <div style={{ fontSize: '12px', color: sub, marginTop: '6px' }}>{extra}</div>
+        <div style={{ fontSize: '12px', color: sub, marginTop: '6px', fontWeight: 600 }}>{extra}</div>
       )}
     </div>
   );
