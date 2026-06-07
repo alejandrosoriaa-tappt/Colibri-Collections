@@ -16,10 +16,10 @@ const fmtPct = (n) => {
 
 // Azul fuerte → azul claro (4 tarjetas)
 const CARDS_CONFIG = [
-  { bg: '#1565c0', text: '#ffffff', sub: 'rgba(255,255,255,0.65)', icon: '⊞' },
-  { bg: '#1976d2', text: '#ffffff', sub: 'rgba(255,255,255,0.65)', icon: '💰' },
-  { bg: '#42a5f5', text: '#ffffff', sub: 'rgba(255,255,255,0.7)',  icon: '⊘'  },
-  { bg: '#bbdefb', text: '#0d47a1', sub: '#5c9bd6',                icon: '↑'  }
+  { bg: '#0d47a1', text: '#ffffff', sub: 'rgba(255,255,255,0.80)', icon: '⊞' },
+  { bg: '#1565c0', text: '#ffffff', sub: 'rgba(255,255,255,0.80)', icon: '💰' },
+  { bg: '#1976d2', text: '#ffffff', sub: 'rgba(255,255,255,0.85)', icon: '⊘'  },
+  { bg: '#e3f2fd', text: '#0d47a1', sub: '#1565c0',                icon: '↑'  }
 ];
 
 function KPICard({ bg, text, sub, icon, label, value, extra }) {
