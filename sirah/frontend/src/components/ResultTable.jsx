@@ -16,6 +16,58 @@ function useMobile() {
   return m;
 }
 
+function InfoPopover() {
+  const [open, setOpen] = useState(false);
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <button
+        onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        title="¿Qué es la Ponderación IA?"
+        style={{
+          width: '15px', height: '15px', borderRadius: '50%',
+          border: '1.5px solid #1565c0', background: '#e3f2fd',
+          color: '#1565c0', fontSize: '9px', fontWeight: 900,
+          cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
+          justifyContent: 'center', lineHeight: 1, marginLeft: '4px',
+          flexShrink: 0, padding: 0
+        }}
+      >i</button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '120%', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, width: '240px',
+          background: '#0d2a6b', color: '#ffffff',
+          borderRadius: '10px', padding: '14px 16px',
+          boxShadow: '0 8px 32px rgba(13,42,107,0.35)',
+          fontSize: '12px', lineHeight: 1.55, fontWeight: 500,
+          pointerEvents: 'none'
+        }}>
+          {/* arrow */}
+          <div style={{
+            position: 'absolute', top: '-6px', left: '50%', transform: 'translateX(-50%)',
+            width: 0, height: 0,
+            borderLeft: '6px solid transparent',
+            borderRight: '6px solid transparent',
+            borderBottom: '6px solid #0d2a6b'
+          }} />
+          <div style={{ fontWeight: 800, fontSize: '13px', marginBottom: '6px', color: '#90caf9' }}>
+            Ponderación IA
+          </div>
+          La calificación (0–100) es resultado de un análisis de inteligencia artificial que evalúa cada oportunidad según su rentabilidad estimada, situación jurídica y disponibilidad de PJV.
+          <div style={{ marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {[['≥80','Excelente','#a5d6a7'],['≥60','Alta','#c5e1a5'],['≥40','Media','#ffcc80'],['<40','Baja','#bdbdbd']].map(([r,l,c]) => (
+              <span key={l} style={{ fontSize: '10px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: c, color: '#212121' }}>
+                {r} {l}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </span>
+  );
+}
+
 function ScoreBadge({ score }) {
   const { label, color, bar } = scoreMeta(score);
   return (
@@ -257,7 +309,7 @@ export default function ResultTable() {
             <tr>
               <th style={{ padding: '10px 8px', background: '#f5f5f5', borderBottom: '2px solid #bdbdbd', width: '36px' }} />
               <th style={{ padding: '10px 12px', background: '#f5f5f5', borderBottom: '2px solid #1565c0', textAlign: 'center', fontSize: '11px', fontWeight: 800, color: '#1565c0', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>
-                Pond. IA
+                Pond. IA<InfoPopover />
               </th>
               <Th field="clave_sirah"       {...{sortField,sortDir,onSort:sort}}>Clave SIRAH</Th>
               <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
