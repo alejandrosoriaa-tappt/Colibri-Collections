@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import useAppStore from '../store/appStore';
 import { useAPI } from '../hooks/useAPI';
+import ExpedienteModal from './ExpedienteModal.jsx';
 
 const PAGE_OPTIONS = [10, 20, 50];
 
@@ -77,6 +78,7 @@ export default function ResultTable() {
   const [sortDir, setSortDir]     = useState('asc');
   const [search, setSearch]       = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
+  const [selected, setSelected]   = useState(null);
 
   const estados = useMemo(
     () => [...new Set(expedientes.map(e => e.estado_geo).filter(Boolean))].sort(),
@@ -217,13 +219,18 @@ export default function ResultTable() {
               </td></tr>
             ) : rows.map((e, i) => (
               <tr key={e.id||e.numero_expediente||i}
-                style={{ background: i%2===0 ? '#ffffff' : '#fafafa', transition: 'background 0.1s' }}
+                style={{ background: i%2===0 ? '#ffffff' : '#fafafa', transition: 'background 0.1s', cursor: 'pointer' }}
                 onMouseEnter={ev => ev.currentTarget.style.background = '#e3f2fd'}
                 onMouseLeave={ev => ev.currentTarget.style.background = i%2===0 ? '#ffffff' : '#fafafa'}
+                onClick={() => setSelected(e)}
               >
                 {/* Expediente */}
                 <td style={tdMono}>
-                  <code style={{ color: '#1565c0', fontWeight: 800, fontSize: '12px' }}>
+                  <code style={{
+                    color: '#1565c0', fontWeight: 800, fontSize: '12px',
+                    textDecoration: 'underline', textDecorationStyle: 'dotted',
+                    textUnderlineOffset: '3px'
+                  }}>
                     {e.numero_expediente||'—'}
                   </code>
                 </td>
@@ -337,6 +344,13 @@ export default function ResultTable() {
           </div>
         </div>
       )}
+
+      {/* Expediente detail modal */}
+      {selected && (
+        <ExpedienteModal expediente={selected} onClose={() => setSelected(null)} />
+      )}
+
+      <style>{`@keyframes modalIn { from { opacity:0; transform:scale(0.96) translateY(8px); } to { opacity:1; transform:scale(1) translateY(0); } }`}</style>
     </div>
   );
 }
