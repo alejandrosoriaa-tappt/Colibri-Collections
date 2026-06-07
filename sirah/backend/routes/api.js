@@ -62,15 +62,32 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
     // Estimar valores + PJV
     const procesados = await Promise.all(
       expedientes.map(exp => limit(async () => {
-        const est    = estimador.estimarValor(exp.valor_catastral, exp.ubicacion, exp.antiguedad_inmueble);
         const pjvRes = await pjv.buscarExpediente(exp.numero_expediente);
+
+        // Si el archivo bancario ya trae un valor estimado real (ej. INFONAVIT "VALOR ESTIMADO")
+        // usarlo directamente; si no, estimarlo a partir del valor catastral.
+        let valorFinal, rentabilidad, factores;
+        const valorBanco = exp.valor_estimado_banco;
+        if (valorBanco && valorBanco > 0) {
+          valorFinal   = valorBanco;
+          const base   = exp.valor_catastral || valorBanco;
+          rentabilidad = base > 0 ? Math.round(((valorBanco - base) / base) * 1000) / 10 : 0;
+          factores     = { fuente: 'banco', valor_banco: valorBanco };
+        } else {
+          const est  = estimador.estimarValor(exp.valor_catastral, exp.ubicacion, exp.antiguedad_inmueble);
+          valorFinal   = est.valor;
+          rentabilidad = est.rentabilidad;
+          factores     = est.factores;
+        }
+
         return {
           ...exp,
-          valor_estimado: est.valor,
-          rentabilidad:   est.rentabilidad,
-          factores:       est.factores,
-          status_pjv:     pjvRes.status,
-          detalles_pjv:   pjvRes.detalles
+          valor_estimado_banco: undefined,   // no persistir campo intermedio
+          valor_estimado: valorFinal,
+          rentabilidad,
+          factores,
+          status_pjv:   pjvRes.status,
+          detalles_pjv: pjvRes.detalles
         };
       }))
     );

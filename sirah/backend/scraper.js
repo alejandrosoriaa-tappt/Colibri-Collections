@@ -332,13 +332,16 @@ function autoMap(h) {
     valor_avaluo:                  'valor_catastral',
     avaluo:                        'valor_catastral',
     valor_fiscal:                  'valor_catastral',
-    val_comer:                     'valor_catastral',  // "valor comercial"
+    val_comer:                     'valor_catastral',
     valor_comercial:               'valor_catastral',
-    valor_estimado:                'valor_catastral',
     valor_de_mercado:              'valor_catastral',
     valor_garantia:                'valor_catastral',
-    precio_piso:                   'valor_catastral',  // precio mínimo de venta
-    precio_promocion:              'valor_catastral',  // precio de oferta
+    precio_piso:                   'valor_catastral',
+    precio_promocion:              'valor_catastral',
+    // "VALOR ESTIMADO" en archivos INFONAVIT/banco = valor real de mercado del banco, NO catastral
+    valor_estimado:                'valor_estimado_banco',
+    precio_venta:                  'valor_estimado_banco',
+    precio_oferta:                 'valor_estimado_banco',
 
     // ── Adeudo ────────────────────────────────────────────────────────────────
     monto:                         'monto_adeudo',
@@ -413,7 +416,7 @@ function autoMap(h) {
 function limpiarValor(campo, valor) {
   if (valor === '' || valor === null || valor === undefined) return null;
 
-  const numericos = ['valor_catastral', 'monto_adeudo', 'antiguedad_inmueble'];
+  const numericos = ['valor_catastral', 'monto_adeudo', 'valor_estimado_banco', 'antiguedad_inmueble'];
   if (numericos.includes(campo)) {
     const n = parseFloat(valor.replace(/[$,\s]/g, '').replace(/MXN|USD|mx/gi, ''));
     return isNaN(n) ? null : n;
@@ -887,8 +890,9 @@ function resolverNumericoGrande(tipo, headerMap, rawHeader) {
   if (palabrasAdeudo.some(p => h.includes(p)))    return 'monto_adeudo';
   if (headerMap === 'valor_catastral' || headerMap === 'monto_adeudo') return headerMap;
 
-  // Default para numérico_grande sin contexto adicional
-  return 'monto_adeudo';
+  // No inventar monto_adeudo cuando el campo es desconocido — dejarlo como valor_catastral
+  // (mejor tener el valor en algún campo útil que fabricar un adeudo incorrecto)
+  return 'valor_catastral';
 }
 
 /**
@@ -934,7 +938,7 @@ function _desambiguarNumericos(finalMappedHeaders, originalMappedHeaders, rawHea
 const CAMPOS_SCHEMA = [
   'numero_expediente','folio_banco','nombre_archivo','banco',
   'estado_geo','municipio','ubicacion',
-  'valor_catastral','monto_adeudo','fecha_inicio','status_juridico',
+  'valor_catastral','monto_adeudo','valor_estimado_banco','fecha_inicio','status_juridico',
   'antiguedad_inmueble','contacto','notas','tipo_cartera'
 ];
 
