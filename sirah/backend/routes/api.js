@@ -4,7 +4,8 @@ const pLimit   = require('p-limit');
 
 const {
   insertArchivo, getArchivos, renameArchivo, deleteArchivo,
-  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas
+  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas,
+  toggleFavorito
 } = require('../db');
 
 const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel } = require('../scraper');
@@ -180,6 +181,18 @@ router.get('/expedientes', async (req, res, next) => {
     });
     if (error) return res.status(500).json({ error: true, message: error.message });
     res.json({ success: true, total: data?.length || 0, expedientes: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/expedientes/:id/favorito ─────────────────────────────────────
+router.patch('/expedientes/:id/favorito', async (req, res, next) => {
+  try {
+    const { data, error } = await toggleFavorito(req.params.id);
+    if (error) return res.status(500).json({ error: true, message: error.message });
+    if (!data)  return res.status(404).json({ error: true, message: 'Expediente no encontrado' });
+    res.json({ success: true, id: data.id, favorito: data.favorito });
   } catch (err) {
     next(err);
   }

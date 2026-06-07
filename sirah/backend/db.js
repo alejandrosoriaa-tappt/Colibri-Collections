@@ -68,6 +68,8 @@ async function createTablesIfNotExist() {
   }
   try {
     await p.query(SQL_SCHEMA);
+    // Migration: add favorito column if missing (safe on existing tables)
+    await p.query(`ALTER TABLE expedientes ADD COLUMN IF NOT EXISTS favorito BOOLEAN DEFAULT FALSE`);
     console.log('✓ Tablas verificadas (PostgreSQL Railway)');
   } catch (err) {
     console.error('✗ Error creando tablas:', err.message);
@@ -286,8 +288,28 @@ async function getEstadisticas() {
   }
 }
 
+// ─── toggleFavorito ───────────────────────────────────────────────────────────
+async function toggleFavorito(id) {
+  const p = getPool();
+  if (!p) {
+    const exp = memExpedientes.find(e => String(e.id) === String(id));
+    if (exp) exp.favorito = !exp.favorito;
+    return { data: exp ? { id: exp.id, favorito: exp.favorito } : null, error: null };
+  }
+  try {
+    const { rows } = await p.query(
+      'UPDATE expedientes SET favorito = NOT COALESCE(favorito, FALSE) WHERE id=$1 RETURNING id, favorito',
+      [id]
+    );
+    return { data: rows[0] || null, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
 module.exports = {
   createTablesIfNotExist,
   insertArchivo, getArchivos, renameArchivo, deleteArchivo,
-  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas
+  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas,
+  toggleFavorito
 };

@@ -69,16 +69,17 @@ function Th({ children, field, sortField, sortDir, onSort, align = 'left' }) {
 
 export default function ResultTable() {
   const { expedientes } = useAppStore();
-  const { exportarCSV }  = useAPI();
+  const { exportarCSV, toggleFavorito } = useAPI();
   const isMobile = useMobile();
 
-  const [page, setPage]           = useState(1);
-  const [pageSize, setPageSize]   = useState(20);
-  const [sortField, setSortField] = useState('estado_geo');
-  const [sortDir, setSortDir]     = useState('asc');
-  const [search, setSearch]       = useState('');
+  const [page, setPage]               = useState(1);
+  const [pageSize, setPageSize]       = useState(20);
+  const [sortField, setSortField]     = useState('estado_geo');
+  const [sortDir, setSortDir]         = useState('asc');
+  const [search, setSearch]           = useState('');
   const [estadoFilter, setEstadoFilter] = useState('');
-  const [selected, setSelected]   = useState(null);
+  const [soloFavoritos, setSoloFavoritos] = useState(false);
+  const [selected, setSelected]       = useState(null);
 
   const estados = useMemo(
     () => [...new Set(expedientes.map(e => e.estado_geo).filter(Boolean))].sort(),
@@ -95,7 +96,8 @@ export default function ResultTable() {
           .some(v => v?.toLowerCase().includes(q))
       );
     }
-    if (estadoFilter) d = d.filter(e => e.estado_geo === estadoFilter);
+    if (estadoFilter)  d = d.filter(e => e.estado_geo === estadoFilter);
+    if (soloFavoritos) d = d.filter(e => e.favorito);
     d.sort((a, b) => {
       let va = a[sortField] ?? '', vb = b[sortField] ?? '';
       if (typeof va === 'string') va = va.toLowerCase();
@@ -105,7 +107,7 @@ export default function ResultTable() {
       return 0;
     });
     return d;
-  }, [expedientes, search, estadoFilter, sortField, sortDir]);
+  }, [expedientes, search, estadoFilter, soloFavoritos, sortField, sortDir]);
 
   const totalPages = Math.ceil(filtered.length / pageSize);
   const rows = filtered.slice((page-1)*pageSize, page*pageSize);
@@ -144,6 +146,21 @@ export default function ResultTable() {
           <span style={{ fontSize: '13px', color: '#212121', fontWeight: 800, flex: 1, whiteSpace: 'nowrap' }}>
             {filtered.length.toLocaleString()} de {expedientes.length.toLocaleString()} expedientes
           </span>
+
+          <button
+            onClick={() => { setSoloFavoritos(v => !v); setPage(1); }}
+            title={soloFavoritos ? 'Ver todos' : 'Solo favoritos'}
+            style={{
+              padding: '7px 12px', borderRadius: '6px', cursor: 'pointer',
+              border: soloFavoritos ? '1.5px solid #f59e0b' : '1.5px solid #e0e0e0',
+              background: soloFavoritos ? '#fffbeb' : '#ffffff',
+              color: soloFavoritos ? '#b45309' : '#9e9e9e',
+              fontSize: '14px', fontWeight: 700, whiteSpace: 'nowrap',
+              transition: 'all 0.15s'
+            }}
+          >
+            {soloFavoritos ? '★ Favoritos' : '☆ Favoritos'}
+          </button>
 
           <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
             style={{
@@ -197,6 +214,7 @@ export default function ResultTable() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
+              <th style={{ padding: '10px 8px', background: '#f5f5f5', borderBottom: '2px solid #bdbdbd', width: '36px' }} />
               <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Exp.</Th>
               <Th field="folio_banco"       {...{sortField,sortDir,onSort:sort}}>Folio</Th>
               <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
@@ -214,7 +232,7 @@ export default function ResultTable() {
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={13} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
+              <tr><td colSpan={14} style={{...td, textAlign:'center', color:'#9e9e9e', padding:'40px', fontWeight:700}}>
                 Sin resultados para esta búsqueda
               </td></tr>
             ) : rows.map((e, i) => (
@@ -224,6 +242,21 @@ export default function ResultTable() {
                 onMouseLeave={ev => ev.currentTarget.style.background = i%2===0 ? '#ffffff' : '#fafafa'}
                 onClick={() => setSelected(e)}
               >
+                {/* Favorito star */}
+                <td style={{ padding: '0 8px', textAlign: 'center', borderBottom: '1px solid #e0e0e0' }}
+                  onClick={ev => { ev.stopPropagation(); toggleFavorito(e.id); }}
+                >
+                  <span style={{
+                    fontSize: '16px', cursor: 'pointer', lineHeight: 1,
+                    color: e.favorito ? '#f59e0b' : '#e0e0e0',
+                    transition: 'color 0.15s'
+                  }}
+                    title={e.favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                  >
+                    {e.favorito ? '★' : '☆'}
+                  </span>
+                </td>
+
                 {/* Expediente */}
                 <td style={tdMono}>
                   <code style={{

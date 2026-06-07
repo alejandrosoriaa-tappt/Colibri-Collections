@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useAPI } from '../hooks/useAPI';
 
 const fmtMXN = (v) =>
   v != null && !isNaN(v)
@@ -74,6 +75,8 @@ function StatusChip({ text }) {
 }
 
 export default function ExpedienteModal({ expediente, onClose }) {
+  const { toggleFavorito } = useAPI();
+
   useEffect(() => {
     const handler = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
@@ -130,13 +133,27 @@ export default function ExpedienteModal({ expediente, onClose }) {
               </div>
             )}
           </div>
-          <button onClick={onClose} style={{
-            width: '32px', height: '32px', borderRadius: '50%',
-            border: '1.5px solid #e0e0e0', background: '#f5f5f5',
-            fontSize: '16px', cursor: 'pointer', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-            color: '#424242', fontWeight: 700, flexShrink: 0
-          }}>✕</button>
+          <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+            <button
+              onClick={() => toggleFavorito(e.id)}
+              title={e.favorito ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              style={{
+                width: '32px', height: '32px', borderRadius: '50%',
+                border: `1.5px solid ${e.favorito ? '#f59e0b' : '#e0e0e0'}`,
+                background: e.favorito ? '#fffbeb' : '#f5f5f5',
+                fontSize: '16px', cursor: 'pointer',
+                color: e.favorito ? '#f59e0b' : '#bdbdbd',
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}
+            >{e.favorito ? '★' : '☆'}</button>
+            <button onClick={onClose} style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              border: '1.5px solid #e0e0e0', background: '#f5f5f5',
+              fontSize: '16px', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              color: '#424242', fontWeight: 700
+            }}>✕</button>
+          </div>
         </div>
 
         {/* Body */}

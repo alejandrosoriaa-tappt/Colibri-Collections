@@ -184,5 +184,16 @@ export function useAPI() {
     }
   }, [store]);
 
-  return { procesarCartera, leerHojas, fetchExpedientes, fetchEstadisticas, exportarCSV, fetchArchivos, renameArchivo, deleteArchivo, cargarArchivo };
+  // ── toggleFavorito ─────────────────────────────────────────────────────────
+  const toggleFavorito = useCallback(async (id) => {
+    const { data } = await axios.patch(`${BASE}/expedientes/${id}/favorito`, {}, { timeout: 10_000 });
+    // Optimistic update in store
+    const exps = useAppStore.getState().expedientes;
+    useAppStore.getState().setExpedientes(
+      exps.map(e => String(e.id) === String(id) ? { ...e, favorito: data.favorito } : e)
+    );
+    return data;
+  }, []);
+
+  return { procesarCartera, leerHojas, fetchExpedientes, fetchEstadisticas, exportarCSV, fetchArchivos, renameArchivo, deleteArchivo, cargarArchivo, toggleFavorito };
 }
