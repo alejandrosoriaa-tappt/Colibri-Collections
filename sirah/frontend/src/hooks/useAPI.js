@@ -145,5 +145,44 @@ export function useAPI() {
     URL.revokeObjectURL(url);
   }, []);
 
-  return { procesarCartera, leerHojas, fetchExpedientes, fetchEstadisticas, exportarCSV };
+  // ── fetchArchivos ──────────────────────────────────────────────────────────
+  const fetchArchivos = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${BASE}/archivos`, { timeout: 15_000 });
+      store.setArchivos(data.archivos || []);
+      return data.archivos;
+    } catch {
+      store.setArchivos([]);
+    }
+  }, [store]);
+
+  // ── renameArchivo ──────────────────────────────────────────────────────────
+  const renameArchivo = useCallback(async (id, nombre_display) => {
+    const { data } = await axios.patch(`${BASE}/archivos/${id}`, { nombre_display }, { timeout: 10_000 });
+    return data.archivo;
+  }, []);
+
+  // ── deleteArchivo ──────────────────────────────────────────────────────────
+  const deleteArchivo = useCallback(async (id) => {
+    await axios.delete(`${BASE}/archivos/${id}`, { timeout: 10_000 });
+  }, []);
+
+  // ── cargarArchivo ──────────────────────────────────────────────────────────
+  const cargarArchivo = useCallback(async (archivoId) => {
+    store.setLoading(true);
+    store.clearError();
+    try {
+      const { data } = await axios.get(`${BASE}/expedientes?archivo_id=${archivoId}`, { timeout: 30_000 });
+      store.setExpedientes(data.expedientes || []);
+      store.recalcularStats();
+      return data.expedientes;
+    } catch (err) {
+      store.setError(err.response?.data?.message || 'Error al cargar expedientes');
+      throw err;
+    } finally {
+      store.setLoading(false);
+    }
+  }, [store]);
+
+  return { procesarCartera, leerHojas, fetchExpedientes, fetchEstadisticas, exportarCSV, fetchArchivos, renameArchivo, deleteArchivo, cargarArchivo };
 }

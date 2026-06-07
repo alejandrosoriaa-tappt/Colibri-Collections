@@ -1,97 +1,90 @@
-const { createClient } = require('@supabase/supabase-js');
-const dotenv = require('dotenv');
+const { Pool } = require('pg');
 
-dotenv.config();
+let pool = null;
 
-// ─── Cliente Supabase ─────────────────────────────────────────────────────────
-let supabase = null;
-
-function getClient() {
-  if (supabase) return supabase;
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_KEY;
-
-  if (!url || !key || url.includes('your-project-id')) {
-    return null;
-  }
-
-  supabase = createClient(url, key);
-  return supabase;
+function getPool() {
+  if (pool) return pool;
+  if (!process.env.DATABASE_URL) return null;
+  pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  });
+  return pool;
 }
 
-// ─── Almacenamiento en memoria (fallback sin Supabase) ────────────────────────
-let memStore = [];
-let memIdCounter = 1;
+// ─── In-memory fallback (sin DATABASE_URL) ────────────────────────────────────
+let memArchivos    = [];
+let memExpedientes = [];
+let memId = 1;
 
-// ─── SQL para crear tabla (ejecutar manualmente en Supabase Dashboard > SQL Editor)
-const CREATE_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS expedientes (
-  id              UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  numero_expediente TEXT      NOT NULL,
-  banco           TEXT,
-  ubicacion       TEXT,
-  valor_catastral NUMERIC,
-  monto_adeudo    NUMERIC,
-  fecha_inicio    DATE,
-  status_juridico TEXT,
-  antiguedad_inmueble INTEGER,
-  contacto        TEXT,
-  notas           TEXT,
-  valor_estimado  NUMERIC,
-  rentabilidad    NUMERIC,
-  factores        JSONB,
-  status_pjv      TEXT,
-  detalles_pjv    JSONB,
-  created_at      TIMESTAMPTZ DEFAULT NOW(),
-  updated_at      TIMESTAMPTZ DEFAULT NOW()
-);
+// ─── Schema ───────────────────────────────────────────────────────────────────
+const SQL_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS archivos (
+    id             SERIAL PRIMARY KEY,
+    nombre         TEXT NOT NULL,
+    nombre_display TEXT,
+    total          INTEGER DEFAULT 0,
+    created_at     TIMESTAMPTZ DEFAULT NOW()
+  );
 
-CREATE INDEX IF NOT EXISTS idx_expedientes_banco      ON expedientes (banco);
-CREATE INDEX IF NOT EXISTS idx_expedientes_ubicacion  ON expedientes (ubicacion);
-CREATE INDEX IF NOT EXISTS idx_expedientes_status     ON expedientes (status_juridico);
+  CREATE TABLE IF NOT EXISTS expedientes (
+    id                  SERIAL PRIMARY KEY,
+    archivo_id          INTEGER REFERENCES archivos(id) ON DELETE CASCADE,
+    numero_expediente   TEXT,
+    folio_banco         TEXT,
+    nombre_archivo      TEXT,
+    banco               TEXT,
+    estado_geo          TEXT,
+    municipio           TEXT,
+    ubicacion           TEXT,
+    valor_catastral     NUMERIC,
+    monto_adeudo        NUMERIC,
+    fecha_inicio        TEXT,
+    status_juridico     TEXT,
+    antiguedad_inmueble INTEGER,
+    contacto            TEXT,
+    notas               TEXT,
+    tipo_cartera        TEXT,
+    valor_estimado      NUMERIC,
+    rentabilidad        NUMERIC,
+    factores            JSONB,
+    status_pjv          TEXT,
+    detalles_pjv        JSONB,
+    created_at          TIMESTAMPTZ DEFAULT NOW()
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_exp_archivo_id ON expedientes (archivo_id);
+  CREATE INDEX IF NOT EXISTS idx_exp_banco       ON expedientes (banco);
+  CREATE INDEX IF NOT EXISTS idx_exp_estado_geo  ON expedientes (estado_geo);
+  CREATE INDEX IF NOT EXISTS idx_exp_status      ON expedientes (status_juridico);
 `;
 
 async function createTablesIfNotExist() {
-  const client = getClient();
-
-  if (!client) {
-    console.log('⚠️  Supabase no configurado → usando almacenamiento en memoria');
-    console.log('   Configura SUPABASE_URL y SUPABASE_KEY en .env para persistencia');
+  const p = getPool();
+  if (!p) {
+    console.log('⚠️  DATABASE_URL no configurado → usando almacenamiento en memoria');
+    console.log('   Agrega el plugin PostgreSQL en Railway para persistencia');
     return;
   }
-
-  // Intenta hacer un SELECT; si falla con 42P01 la tabla no existe
-  const { error } = await client.from('expedientes').select('id').limit(1);
-
-  if (error?.code === '42P01') {
-    console.log('⚠️  Tabla "expedientes" no encontrada. Ejecuta esto en Supabase SQL Editor:');
-    console.log('─'.repeat(60));
-    console.log(CREATE_TABLE_SQL);
-    console.log('─'.repeat(60));
-    console.log('   Mientras tanto, usando almacenamiento en memoria.');
-    supabase = null; // fallback to memory
-  } else if (error) {
-    console.log(`⚠️  Error verificando BD: ${error.message}. Usando memoria.`);
-    supabase = null;
-  } else {
-    console.log('✓ Tabla "expedientes" verificada en Supabase');
+  try {
+    await p.query(SQL_SCHEMA);
+    console.log('✓ Tablas verificadas (PostgreSQL Railway)');
+  } catch (err) {
+    console.error('✗ Error creando tablas:', err.message);
+    pool = null;
   }
 }
 
-// ─── Helpers numéricos ────────────────────────────────────────────────────────
-function memStats(data) {
-  const total = data.length;
-  const valorTotal = data.reduce((s, e) => s + (Number(e.valor_estimado) || 0), 0);
-  const rentTotal  = data.reduce((s, e) => s + (Number(e.rentabilidad)   || 0), 0);
-
-  const porBanco = {};
-  const porUbicacion = {};
-  data.forEach(e => {
+// ─── Stats ────────────────────────────────────────────────────────────────────
+function calcStats(rows) {
+  const total      = rows.length;
+  const valorTotal = rows.reduce((s, e) => s + (Number(e.valor_estimado) || 0), 0);
+  const rentTotal  = rows.reduce((s, e) => s + (Number(e.rentabilidad)   || 0), 0);
+  const porBanco = {}, porUbicacion = {};
+  rows.forEach(e => {
     if (e.banco)     porBanco[e.banco]         = (porBanco[e.banco]         || 0) + 1;
     if (e.ubicacion) porUbicacion[e.ubicacion] = (porUbicacion[e.ubicacion] || 0) + 1;
   });
-
   return {
     total,
     valor_total:           valorTotal,
@@ -102,97 +95,199 @@ function memStats(data) {
   };
 }
 
-// ─── insertExpedientes ────────────────────────────────────────────────────────
-async function insertExpedientes(rows) {
-  const client = getClient();
+// ─── insertArchivo ────────────────────────────────────────────────────────────
+async function insertArchivo(nombre, total) {
+  const p = getPool();
+  if (!p) {
+    const a = { id: memId++, nombre, nombre_display: null, total, created_at: new Date().toISOString() };
+    memArchivos.push(a);
+    return { data: a, error: null };
+  }
+  try {
+    const { rows } = await p.query(
+      'INSERT INTO archivos (nombre, total) VALUES ($1, $2) RETURNING *',
+      [nombre, total]
+    );
+    return { data: rows[0], error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
 
-  if (!client) {
+// ─── getArchivos ──────────────────────────────────────────────────────────────
+async function getArchivos() {
+  const p = getPool();
+  if (!p) return { data: [...memArchivos].reverse(), error: null };
+  try {
+    const { rows } = await p.query('SELECT * FROM archivos ORDER BY created_at DESC');
+    return { data: rows, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
+// ─── renameArchivo ────────────────────────────────────────────────────────────
+async function renameArchivo(id, nombreDisplay) {
+  const p = getPool();
+  if (!p) {
+    const a = memArchivos.find(x => x.id === Number(id));
+    if (a) a.nombre_display = nombreDisplay;
+    return { data: a || null, error: null };
+  }
+  try {
+    const { rows } = await p.query(
+      'UPDATE archivos SET nombre_display=$1 WHERE id=$2 RETURNING *',
+      [nombreDisplay, id]
+    );
+    return { data: rows[0] || null, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+}
+
+// ─── deleteArchivo ────────────────────────────────────────────────────────────
+async function deleteArchivo(id) {
+  const p = getPool();
+  if (!p) {
+    memArchivos    = memArchivos.filter(x => x.id !== Number(id));
+    memExpedientes = memExpedientes.filter(x => x.archivo_id !== Number(id));
+    return { error: null };
+  }
+  try {
+    await p.query('DELETE FROM archivos WHERE id=$1', [id]);
+    return { error: null };
+  } catch (err) {
+    return { error: err };
+  }
+}
+
+// ─── insertExpedientes ────────────────────────────────────────────────────────
+const EXP_COLS = [
+  'archivo_id','numero_expediente','folio_banco','nombre_archivo',
+  'banco','estado_geo','municipio','ubicacion',
+  'valor_catastral','monto_adeudo','fecha_inicio','status_juridico',
+  'antiguedad_inmueble','contacto','notas','tipo_cartera',
+  'valor_estimado','rentabilidad','factores','status_pjv','detalles_pjv'
+];
+
+function rowParams(row, archivoId) {
+  return [
+    archivoId,
+    row.numero_expediente   || null,
+    row.folio_banco         || null,
+    row.nombre_archivo      || null,
+    row.banco               || null,
+    row.estado_geo          || null,
+    row.municipio           || null,
+    row.ubicacion           || null,
+    row.valor_catastral     != null ? Number(row.valor_catastral)      : null,
+    row.monto_adeudo        != null ? Number(row.monto_adeudo)         : null,
+    row.fecha_inicio        || null,
+    row.status_juridico     || null,
+    row.antiguedad_inmueble != null ? Number(row.antiguedad_inmueble)  : null,
+    row.contacto            || null,
+    row.notas               || null,
+    row.tipo_cartera        || null,
+    row.valor_estimado      != null ? Number(row.valor_estimado)       : null,
+    row.rentabilidad        != null ? Number(row.rentabilidad)         : null,
+    row.factores            != null ? JSON.stringify(row.factores)     : null,
+    row.status_pjv          || null,
+    row.detalles_pjv        != null ? JSON.stringify(row.detalles_pjv) : null,
+  ];
+}
+
+async function insertExpedientes(rows, archivoId) {
+  const p = getPool();
+  if (!p) {
     const inserted = rows.map(r => ({
-      ...r,
-      id: `mem-${memIdCounter++}`,
-      created_at: new Date().toISOString()
+      ...r, id: memId++, archivo_id: archivoId, created_at: new Date().toISOString()
     }));
-    memStore.push(...inserted);
+    memExpedientes.push(...inserted);
     return { data: inserted, error: null };
   }
-
-  const { data, error } = await client
-    .from('expedientes')
-    .upsert(rows, { onConflict: 'numero_expediente', ignoreDuplicates: false })
-    .select();
-
-  return { data, error };
+  const CHUNK = 100;
+  const all = [];
+  try {
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const vals = [], params = [];
+      let pi = 1;
+      for (const row of chunk) {
+        const rp = rowParams(row, archivoId);
+        vals.push(`(${rp.map(() => `$${pi++}`).join(',')})`);
+        params.push(...rp);
+      }
+      const sql = `INSERT INTO expedientes (${EXP_COLS.join(',')}) VALUES ${vals.join(',')} RETURNING *`;
+      const res = await p.query(sql, params);
+      all.push(...res.rows);
+    }
+    return { data: all, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
 }
 
 // ─── getExpedientes ───────────────────────────────────────────────────────────
 async function getExpedientes(filters = {}) {
-  const client = getClient();
-
-  if (!client) {
-    let results = [...memStore];
-    if (filters.ubicacion) {
-      const q = filters.ubicacion.toLowerCase();
-      results = results.filter(e => e.ubicacion?.toLowerCase().includes(q));
-    }
-    if (filters.banco) {
-      const q = filters.banco.toLowerCase();
-      results = results.filter(e => e.banco?.toLowerCase().includes(q));
-    }
-    if (filters.status) {
-      results = results.filter(e => e.status_juridico === filters.status);
-    }
-    return { data: results, error: null };
+  const p = getPool();
+  if (!p) {
+    let res = [...memExpedientes];
+    if (filters.archivo_id) res = res.filter(e => e.archivo_id === Number(filters.archivo_id));
+    if (filters.banco)      res = res.filter(e => e.banco?.toLowerCase().includes(filters.banco.toLowerCase()));
+    if (filters.estado_geo) res = res.filter(e => e.estado_geo === filters.estado_geo);
+    if (filters.status)     res = res.filter(e => e.status_juridico === filters.status);
+    return { data: res, error: null };
   }
-
-  let q = client.from('expedientes').select('*').order('created_at', { ascending: false });
-  if (filters.ubicacion) q = q.ilike('ubicacion',       `%${filters.ubicacion}%`);
-  if (filters.banco)     q = q.ilike('banco',           `%${filters.banco}%`);
-  if (filters.status)    q = q.eq('status_juridico',    filters.status);
-
-  return await q;
+  const conds = [], params = [];
+  let pi = 1;
+  if (filters.archivo_id) { conds.push(`archivo_id=$${pi++}`);     params.push(filters.archivo_id); }
+  if (filters.banco)      { conds.push(`banco ILIKE $${pi++}`);     params.push(`%${filters.banco}%`); }
+  if (filters.estado_geo) { conds.push(`estado_geo=$${pi++}`);      params.push(filters.estado_geo); }
+  if (filters.status)     { conds.push(`status_juridico=$${pi++}`); params.push(filters.status); }
+  const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
+  try {
+    const { rows } = await p.query(
+      `SELECT * FROM expedientes ${where} ORDER BY id ASC`, params
+    );
+    return { data: rows, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
 }
 
 // ─── getExpedienteById ────────────────────────────────────────────────────────
 async function getExpedienteById(id) {
-  const client = getClient();
-
-  if (!client) {
-    const found = memStore.find(e => e.id === id);
-    return found
-      ? { data: found, error: null }
-      : { data: null, error: { message: 'No encontrado' } };
+  const p = getPool();
+  if (!p) {
+    const found = memExpedientes.find(e => String(e.id) === String(id));
+    return found ? { data: found, error: null } : { data: null, error: { message: 'No encontrado' } };
   }
-
-  return await client.from('expedientes').select('*').eq('id', id).single();
-}
-
-// ─── getExpedientesByUbicacion ────────────────────────────────────────────────
-async function getExpedientesByUbicacion(ubicacion) {
-  return getExpedientes({ ubicacion });
+  try {
+    const { rows } = await p.query('SELECT * FROM expedientes WHERE id=$1', [id]);
+    return rows.length
+      ? { data: rows[0], error: null }
+      : { data: null, error: { message: 'No encontrado' } };
+  } catch (err) {
+    return { data: null, error: err };
+  }
 }
 
 // ─── getEstadisticas ──────────────────────────────────────────────────────────
 async function getEstadisticas() {
-  const client = getClient();
-
-  if (!client) {
-    return { data: memStats(memStore), error: null };
+  const p = getPool();
+  if (!p) return { data: calcStats(memExpedientes), error: null };
+  try {
+    const { rows } = await p.query(
+      'SELECT banco, ubicacion, valor_estimado, rentabilidad FROM expedientes'
+    );
+    return { data: calcStats(rows), error: null };
+  } catch (err) {
+    return { data: null, error: err };
   }
-
-  const { data, error } = await client
-    .from('expedientes')
-    .select('banco, ubicacion, valor_estimado, rentabilidad');
-
-  if (error) return { data: null, error };
-
-  return { data: memStats(data), error: null };
 }
 
 module.exports = {
   createTablesIfNotExist,
-  insertExpedientes,
-  getExpedientes,
-  getExpedienteById,
-  getExpedientesByUbicacion,
-  getEstadisticas
+  insertArchivo, getArchivos, renameArchivo, deleteArchivo,
+  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas
 };

@@ -3,20 +3,18 @@ const multer   = require('multer');
 const pLimit   = require('p-limit');
 
 const {
-  insertExpedientes,
-  getExpedientes,
-  getExpedienteById,
-  getEstadisticas
+  insertArchivo, getArchivos, renameArchivo, deleteArchivo,
+  insertExpedientes, getExpedientes, getExpedienteById, getEstadisticas
 } = require('../db');
 
-const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel, AnalizadorColumnas } = require('../scraper');
+const { EstimadorValorComercial, PJVQuery, ParsearArchivo, LeerHojasExcel } = require('../scraper');
 
 const router    = express.Router();
 const estimador = new EstimadorValorComercial();
 const pjv       = new PJVQuery();
-const limit     = pLimit(5); // máx 5 consultas PJV simultáneas
+const limit     = pLimit(5);
 
-// ─── Multer — memoria, sólo CSV ───────────────────────────────────────────────
+// ─── Multer ───────────────────────────────────────────────────────────────────
 const EXCEL_MIMES = new Set([
   'text/csv',
   'application/vnd.ms-excel',
@@ -26,7 +24,7 @@ const EXCEL_MIMES = new Set([
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits:  { fileSize: 20 * 1024 * 1024 }, // 20 MB para Excel con imágenes
+  limits:  { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = file.originalname.toLowerCase().split('.').pop();
     const ok  = EXCEL_MIMES.has(file.mimetype) || ['csv','xlsx','xls'].includes(ext);
@@ -41,34 +39,30 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
       return res.status(400).json({ error: true, message: 'No se recibió ningún archivo (campo: "archivo")' });
     }
 
-    const nombre  = req.file.originalname;
-    const tamano  = (req.file.size / 1024).toFixed(1);
+    const nombre = req.file.originalname;
+    const tamano = (req.file.size / 1024).toFixed(1);
     console.log(`📂 Procesando: ${nombre} (${tamano} KB)`);
 
-    // 1 — Parsear archivo (CSV o Excel), opcionalmente una hoja específica
-    const hoja = req.body.hoja || null; // nombre de pestaña seleccionada
-    const { expedientes, errores, total, columnas_detectadas, hoja_usada, mapeo_columnas } =
+    const hoja = req.body.hoja || null;
+    const { expedientes, errores, total, hoja_usada, mapeo_columnas } =
       ParsearArchivo(req.file.buffer, req.file.originalname, hoja);
 
     if (total === 0) {
       return res.status(422).json({
-        error:             true,
-        message:           'No se encontraron expedientes válidos en el archivo',
-        errores,
-        columnas_detectadas,
-        hoja_usada,
-        sugerencia:        'Verifica que haya una columna llamada "numero_expediente", "expediente", "folio" o similar'
+        error:   true,
+        message: 'No se encontraron expedientes válidos en el archivo',
+        errores, hoja_usada,
+        sugerencia: 'Verifica que haya una columna llamada "numero_expediente", "expediente", "folio" o similar'
       });
     }
 
-    console.log(`✓ Archivo válido (hoja: ${hoja_usada}): ${total} expedientes, ${errores.length} errores`);
+    console.log(`✓ Archivo válido (hoja: ${hoja_usada}): ${total} expedientes`);
 
-    // 2 — Estimar valores + consultar PJV (concurrente, máx 5)
+    // Estimar valores + PJV
     const procesados = await Promise.all(
       expedientes.map(exp => limit(async () => {
         const est    = estimador.estimarValor(exp.valor_catastral, exp.ubicacion, exp.antiguedad_inmueble);
         const pjvRes = await pjv.buscarExpediente(exp.numero_expediente);
-
         return {
           ...exp,
           valor_estimado: est.valor,
@@ -80,29 +74,39 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
       }))
     );
 
-    // 3 — Persistir en DB
-    const { data: guardados, error: dbErr } = await insertExpedientes(procesados);
-    if (dbErr) {
-      console.log(`⚠️  Error al guardar en BD: ${dbErr.message}. Retornando resultados sin persistir.`);
-    } else {
-      console.log(`✓ ${procesados.length} expedientes guardados`);
-    }
+    // Crear registro de archivo y persistir expedientes
+    const { data: archivo, error: archErr } = await insertArchivo(nombre, total);
+    if (archErr) console.log(`⚠️  Error al guardar archivo: ${archErr.message}`);
 
-    // 4 — Estadísticas del lote
+    const archivoId = archivo?.id || null;
+    const { data: guardados, error: dbErr } = await insertExpedientes(procesados, archivoId);
+    if (dbErr) console.log(`⚠️  Error al guardar expedientes: ${dbErr.message}`);
+    else       console.log(`✓ ${procesados.length} expedientes guardados (archivo_id: ${archivoId})`);
+
+    // Estadísticas del lote
     const valorTotal = procesados.reduce((s, e) => s + (e.valor_estimado || 0), 0);
     const rentProm   = total
       ? procesados.reduce((s, e) => s + (e.rentabilidad || 0), 0) / total
       : 0;
 
+    // Resumen por hoja (tipo_cartera)
+    const hojaMap = {};
+    procesados.forEach(e => {
+      const h = e.tipo_cartera || 'Sin hoja';
+      hojaMap[h] = (hojaMap[h] || 0) + 1;
+    });
+    const hojas_procesadas = Object.entries(hojaMap).map(([hoja, total]) => ({ hoja, total }));
+
     res.json({
-      success:         true,
-      mensaje:         `${total} expedientes procesados exitosamente`,
+      success: true,
+      mensaje: `${total} expedientes procesados exitosamente`,
       total,
       hoja_usada,
-      hojas_procesadas: expedientes.hojas_procesadas || null,
-      errores_csv:      errores,
-      expedientes:      guardados || procesados,
-      mapeo_columnas:   mapeo_columnas || [],
+      archivo_id:      archivoId,
+      hojas_procesadas,
+      errores_csv:     errores,
+      expedientes:     guardados || procesados,
+      mapeo_columnas:  mapeo_columnas || [],
       estadisticas: {
         total,
         valor_total:           valorTotal,
@@ -116,13 +120,49 @@ router.post('/procesar-cartera', upload.single('archivo'), async (req, res, next
 });
 
 // ─── POST /api/leer-hojas ─────────────────────────────────────────────────────
-// Recibe el archivo y devuelve las pestañas + columnas de cada hoja sin procesar
 router.post('/leer-hojas', upload.single('archivo'), async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ error: true, message: 'No se recibió archivo' });
-
     const hojas = LeerHojasExcel(req.file.buffer, req.file.originalname);
     res.json({ success: true, hojas });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/archivos ────────────────────────────────────────────────────────
+router.get('/archivos', async (req, res, next) => {
+  try {
+    const { data, error } = await getArchivos();
+    if (error) return res.status(500).json({ error: true, message: error.message });
+    res.json({ success: true, archivos: data || [] });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PATCH /api/archivos/:id ──────────────────────────────────────────────────
+router.patch('/archivos/:id', async (req, res, next) => {
+  try {
+    const { nombre_display } = req.body;
+    if (!nombre_display?.trim()) {
+      return res.status(400).json({ error: true, message: 'nombre_display requerido' });
+    }
+    const { data, error } = await renameArchivo(req.params.id, nombre_display.trim());
+    if (error) return res.status(500).json({ error: true, message: error.message });
+    if (!data)  return res.status(404).json({ error: true, message: 'Archivo no encontrado' });
+    res.json({ success: true, archivo: data });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── DELETE /api/archivos/:id ─────────────────────────────────────────────────
+router.delete('/archivos/:id', async (req, res, next) => {
+  try {
+    const { error } = await deleteArchivo(req.params.id);
+    if (error) return res.status(500).json({ error: true, message: error.message });
+    res.json({ success: true, message: 'Archivo y sus expedientes eliminados' });
   } catch (err) {
     next(err);
   }
@@ -131,15 +171,14 @@ router.post('/leer-hojas', upload.single('archivo'), async (req, res, next) => {
 // ─── GET /api/expedientes ─────────────────────────────────────────────────────
 router.get('/expedientes', async (req, res, next) => {
   try {
-    const { ubicacion, banco, status } = req.query;
+    const { archivo_id, banco, estado_geo, status } = req.query;
     const { data, error } = await getExpedientes({
-      ...(ubicacion && { ubicacion }),
-      ...(banco     && { banco }),
-      ...(status    && { status })
+      ...(archivo_id && { archivo_id }),
+      ...(banco      && { banco }),
+      ...(estado_geo && { estado_geo }),
+      ...(status     && { status })
     });
-
     if (error) return res.status(500).json({ error: true, message: error.message });
-
     res.json({ success: true, total: data?.length || 0, expedientes: data || [] });
   } catch (err) {
     next(err);
@@ -150,11 +189,9 @@ router.get('/expedientes', async (req, res, next) => {
 router.get('/expedientes/:id', async (req, res, next) => {
   try {
     const { data, error } = await getExpedienteById(req.params.id);
-
     if (error || !data) {
       return res.status(404).json({ error: true, message: 'Expediente no encontrado' });
     }
-
     res.json({ success: true, expediente: data });
   } catch (err) {
     next(err);
@@ -172,7 +209,6 @@ router.get('/estadisticas', async (req, res, next) => {
   }
 });
 
-// ─── GET /api/health ──────────────────────────────────────────────────────────
 router.get('/health', (_req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), service: 'SIRAH API v1' });
 });

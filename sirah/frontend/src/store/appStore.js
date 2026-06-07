@@ -7,6 +7,7 @@ import { create } from 'zustand';
 const useAppStore = create((set, get) => ({
   // ── Datos ──────────────────────────────────────────────────────────────────
   expedientes: [],
+  archivos:    [],
   estadisticas: {
     total:                 0,
     valor_total:           0,
@@ -23,6 +24,8 @@ const useAppStore = create((set, get) => ({
 
   // ── Setters ────────────────────────────────────────────────────────────────
   setExpedientes: (expedientes) => set({ expedientes }),
+
+  setArchivos: (archivos) => set({ archivos }),
 
   setEstadisticas: (estadisticas) => set({ estadisticas }),
 
@@ -68,6 +71,7 @@ const useAppStore = create((set, get) => ({
   reset: () =>
     set({
       expedientes:  [],
+      archivos:     [],
       loading:      false,
       error:        null,
       uploadDone:   false,

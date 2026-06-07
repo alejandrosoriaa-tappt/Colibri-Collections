@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import UploadForm  from './UploadForm.jsx';
-import ResultTable from './ResultTable.jsx';
-import StatsCards  from './StatsCards.jsx';
-import { useAPI }  from '../hooks/useAPI';
-import useAppStore from '../store/appStore';
+import UploadForm   from './UploadForm.jsx';
+import ResultTable  from './ResultTable.jsx';
+import StatsCards   from './StatsCards.jsx';
+import ArchivosList from './ArchivosList.jsx';
+import { useAPI }   from '../hooks/useAPI';
+import useAppStore  from '../store/appStore';
 
 const NAV = [
-  { key: 'inicio',   icon: '⊞', label: 'Inicio' },
   { key: 'cartera',  icon: '📂', label: 'Cartera' },
+  { key: 'archivos', icon: '🗂',  label: 'Archivos' },
   { key: 'analisis', icon: '📊', label: 'Análisis' },
   { key: 'config',   icon: '⚙',  label: 'Config' }
 ];
@@ -23,12 +24,12 @@ function useMobile() {
 }
 
 export default function Dashboard() {
-  const { fetchEstadisticas } = useAPI();
+  const { fetchEstadisticas, fetchArchivos } = useAPI();
   const { loading, expedientes } = useAppStore();
   const [section, setSection] = useState('cartera');
   const isMobile = useMobile();
 
-  useEffect(() => { fetchEstadisticas(); }, []);
+  useEffect(() => { fetchEstadisticas(); fetchArchivos(); }, []);
 
   const pad = isMobile ? '16px' : '28px';
 
@@ -170,29 +171,42 @@ export default function Dashboard() {
             <p style={{ fontSize: '13px', color: '#5c7099', fontWeight: 600 }}>Resumen de cartera hipotecaria</p>
           </div>
 
-          {/* KPI cards — StatsCards reads isMobile via its own hook */}
+          {/* KPI cards */}
           <StatsCards />
 
-          {/* Cartera activa */}
-          <div style={{ marginTop: isMobile ? '20px' : '32px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b' }}>Cartera activa</h2>
-              {expedientes.length > 0 && (
-                <span style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer' }}>Ver todas →</span>
-              )}
+          {section === 'archivos' ? (
+            /* ── Archivos procesados ── */
+            <div style={{ marginTop: isMobile ? '20px' : '32px' }}>
+              <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b', marginBottom: '16px' }}>
+                Archivos procesados
+              </h2>
+              <ArchivosList onCargar={() => setSection('cartera')} />
             </div>
 
-            {/* Upload + table: side-by-side on desktop, stacked on mobile */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
-              gap: isMobile ? '16px' : '20px',
-              alignItems: 'start'
-            }}>
-              <UploadForm />
-              <ResultTable />
+          ) : (
+            /* ── Cartera activa ── */
+            <div style={{ marginTop: isMobile ? '20px' : '32px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <h2 style={{ fontSize: '15px', fontWeight: 700, color: '#0d2a6b' }}>Cartera activa</h2>
+                <span
+                  onClick={() => setSection('archivos')}
+                  style={{ fontSize: '12px', color: '#1976d2', cursor: 'pointer', fontWeight: 700 }}
+                >
+                  🗂 Ver archivos →
+                </span>
+              </div>
+
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
+                gap: isMobile ? '16px' : '20px',
+                alignItems: 'start'
+              }}>
+                <UploadForm onProcesado={() => fetchArchivos()} />
+                <ResultTable />
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
