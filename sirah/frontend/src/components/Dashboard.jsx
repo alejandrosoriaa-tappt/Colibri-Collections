@@ -7,210 +7,150 @@ import useAppStore from '../store/appStore';
 
 export default function Dashboard() {
   const { fetchEstadisticas } = useAPI();
-  const { loading }           = useAppStore();
+  const { loading } = useAppStore();
 
-  useEffect(() => {
-    fetchEstadisticas();
-  }, []);
+  useEffect(() => { fetchEstadisticas(); }, []);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--sirah-light)' }}>
+    <div style={{ minHeight: '100vh', background: '#0f0f0f' }}>
 
-      {/* ─── Header ─────────────────────────────────────────────────────────── */}
+      {/* ─── Top App Bar ─────────────────────────────────────────────────────── */}
       <header style={{
-        background:   'var(--sirah-primary)',
-        boxShadow:    '0 2px 10px rgba(0,0,0,0.25)',
+        background:   '#121212',
+        borderBottom: '1px solid #1e1e1e',
         position:     'sticky',
         top:          0,
         zIndex:       200,
         padding:      '0 24px'
       }}>
         <div style={{
-          maxWidth:   'var(--max-width)',
-          margin:     '0 auto',
-          height:     '60px',
-          display:    'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          maxWidth: '1400px', margin: '0 auto',
+          height: '56px', display: 'flex',
+          alignItems: 'center', justifyContent: 'space-between'
         }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div style={{
-              width:        '38px',
-              height:       '38px',
-              background:   'var(--sirah-accent)',
-              borderRadius: '8px',
-              display:      'flex',
-              alignItems:   'center',
-              justifyContent: 'center',
-              fontSize:     '20px',
-              flexShrink:   0
+              width: '32px', height: '32px',
+              background: '#212121', borderRadius: '6px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '16px', border: '1px solid #2e2e2e'
             }}>
-              🏛
+              ▦
             </div>
-            <div>
-              <div style={{
-                color:       'white',
-                fontFamily:  'var(--font-display)',
-                fontSize:    '20px',
-                fontWeight:  700,
-                lineHeight:  1
-              }}>
-                SIRAH
-              </div>
-              <div style={{
-                color:         'rgba(255,255,255,0.55)',
-                fontSize:      '10px',
-                letterSpacing: '0.8px',
-                textTransform: 'uppercase'
-              }}>
-                Remates y Activos Hipotecarios
-              </div>
-            </div>
+            <span style={{
+              fontFamily:    'Roboto, sans-serif',
+              fontSize:      '16px',
+              fontWeight:    500,
+              letterSpacing: '0.15px',
+              color:         '#e0e0e0'
+            }}>
+              SIRAH
+            </span>
+            <span style={{
+              fontSize: '11px', color: '#424242',
+              letterSpacing: '0.5px', paddingLeft: '4px',
+              borderLeft: '1px solid #2e2e2e', marginLeft: '4px', paddingRight: '4px'
+            }}>
+              Remates Hipotecarios
+            </span>
           </div>
 
-          {/* Right side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {loading && (
-              <div style={{
-                display:    'flex',
-                alignItems: 'center',
-                gap:        '7px',
-                color:      'rgba(255,255,255,0.65)',
-                fontSize:   '12px'
-              }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#424242', fontSize: '12px' }}>
                 <span style={{
-                  display:      'inline-block',
-                  width:        '12px',
-                  height:       '12px',
-                  border:       '2px solid rgba(255,255,255,0.25)',
-                  borderTop:    '2px solid var(--sirah-accent)',
-                  borderRadius: '50%',
-                  animation:    'spin 0.8s linear infinite'
+                  display: 'inline-block', width: '12px', height: '12px',
+                  border: '1.5px solid #2e2e2e', borderTop: '1.5px solid #616161',
+                  borderRadius: '50%', animation: 'spin 0.8s linear infinite'
                 }} />
-                Procesando…
+                Procesando
               </div>
             )}
-            <span style={{
-              color:      'rgba(255,255,255,0.35)',
-              fontSize:   '11px',
-              fontFamily: 'var(--font-display)'
-            }}>
-              v1.0.0
+            <span style={{ fontSize: '11px', color: '#2e2e2e', fontFamily: 'Roboto Mono, monospace' }}>
+              v1.0
             </span>
           </div>
         </div>
       </header>
 
-      {/* ─── Hero / Stats ────────────────────────────────────────────────────── */}
-      <div style={{
-        background: 'linear-gradient(145deg, var(--sirah-primary) 0%, var(--sirah-primary-light) 100%)',
-        padding:    '30px 24px 36px'
-      }}>
-        <div style={{ maxWidth: 'var(--max-width)', margin: '0 auto' }}>
+      {/* ─── Hero ────────────────────────────────────────────────────────────── */}
+      <div style={{ background: '#121212', borderBottom: '1px solid #1e1e1e', padding: '32px 24px' }}>
+        <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
           <h1 style={{
-            color:      'white',
-            fontFamily: 'var(--font-display)',
-            fontSize:   'clamp(18px, 2.5vw, 28px)',
-            fontWeight: 700,
+            fontSize: 'clamp(20px, 2.5vw, 28px)',
+            fontWeight: 300,
+            letterSpacing: '-0.5px',
+            color: '#e0e0e0',
             marginBottom: '6px'
           }}>
-            Análisis de Carteras Hipotecarias
+            Análisis de carteras hipotecarias
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', maxWidth: '540px' }}>
-            Procesa expedientes de remate, estima valor comercial y consulta status jurídico PJV — todo en segundos.
+          <p style={{ color: '#424242', fontSize: '13px', fontWeight: 400 }}>
+            Valuación comercial · Status jurídico PJV · Exportación CSV
           </p>
-
           <StatsCards />
         </div>
       </div>
 
-      {/* ─── Main content ───────────────────────────────────────────────────── */}
-      <main
-        className="sirah-sidebar-layout"
-        style={{
-          maxWidth:            'var(--max-width)',
-          margin:              '0 auto',
-          padding:             '24px',
-          display:             'grid',
-          gridTemplateColumns: '340px 1fr',
-          gap:                 '24px',
-          alignItems:          'start'
-        }}
-      >
-        {/* ─ Sidebar */}
-        <div className="sirah-sticky" style={{ position: 'sticky', top: '76px' }}>
+      {/* ─── Main ────────────────────────────────────────────────────────────── */}
+      <main className="md-sidebar-layout" style={{
+        maxWidth: '1400px', margin: '0 auto', padding: '24px',
+        display: 'grid', gridTemplateColumns: '320px 1fr',
+        gap: '20px', alignItems: 'start'
+      }}>
+        {/* Sidebar */}
+        <div className="md-sticky" style={{ position: 'sticky', top: '72px' }}>
           <UploadForm />
-          <GuideCard />
+          <Steps />
         </div>
 
-        {/* ─ Results */}
-        <div className="fadeIn">
+        {/* Results */}
+        <div>
           <ResultTable />
         </div>
       </main>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
+      {/* ─── Footer ──────────────────────────────────────────────────────────── */}
       <footer style={{
-        textAlign:    'center',
-        padding:      '24px',
-        color:        'var(--gray-500)',
-        fontSize:     '11px',
-        fontFamily:   'var(--font-display)',
-        borderTop:    '1px solid var(--gray-300)',
-        marginTop:    '40px'
+        padding: '24px', textAlign: 'center',
+        color: '#2e2e2e', fontSize: '11px',
+        fontFamily: 'Roboto Mono, monospace',
+        borderTop: '1px solid #1e1e1e', marginTop: '40px'
       }}>
-        SIRAH v1.0.0 · Sistema de Información de Remates y Activos Hipotecarios · {new Date().getFullYear()}
+        SIRAH · v1.0.0 · {new Date().getFullYear()}
       </footer>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }
 
-// ─── Guía rápida ─────────────────────────────────────────────────────────────
-function GuideCard() {
-  const steps = [
-    ['1', 'Sube el CSV del banco',     'Con expedientes y valores catastrales'],
-    ['2', 'SIRAH valúa + PJV',          'Estimación comercial y status legal'],
-    ['3', 'Revisa la tabla',            'Ordena, filtra, busca'],
-    ['4', 'Exporta resultados',         'CSV con análisis completo']
+function Steps() {
+  const items = [
+    ['01', 'Sube el CSV',       'Cartera del banco'],
+    ['02', 'Valuación + PJV',   'Automático'],
+    ['03', 'Revisa la tabla',   'Ordena y filtra'],
+    ['04', 'Exporta',           'CSV con análisis']
   ];
-
   return (
     <div style={{
-      background:   'white',
-      borderRadius: '12px',
-      padding:      '20px',
-      marginTop:    '16px',
-      boxShadow:    'var(--shadow)'
+      background: '#1a1a1a', border: '1px solid #2e2e2e',
+      borderRadius: '12px', padding: '20px', marginTop: '12px'
     }}>
-      <h3 style={{
-        fontFamily:   'var(--font-display)',
-        fontSize:     '13px',
-        color:        'var(--sirah-primary)',
-        marginBottom: '14px'
-      }}>
-        ⚡ Cómo funciona
-      </h3>
-      {steps.map(([n, title, desc]) => (
-        <div key={n} style={{ display: 'flex', gap: '10px', marginBottom: '12px', alignItems: 'flex-start' }}>
-          <div style={{
-            width:        '22px',
-            height:       '22px',
-            background:   'var(--sirah-accent)',
-            borderRadius: '50%',
-            display:      'flex',
-            alignItems:   'center',
-            justifyContent: 'center',
-            color:        'white',
-            fontSize:     '11px',
-            fontWeight:   700,
-            flexShrink:   0
+      <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.8px', textTransform: 'uppercase', color: '#424242', marginBottom: '16px' }}>
+        Flujo
+      </div>
+      {items.map(([n, title, desc]) => (
+        <div key={n} style={{ display: 'flex', gap: '12px', marginBottom: '14px', alignItems: 'flex-start' }}>
+          <span style={{
+            fontFamily: 'Roboto Mono, monospace', fontSize: '10px',
+            color: '#424242', paddingTop: '2px', minWidth: '20px'
           }}>
             {n}
-          </div>
+          </span>
           <div>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--gray-800)' }}>{title}</div>
-            <div style={{ fontSize: '11px', color: 'var(--gray-500)' }}>{desc}</div>
+            <div style={{ fontSize: '13px', color: '#9e9e9e', fontWeight: 400 }}>{title}</div>
+            <div style={{ fontSize: '11px', color: '#424242' }}>{desc}</div>
           </div>
         </div>
       ))}

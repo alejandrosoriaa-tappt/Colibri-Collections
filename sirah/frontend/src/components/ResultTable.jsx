@@ -4,334 +4,219 @@ import { useAPI } from '../hooks/useAPI';
 
 const PAGE = 10;
 
-// ─── Formatters ───────────────────────────────────────────────────────────────
 const fmtMXN = (v) =>
   v !== null && v !== undefined && !isNaN(v)
     ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(v)
     : '—';
 
-// ─── StatusBadge ─────────────────────────────────────────────────────────────
-function StatusBadge({ text }) {
-  if (!text) return <span style={{ color: 'var(--gray-400)' }}>—</span>;
-
+function Chip({ text }) {
+  if (!text) return <span style={{ color: '#424242', fontSize: '12px' }}>—</span>;
   const lower = text.toLowerCase();
-  let color = 'var(--gray-600)', bg = 'var(--gray-100)';
+  let color = '#757575', bg = 'rgba(255,255,255,0.04)';
 
   if (lower.includes('remate') || lower.includes('embargo') || lower.includes('ejecuci'))
-    { color = '#b8612a'; bg = 'rgba(217,122,58,0.12)'; }
-  else if (lower.includes('favorable') || lower.includes('sentencia') || lower.includes('ganado'))
-    { color = 'var(--sirah-success-dark)'; bg = 'rgba(46,204,113,0.12)'; }
+    { color = '#ffa726'; bg = 'rgba(255,167,38,0.08)'; }
+  else if (lower.includes('favorable') || lower.includes('sentencia'))
+    { color = '#66bb6a'; bg = 'rgba(102,187,106,0.08)'; }
   else if (lower.includes('amparo') || lower.includes('suspen'))
-    { color = 'var(--sirah-warning)'; bg = 'rgba(231,76,60,0.10)'; }
-  else if (lower.includes('proceso') || lower.includes('curso') || lower.includes('tramite'))
-    { color = 'var(--sirah-info)'; bg = 'rgba(52,152,219,0.12)'; }
-  else if (lower.includes('convenio') || lower.includes('pago'))
-    { color = '#8e44ad'; bg = 'rgba(142,68,173,0.10)'; }
+    { color = '#ef5350'; bg = 'rgba(239,83,80,0.08)'; }
+  else if (lower.includes('proceso') || lower.includes('curso'))
+    { color = '#42a5f5'; bg = 'rgba(66,165,245,0.08)'; }
+  else if (lower.includes('convenio'))
+    { color = '#ab47bc'; bg = 'rgba(171,71,188,0.08)'; }
 
   return (
-    <span
-      title={text}
-      style={{
-        display:       'inline-block',
-        padding:       '2px 7px',
-        borderRadius:  '4px',
-        fontSize:      '11px',
-        fontWeight:    600,
-        color, bg,
-        background:    bg,
-        maxWidth:      '190px',
-        overflow:      'hidden',
-        textOverflow:  'ellipsis',
-        whiteSpace:    'nowrap'
-      }}
-    >
+    <span title={text} style={{
+      display: 'inline-block', padding: '2px 8px',
+      borderRadius: '4px', fontSize: '11px', fontWeight: 500,
+      color, background: bg,
+      maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+    }}>
       {text}
     </span>
   );
 }
 
-// ─── Th con sort ──────────────────────────────────────────────────────────────
 function Th({ children, field, sortField, sortDir, onSort, align = 'left' }) {
   const active = sortField === field;
   return (
-    <th
-      onClick={() => onSort(field)}
-      style={{
-        padding:       '10px 12px',
-        textAlign:     align,
-        fontSize:      '11px',
-        fontWeight:    700,
-        color:         active ? 'var(--sirah-accent)' : 'var(--gray-600)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.5px',
-        cursor:        'pointer',
-        whiteSpace:    'nowrap',
-        userSelect:    'none',
-        background:    'var(--gray-100)',
-        borderBottom:  '2px solid var(--gray-300)'
-      }}
-    >
-      {children}{' '}
-      <span style={{ fontSize: '10px', opacity: active ? 1 : 0.4 }}>
-        {active ? (sortDir === 'asc' ? '↑' : '↓') : '⇅'}
-      </span>
+    <th onClick={() => onSort(field)} style={{
+      padding: '12px 16px', textAlign: align, fontSize: '11px', fontWeight: 500,
+      color: active ? '#e0e0e0' : '#424242',
+      textTransform: 'uppercase', letterSpacing: '0.6px',
+      cursor: 'pointer', whiteSpace: 'nowrap', userSelect: 'none',
+      borderBottom: `1px solid ${active ? '#424242' : '#2e2e2e'}`,
+      background: '#121212'
+    }}>
+      {children} <span style={{ opacity: active ? 1 : 0.3 }}>{active ? (sortDir==='asc'?'↑':'↓') : '⇅'}</span>
     </th>
   );
 }
 
-// ─── ResultTable ─────────────────────────────────────────────────────────────
 export default function ResultTable() {
-  const { expedientes }  = useAppStore();
+  const { expedientes } = useAppStore();
   const { exportarCSV }  = useAPI();
 
-  const [page,      setPage]      = useState(1);
+  const [page, setPage]         = useState(1);
   const [sortField, setSortField] = useState('numero_expediente');
-  const [sortDir,   setSortDir]   = useState('asc');
-  const [search,    setSearch]    = useState('');
-  const [banco,     setBanco]     = useState('');
+  const [sortDir, setSortDir]   = useState('asc');
+  const [search, setSearch]     = useState('');
+  const [banco, setBanco]       = useState('');
 
-  // ── Bancos únicos ──────────────────────────────────────────────────────────
   const bancos = useMemo(
     () => [...new Set(expedientes.map(e => e.banco).filter(Boolean))].sort(),
     [expedientes]
   );
 
-  // ── Filtrado + sort ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let d = [...expedientes];
-
     if (search) {
       const q = search.toLowerCase();
-      d = d.filter(e =>
-        [e.numero_expediente, e.banco, e.ubicacion, e.contacto, e.status_juridico]
-          .some(v => v?.toLowerCase().includes(q))
-      );
+      d = d.filter(e => [e.numero_expediente, e.banco, e.ubicacion, e.contacto, e.status_juridico]
+        .some(v => v?.toLowerCase().includes(q)));
     }
     if (banco) d = d.filter(e => e.banco === banco);
-
     d.sort((a, b) => {
       let va = a[sortField], vb = b[sortField];
       if (typeof va === 'string') va = va.toLowerCase();
       if (typeof vb === 'string') vb = vb.toLowerCase();
-      if (va < vb) return sortDir === 'asc' ? -1 : 1;
-      if (va > vb) return sortDir === 'asc' ?  1 : -1;
+      if (va < vb) return sortDir==='asc' ? -1 : 1;
+      if (va > vb) return sortDir==='asc' ?  1 : -1;
       return 0;
     });
-
     return d;
   }, [expedientes, search, banco, sortField, sortDir]);
 
   const totalPages = Math.ceil(filtered.length / PAGE);
-  const rows       = filtered.slice((page - 1) * PAGE, page * PAGE);
+  const rows = filtered.slice((page-1)*PAGE, page*PAGE);
 
   function sort(field) {
-    setSortDir(d => sortField === field ? (d === 'asc' ? 'desc' : 'asc') : 'asc');
-    setSortField(field);
-    setPage(1);
+    setSortDir(d => sortField===field ? (d==='asc'?'desc':'asc') : 'asc');
+    setSortField(field); setPage(1);
   }
 
-  // ── Empty state ────────────────────────────────────────────────────────────
-  if (!expedientes.length) {
-    return (
-      <div style={{
-        background:   'white',
-        borderRadius: '12px',
-        padding:      '60px 20px',
-        textAlign:    'center',
-        boxShadow:    'var(--shadow)',
-        color:        'var(--gray-500)'
-      }}>
-        <div style={{ fontSize: '48px', marginBottom: '14px' }}>📋</div>
-        <div style={{ fontSize: '17px', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '6px' }}>
-          Sin expedientes cargados
-        </div>
-        <div style={{ fontSize: '13px' }}>
-          Sube un CSV de cartera bancaria para ver los resultados aquí.
-        </div>
+  const td = {
+    padding: '12px 16px', fontSize: '13px',
+    borderBottom: '1px solid #1e1e1e', verticalAlign: 'middle'
+  };
+
+  if (!expedientes.length) return (
+    <div style={{
+      background: '#1a1a1a', border: '1px solid #2e2e2e',
+      borderRadius: '12px', padding: '64px 20px', textAlign: 'center'
+    }}>
+      <div style={{ fontSize: '40px', opacity: 0.15, marginBottom: '16px' }}>≡</div>
+      <div style={{ fontSize: '14px', color: '#424242', fontWeight: 400 }}>
+        Sin expedientes · Sube un CSV para comenzar
       </div>
-    );
-  }
-
-  const tdBase = { padding: '10px 12px', fontSize: '13px', verticalAlign: 'middle', borderBottom: '1px solid var(--gray-200)' };
+    </div>
+  );
 
   return (
-    <div style={{ background: 'white', borderRadius: '12px', boxShadow: 'var(--shadow)', overflow: 'hidden' }}>
+    <div style={{ background: '#1a1a1a', border: '1px solid #2e2e2e', borderRadius: '12px', overflow: 'hidden' }}>
 
-      {/* ─ Toolbar */}
+      {/* Toolbar */}
       <div style={{
-        padding:       '14px 18px',
-        borderBottom:  '1px solid var(--gray-200)',
-        display:       'flex',
-        flexWrap:      'wrap',
-        gap:           '10px',
-        alignItems:    'center'
+        padding: '14px 16px', borderBottom: '1px solid #2e2e2e',
+        display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center',
+        background: '#121212'
       }}>
-        <h2 style={{
-          fontFamily: 'var(--font-display)',
-          fontSize:   '15px',
-          color:      'var(--sirah-primary)',
-          flex:       1,
-          minWidth:   '120px'
-        }}>
-          📋 Expedientes ({filtered.length} / {expedientes.length})
-        </h2>
+        <span style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.6px', textTransform: 'uppercase', color: '#424242', flex: 1 }}>
+          {filtered.length} / {expedientes.length} expedientes
+        </span>
 
-        <input
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          placeholder="🔍 Buscar expediente, banco, zona…"
+        <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+          placeholder="Buscar…"
           style={{
-            padding:      '7px 11px',
-            borderRadius: 'var(--radius-sm)',
-            border:       '1px solid var(--gray-300)',
-            fontSize:     '13px',
-            width:        '230px',
-            outline:      'none',
-            flexShrink:   0
-          }}
-        />
+            padding: '7px 12px', borderRadius: '6px',
+            border: '1px solid #2e2e2e', background: '#1a1a1a',
+            color: '#e0e0e0', fontSize: '13px', width: '200px', outline: 'none'
+          }} />
 
-        <select
-          value={banco}
-          onChange={e => { setBanco(e.target.value); setPage(1); }}
+        <select value={banco} onChange={e => { setBanco(e.target.value); setPage(1); }}
           style={{
-            padding:      '7px 11px',
-            borderRadius: 'var(--radius-sm)',
-            border:       '1px solid var(--gray-300)',
-            fontSize:     '13px',
-            background:   'white',
-            cursor:       'pointer'
-          }}
-        >
+            padding: '7px 12px', borderRadius: '6px',
+            border: '1px solid #2e2e2e', background: '#1a1a1a',
+            color: '#9e9e9e', fontSize: '13px', cursor: 'pointer'
+          }}>
           <option value="">Todos los bancos</option>
           {bancos.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
 
-        <button
-          onClick={() => exportarCSV(filtered)}
-          style={{
-            padding:      '7px 14px',
-            background:   'var(--sirah-primary)',
-            color:        'white',
-            border:       'none',
-            borderRadius: 'var(--radius-sm)',
-            fontSize:     '13px',
-            fontWeight:   600,
-            cursor:       'pointer',
-            whiteSpace:   'nowrap',
-            transition:   'background 0.2s'
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = 'var(--sirah-accent)'}
-          onMouseLeave={e => e.currentTarget.style.background = 'var(--sirah-primary)'}
+        <button onClick={() => exportarCSV(filtered)} style={{
+          padding: '7px 14px', background: 'transparent',
+          color: '#9e9e9e', border: '1px solid #2e2e2e',
+          borderRadius: '6px', fontSize: '12px', fontWeight: 500,
+          cursor: 'pointer', letterSpacing: '0.3px', transition: 'all 0.18s'
+        }}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = '#9e9e9e'; e.currentTarget.style.color = '#e0e0e0'; }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = '#2e2e2e'; e.currentTarget.style.color = '#9e9e9e'; }}
         >
-          ⬇ Exportar CSV
+          Exportar CSV
         </button>
       </div>
 
-      {/* ─ Table */}
+      {/* Table */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
-              <Th field="numero_expediente" {...{ sortField, sortDir, onSort: sort }}>Expediente</Th>
-              <Th field="banco"             {...{ sortField, sortDir, onSort: sort }}>Banco</Th>
-              <Th field="ubicacion"         {...{ sortField, sortDir, onSort: sort }}>Ubicación</Th>
-              <Th field="monto_adeudo"      {...{ sortField, sortDir, onSort: sort }} align="right">Monto Adeudo</Th>
-              <Th field="valor_estimado"    {...{ sortField, sortDir, onSort: sort }} align="right">Valor Est.</Th>
-              <Th field="rentabilidad"      {...{ sortField, sortDir, onSort: sort }} align="right">Rent. %</Th>
-              <Th field="status_juridico"   {...{ sortField, sortDir, onSort: sort }}>Status Jurídico</Th>
-              <Th field="status_pjv"        {...{ sortField, sortDir, onSort: sort }}>Status PJV</Th>
-              <Th field="contacto"          {...{ sortField, sortDir, onSort: sort }}>Contacto</Th>
+              <Th field="numero_expediente" {...{sortField,sortDir,onSort:sort}}>Expediente</Th>
+              <Th field="banco"             {...{sortField,sortDir,onSort:sort}}>Banco</Th>
+              <Th field="ubicacion"         {...{sortField,sortDir,onSort:sort}}>Ubicación</Th>
+              <Th field="monto_adeudo"      {...{sortField,sortDir,onSort:sort}} align="right">Adeudo</Th>
+              <Th field="valor_estimado"    {...{sortField,sortDir,onSort:sort}} align="right">Valor Est.</Th>
+              <Th field="rentabilidad"      {...{sortField,sortDir,onSort:sort}} align="right">Rent.%</Th>
+              <Th field="status_juridico"   {...{sortField,sortDir,onSort:sort}}>Status</Th>
+              <Th field="status_pjv"        {...{sortField,sortDir,onSort:sort}}>PJV</Th>
+              <Th field="contacto"          {...{sortField,sortDir,onSort:sort}}>Contacto</Th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr>
-                <td colSpan={9} style={{ ...tdBase, textAlign: 'center', color: 'var(--gray-400)', padding: '40px' }}>
-                  Sin resultados para la búsqueda actual
-                </td>
-              </tr>
+              <tr><td colSpan={9} style={{...td, textAlign:'center', color:'#424242', padding:'40px'}}>
+                Sin resultados
+              </td></tr>
             ) : rows.map((e, i) => (
-              <tr
-                key={e.id || e.numero_expediente || i}
-                style={{ background: i % 2 === 0 ? 'white' : 'var(--gray-100)', transition: 'background 0.1s' }}
-                onMouseEnter={ev => ev.currentTarget.style.background = '#eef2f7'}
-                onMouseLeave={ev => ev.currentTarget.style.background = i % 2 === 0 ? 'white' : 'var(--gray-100)'}
+              <tr key={e.id||e.numero_expediente||i}
+                style={{ background: 'transparent', transition: 'background 0.1s' }}
+                onMouseEnter={ev => ev.currentTarget.style.background = '#212121'}
+                onMouseLeave={ev => ev.currentTarget.style.background = 'transparent'}
               >
-                {/* Expediente */}
-                <td style={tdBase}>
-                  <code style={{
-                    fontFamily: 'var(--font-data)',
-                    fontSize:   '12px',
-                    fontWeight: 700,
-                    color:      'var(--sirah-primary)'
-                  }}>
-                    {e.numero_expediente || '—'}
+                <td style={td}>
+                  <code style={{ fontFamily: 'Roboto Mono, monospace', fontSize: '12px', color: '#9e9e9e' }}>
+                    {e.numero_expediente||'—'}
                   </code>
                 </td>
-
-                {/* Banco */}
-                <td style={tdBase}>
+                <td style={td}>
                   {e.banco
-                    ? <span style={{
-                        background: 'var(--gray-200)',
-                        color:      'var(--sirah-primary)',
-                        padding:    '2px 8px',
-                        borderRadius: '4px',
-                        fontSize:   '12px',
-                        fontWeight: 500
-                      }}>{e.banco}</span>
-                    : '—'}
+                    ? <span style={{ fontSize:'12px', color:'#757575', background:'#212121', padding:'2px 8px', borderRadius:'4px' }}>{e.banco}</span>
+                    : <span style={{color:'#424242'}}>—</span>}
                 </td>
-
-                {/* Ubicación */}
-                <td style={{ ...tdBase, maxWidth: '180px' }}>
-                  <span title={e.ubicacion} style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {e.ubicacion || '—'}
+                <td style={{...td, maxWidth:'160px'}}>
+                  <span title={e.ubicacion} style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#757575', fontSize:'12px' }}>
+                    {e.ubicacion||'—'}
                   </span>
                 </td>
-
-                {/* Monto adeudo */}
-                <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'var(--font-data)', fontSize: '12px', color: 'var(--gray-700)' }}>
+                <td style={{...td, textAlign:'right', fontFamily:'Roboto Mono, monospace', fontSize:'12px', color:'#616161'}}>
                   {fmtMXN(e.monto_adeudo)}
                 </td>
-
-                {/* Valor estimado */}
-                <td style={{ ...tdBase, textAlign: 'right', fontFamily: 'var(--font-data)', fontSize: '12px', fontWeight: 700, color: 'var(--sirah-accent)' }}>
+                <td style={{...td, textAlign:'right', fontFamily:'Roboto Mono, monospace', fontSize:'12px', fontWeight:500, color:'#e0e0e0'}}>
                   {fmtMXN(e.valor_estimado)}
                 </td>
-
-                {/* Rentabilidad */}
-                <td style={{ ...tdBase, textAlign: 'right' }}>
-                  {e.rentabilidad !== null && e.rentabilidad !== undefined ? (
-                    <span style={{
-                      color:      e.rentabilidad >= 0 ? 'var(--sirah-success-dark)' : 'var(--sirah-warning)',
-                      fontWeight: 700,
-                      fontFamily: 'var(--font-data)',
-                      fontSize:   '12px'
-                    }}>
-                      {e.rentabilidad >= 0 ? '+' : ''}{Number(e.rentabilidad).toFixed(1)}%
-                    </span>
-                  ) : '—'}
+                <td style={{...td, textAlign:'right'}}>
+                  {e.rentabilidad !== null && e.rentabilidad !== undefined
+                    ? <span style={{ fontFamily:'Roboto Mono, monospace', fontSize:'12px', fontWeight:500,
+                        color: e.rentabilidad>=0 ? '#66bb6a' : '#ef5350' }}>
+                        {e.rentabilidad>=0?'+':''}{Number(e.rentabilidad).toFixed(1)}%
+                      </span>
+                    : '—'}
                 </td>
-
-                {/* Status jurídico */}
-                <td style={tdBase}><StatusBadge text={e.status_juridico} /></td>
-
-                {/* Status PJV */}
-                <td style={tdBase}><StatusBadge text={e.status_pjv} /></td>
-
-                {/* Contacto */}
-                <td style={{ ...tdBase, maxWidth: '160px' }}>
-                  <span title={e.contacto} style={{
-                    display:      'block',
-                    overflow:     'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace:   'nowrap',
-                    color:        'var(--gray-600)',
-                    fontSize:     '12px'
-                  }}>
-                    {e.contacto || '—'}
+                <td style={td}><Chip text={e.status_juridico} /></td>
+                <td style={td}><Chip text={e.status_pjv} /></td>
+                <td style={{...td, maxWidth:'150px'}}>
+                  <span title={e.contacto} style={{ display:'block', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', color:'#424242', fontSize:'11px' }}>
+                    {e.contacto||'—'}
                   </span>
                 </td>
               </tr>
@@ -340,55 +225,36 @@ export default function ResultTable() {
         </table>
       </div>
 
-      {/* ─ Pagination */}
+      {/* Pagination */}
       {totalPages > 1 && (
         <div style={{
-          padding:       '12px 18px',
-          borderTop:     '1px solid var(--gray-200)',
-          display:       'flex',
-          alignItems:    'center',
-          justifyContent:'space-between',
-          flexWrap:      'wrap',
-          gap:           '8px'
+          padding: '12px 16px', borderTop: '1px solid #1e1e1e',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#121212'
         }}>
-          <span style={{ fontSize: '12px', color: 'var(--gray-500)' }}>
-            {(page - 1) * PAGE + 1}–{Math.min(page * PAGE, filtered.length)} de {filtered.length}
+          <span style={{ fontSize: '12px', color: '#424242' }}>
+            {(page-1)*PAGE+1}–{Math.min(page*PAGE, filtered.length)} de {filtered.length}
           </span>
           <div style={{ display: 'flex', gap: '4px' }}>
-            <PagBtn onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>← Ant</PagBtn>
-
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
-              return (
-                <PagBtn key={p} onClick={() => setPage(p)} active={p === page}>{p}</PagBtn>
-              );
-            })}
-
-            <PagBtn onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Sig →</PagBtn>
+            {[
+              { label: '←', onClick: () => setPage(p=>Math.max(1,p-1)), disabled: page===1 },
+              ...Array.from({length: Math.min(totalPages, 5)}, (_, i) => {
+                const p = Math.max(1, Math.min(totalPages-4, page-2)) + i;
+                return { label: p, onClick: () => setPage(p), active: p===page };
+              }),
+              { label: '→', onClick: () => setPage(p=>Math.min(totalPages,p+1)), disabled: page===totalPages }
+            ].map((btn, i) => (
+              <button key={i} onClick={btn.onClick} disabled={btn.disabled} style={{
+                width: '30px', height: '30px', borderRadius: '4px',
+                border: `1px solid ${btn.active ? '#616161' : '#2e2e2e'}`,
+                background: btn.active ? '#2a2a2a' : 'transparent',
+                color: btn.disabled ? '#2e2e2e' : btn.active ? '#e0e0e0' : '#616161',
+                fontSize: '12px', cursor: btn.disabled ? 'not-allowed' : 'pointer'
+              }}>{btn.label}</button>
+            ))}
           </div>
         </div>
       )}
     </div>
-  );
-}
-
-function PagBtn({ children, onClick, disabled, active }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        padding:      '5px 10px',
-        borderRadius: 'var(--radius-sm)',
-        border:       `1px solid ${active ? 'var(--sirah-primary)' : 'var(--gray-300)'}`,
-        background:   active ? 'var(--sirah-primary)' : 'white',
-        color:        active ? 'white' : disabled ? 'var(--gray-400)' : 'var(--gray-700)',
-        fontSize:     '12px',
-        fontWeight:   active ? 700 : 400,
-        cursor:       disabled ? 'not-allowed' : 'pointer'
-      }}
-    >
-      {children}
-    </button>
   );
 }
