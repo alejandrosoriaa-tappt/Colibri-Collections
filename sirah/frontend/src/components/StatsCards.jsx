@@ -14,43 +14,34 @@ const fmtPct = (n) => {
   return `${n >= 0 ? '+' : ''}${Number(n).toFixed(1)}%`;
 };
 
-function Card({ icon, label, value, sub, accent }) {
+function Card({ label, value, sub, valueColor }) {
   return (
     <div style={{
-      background:   '#1a1a1a',
-      border:       '1px solid #2e2e2e',
+      background: '#ffffff',
+      border: '1px solid #e8eaed',
       borderRadius: '12px',
-      padding:      '20px',
-      flex:         '1 1 180px',
-      minWidth:     '160px',
-      transition:   'background 0.18s',
-      cursor:       'default'
+      padding: '20px 24px',
+      flex: '1 1 180px',
+      minWidth: '160px',
+      transition: 'box-shadow 0.18s',
+      cursor: 'default'
     }}
-    onMouseEnter={e => e.currentTarget.style.background = '#212121'}
-    onMouseLeave={e => e.currentTarget.style.background = '#1a1a1a'}
+    onMouseEnter={e => e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)'}
+    onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
     >
-      <div style={{ fontSize: '20px', marginBottom: '12px', opacity: 0.6 }}>{icon}</div>
-      <div style={{
-        fontSize:      '11px',
-        fontWeight:    500,
-        color:         '#616161',
-        letterSpacing: '0.8px',
-        textTransform: 'uppercase',
-        marginBottom:  '6px'
-      }}>
+      <div style={{ fontSize: '12px', fontWeight: 500, color: '#9aa0a6', letterSpacing: '0.3px', marginBottom: '10px' }}>
         {label}
       </div>
       <div style={{
-        fontSize:   '28px',
-        fontWeight: 300,
+        fontSize: '26px', fontWeight: 300,
         fontFamily: 'Roboto Mono, monospace',
-        color:      accent || '#f5f5f5',
+        color: valueColor || '#202124',
         lineHeight: 1.1
       }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: '12px', color: '#616161', marginTop: '6px' }}>{sub}</div>
+        <div style={{ fontSize: '11px', color: '#bdc1c6', marginTop: '6px' }}>{sub}</div>
       )}
     </div>
   );
@@ -65,16 +56,14 @@ export default function StatsCards() {
 
   return (
     <div className="md-stats-grid" style={{
-      display:             'grid',
-      gridTemplateColumns: 'repeat(4, 1fr)',
-      gap:                 '12px',
-      marginTop:           '20px'
+      display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
+      gap: '12px', marginTop: '20px'
     }}>
-      <Card icon="📋" label="Expedientes"       value={total.toLocaleString()}             sub={`Top: ${topBanco}`}          accent="#f5f5f5" />
-      <Card icon="💰" label="Valor Total"        value={fmtCurrency(estadisticas.valor_total)} sub="Estimado comercial"        accent="#e0e0e0" />
-      <Card icon="⊘"  label="Promedio"           value={fmtCurrency(estadisticas.promedio_valor)} sub="Por expediente"         accent="#9e9e9e" />
-      <Card icon="↑"  label="Rentabilidad"       value={fmtPct(rent)}                      sub="vs. catastral"
-        accent={!rent || rent >= 0 ? '#66bb6a' : '#ef5350'} />
+      <Card label="Expedientes"       value={total.toLocaleString()}                sub={`Top: ${topBanco}`}   />
+      <Card label="Valor Total"        value={fmtCurrency(estadisticas.valor_total)} sub="Estimado comercial"  />
+      <Card label="Promedio"           value={fmtCurrency(estadisticas.promedio_valor)} sub="Por expediente"   />
+      <Card label="Rentabilidad"       value={fmtPct(rent)}                          sub="vs. catastral"
+        valueColor={!rent || rent >= 0 ? '#188038' : '#d93025'} />
     </div>
   );
 }

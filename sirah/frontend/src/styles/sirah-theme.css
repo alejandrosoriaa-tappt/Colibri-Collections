@@ -1,59 +1,44 @@
-/* ─── SIRAH · Material Design Dark Theme ────────────────────────────────────── */
+/* ─── SIRAH · Material Design Light Theme ───────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500;700&display=swap');
 
 :root {
-  /* ── Background layers (MD elevation model) */
-  --md-bg:          #0f0f0f;
-  --md-surface-1:   #1a1a1a;
-  --md-surface-2:   #212121;
-  --md-surface-3:   #2a2a2a;
-  --md-surface-4:   #313131;
-  --md-hover:       rgba(255,255,255,0.06);
-  --md-pressed:     rgba(255,255,255,0.10);
+  --md-bg:        #fafafa;
+  --md-surface-1: #ffffff;
+  --md-surface-2: #f5f5f5;
+  --md-surface-3: #eeeeee;
+  --md-hover:     rgba(0,0,0,0.04);
 
-  /* ── Outlines / dividers */
-  --md-outline:     #2e2e2e;
-  --md-outline-var: #3d3d3d;
+  --md-outline:     #e0e0e0;
+  --md-outline-var: #d4d4d4;
 
-  /* ── Text */
-  --md-text-1:      #f5f5f5;   /* primary */
-  --md-text-2:      #9e9e9e;   /* secondary */
-  --md-text-3:      #616161;   /* disabled / hint */
+  --md-text-1:    #212121;
+  --md-text-2:    #616161;
+  --md-text-3:    #9e9e9e;
 
-  /* ── Accent (monochromatic) */
-  --md-primary:     #e0e0e0;
-  --md-primary-dim: #9e9e9e;
+  --md-primary:   #212121;
 
-  /* ── Data colors (kept for meaning) */
-  --md-green:   #66bb6a;
-  --md-red:     #ef5350;
-  --md-orange:  #ffa726;
-  --md-blue:    #42a5f5;
-  --md-purple:  #ab47bc;
+  --md-green:  #388e3c;
+  --md-red:    #d32f2f;
+  --md-orange: #f57c00;
+  --md-blue:   #1976d2;
+  --md-purple: #7b1fa2;
 
-  /* ── Typography */
   --font-body:    'Roboto', sans-serif;
   --font-display: 'Roboto', sans-serif;
   --font-data:    'Roboto Mono', monospace;
 
-  /* ── Shape */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius:    8px;
   --radius-lg: 12px;
-  --radius-xl: 16px;
 
-  /* ── Elevation shadows (dark MD) */
-  --elev-1: 0 1px 2px rgba(0,0,0,0.6);
-  --elev-2: 0 2px 6px rgba(0,0,0,0.6);
-  --elev-3: 0 4px 12px rgba(0,0,0,0.7);
-  --elev-4: 0 8px 24px rgba(0,0,0,0.8);
+  --shadow-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.10);
 
   --transition: all 0.18s cubic-bezier(0.2,0,0,1);
   --max-width: 1400px;
 }
 
-/* ─── Reset ─────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 
@@ -68,16 +53,13 @@ body {
 
 #root { min-height: 100vh; }
 
-/* ─── Scrollbar ─────────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--md-outline-var); border-radius: 3px; }
 
-/* ─── Animations ─────────────────────────────────────────────────────────────── */
-@keyframes spin    { to { transform: rotate(360deg); } }
-@keyframes fadeIn  { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes spin   { to { transform: rotate(360deg); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-/* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 900px) {
   .md-sidebar-layout { grid-template-columns: 1fr !important; }
   .md-sticky         { position: static !important; }
