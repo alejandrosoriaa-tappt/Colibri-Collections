@@ -599,6 +599,69 @@ router.post('/cleanup', authMiddleware, inferTenantGuard, async (req, res) => {
 // FAMILY STRUCTURE — Link parents/guardians to students
 // ============================================================
 
+// GET /api/contacts/families/search?q=Perez%20Hernandez
+// Search families by name, return students + parents for each family
+router.get('/families/search', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { q } = req.query
+    if (!q || q.trim().length === 0) {
+      return res.json({ families: [] })
+    }
+
+    const searchTerm = `%${q.trim()}%`
+
+    // Find all contacts with matching nombre_familia
+    const { data: contacts, error } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, nombre_alumno, grado, salon, relationship_type, priority, status, nombre_familia')
+      .eq('tenant_id', req.tenantId)
+      .ilike('nombre_familia', searchTerm)
+      .neq('status', 'inactive')
+      .order('relationship_type, priority, nombre_alumno', { ascending: true })
+
+    if (error) throw error
+
+    // Group by familia and separate students from parents
+    const familiesMap = {}
+    for (const contact of contacts || []) {
+      const familyKey = contact.nombre_familia
+      if (!familiesMap[familyKey]) {
+        familiesMap[familyKey] = {
+          nombre_familia: familyKey,
+          estudiantes: [],
+          papas: []
+        }
+      }
+
+      if (contact.relationship_type === 'student') {
+        familiesMap[familyKey].estudiantes.push({
+          id: contact.id,
+          nombre: contact.nombre,
+          apellido: contact.apellido,
+          nombre_alumno: contact.nombre_alumno,
+          grado: contact.grado,
+          salon: contact.salon
+        })
+      } else {
+        familiesMap[familyKey].papas.push({
+          id: contact.id,
+          nombre: contact.nombre,
+          apellido: contact.apellido,
+          telefono: contact.telefono,
+          relationship_type: contact.relationship_type,
+          priority: contact.priority
+        })
+      }
+    }
+
+    const families = Object.values(familiesMap)
+    return res.json({ families })
+  } catch (err) {
+    console.error('GET /families/search error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // GET /api/contacts/family/by-student/:studentName
 // Get all family members (parents/guardians) for a student
 router.get('/family/by-student/:studentName', authMiddleware, inferTenantGuard, async (req, res) => {

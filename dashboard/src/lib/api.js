@@ -88,7 +88,8 @@ export const contactsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 60000
   }),
-  cleanup: () => api.post('/api/contacts/cleanup')
+  cleanup: () => api.post('/api/contacts/cleanup'),
+  getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } })
 }
 
 // ================================================================

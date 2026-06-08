@@ -174,10 +174,11 @@ export default function CampaignDetailPage() {
   const [markingInvoice, setMarkingInvoice] = useState(null)
   const [payRef, setPayRef] = useState('')
   const [showAddContacts, setShowAddContacts] = useState(false)
-  const [contactSearch, setContactSearch] = useState('')
-  const [contactResults, setContactResults] = useState([])
-  const [contactSearchLoading, setContactSearchLoading] = useState(false)
+  const [familySearch, setFamilySearch] = useState('')
+  const [familyResults, setFamilyResults] = useState([])
+  const [familySearchLoading, setFamilySearchLoading] = useState(false)
   const [selectedContactIds, setSelectedContactIds] = useState(new Set())
+  const [familySelections, setFamilySelections] = useState({}) // { familyKey: ['papa', 'mama', 'ambos'] }
   const [addingContacts, setAddingContacts] = useState(false)
   const [populatingGroup, setPopulatingGroup] = useState(false)
 
@@ -208,22 +209,23 @@ export default function CampaignDetailPage() {
 
   useEffect(() => { load() }, [id])
 
-  // Contact search for "add contacts" modal
+  // Family search for "add families" modal
   useEffect(() => {
     if (!showAddContacts) return
     const t = setTimeout(async () => {
-      setContactSearchLoading(true)
+      setFamilySearchLoading(true)
       try {
-        const res = await contactsAPI.list({ limit: 30, status: 'active', ...(contactSearch ? { search: contactSearch } : {}) })
-        setContactResults(res.data.contacts || [])
-      } catch {
-        setContactResults([])
+        const res = await contactsAPI.getFamilies(familySearch)
+        setFamilyResults(res.data.families || [])
+      } catch (err) {
+        console.error('Family search error:', err)
+        setFamilyResults([])
       } finally {
-        setContactSearchLoading(false)
+        setFamilySearchLoading(false)
       }
     }, 300)
     return () => clearTimeout(t)
-  }, [contactSearch, showAddContacts])
+  }, [familySearch, showAddContacts])
 
   const handlePopulateFromGroup = async () => {
     setPopulatingGroup(true)
@@ -238,13 +240,34 @@ export default function CampaignDetailPage() {
   }
 
   const handleAddContacts = async () => {
-    if (selectedContactIds.size === 0) return
+    // Collect all selected contact IDs from family selections
+    const contactIds = new Set()
+
+    for (const [familyKey, selection] of Object.entries(familySelections)) {
+      const family = familyResults.find(f => f.nombre_familia === familyKey)
+      if (!family || !selection) continue
+
+      // If 'ambos' is selected, add all papás
+      if (selection === 'ambos') {
+        family.papas.forEach(papa => contactIds.add(papa.id))
+      } else {
+        // Otherwise add only selected relationship type (papa/mama)
+        family.papas.forEach(papa => {
+          if (papa.relationship_type === selection) {
+            contactIds.add(papa.id)
+          }
+        })
+      }
+    }
+
+    if (contactIds.size === 0) return
+
     setAddingContacts(true)
     try {
-      await campaignsAPI.addContacts(id, { contact_ids: [...selectedContactIds], monto: 0 })
+      await campaignsAPI.addContacts(id, { contact_ids: [...contactIds], monto: 0 })
       setShowAddContacts(false)
-      setSelectedContactIds(new Set())
-      setContactSearch('')
+      setFamilySelections({})
+      setFamilySearch('')
       load()
     } catch (err) {
       alert(err.response?.data?.error || err.message)
@@ -553,13 +576,13 @@ export default function CampaignDetailPage() {
         </>
       )}
 
-      {/* Add contacts modal */}
+      {/* Add families modal */}
       {showAddContacts && (
         <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col max-h-[80vh]">
             <div className="flex items-center justify-between p-5 border-b border-gray-100 flex-shrink-0">
               <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <UserPlus size={16} className="text-colibri" /> Agregar contactos a campaña
+                <UserPlus size={16} className="text-colibri" /> Seleccionar familia
               </h3>
               <button onClick={() => setShowAddContacts(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={18} />
@@ -571,62 +594,103 @@ export default function CampaignDetailPage() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   className="input pl-9 text-sm"
-                  placeholder={orgConfig.searchPlaceholder}
-                  value={contactSearch}
-                  onChange={e => setContactSearch(e.target.value)}
+                  placeholder="Buscar por apellido (ej: Perez Hernandez)"
+                  value={familySearch}
+                  onChange={e => setFamilySearch(e.target.value)}
                   autoFocus
                 />
               </div>
-              {selectedContactIds.size > 0 && (
-                <p className="text-xs text-colibri mt-2 font-medium">
-                  {selectedContactIds.size} contacto{selectedContactIds.size !== 1 ? 's' : ''} seleccionado{selectedContactIds.size !== 1 ? 's' : ''}
-                </p>
-              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2">
-              {contactSearchLoading ? (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {familySearchLoading ? (
                 <div className="flex justify-center py-6">
                   <Loader2 size={18} className="text-colibri animate-spin" />
                 </div>
-              ) : contactResults.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-6">No se encontraron contactos</p>
+              ) : familyResults.length === 0 ? (
+                <p className="text-sm text-gray-400 text-center py-6">
+                  {familySearch ? 'No se encontraron familias' : 'Escribe para buscar una familia'}
+                </p>
               ) : (
-                contactResults.map(c => {
-                  const checked = selectedContactIds.has(c.id)
-                  return (
-                    <label
-                      key={c.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer hover:bg-gray-50 transition-colors ${checked ? 'bg-colibri/5' : ''}`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          setSelectedContactIds(prev => {
-                            const next = new Set(prev)
-                            if (next.has(c.id)) next.delete(c.id)
-                            else next.add(c.id)
-                            return next
-                          })
-                        }}
-                        className="accent-colibri rounded"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 truncate">
-                          {[c.nombre, c.apellido].filter(Boolean).join(' ')}
-                        </p>
-                        {c.nombre_alumno && orgConfig.hasStudent && (
-                          <p className="text-xs text-gray-400">{orgConfig.studentLabel}: {c.nombre_alumno}</p>
-                        )}
-                        <p className="text-xs text-gray-400 font-mono">{c.telefono}</p>
+                familyResults.map(family => (
+                  <div key={family.nombre_familia} className="border border-gray-200 rounded-xl p-4">
+                    {/* Family name header */}
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-semibold text-gray-900">{family.nombre_familia}</h4>
+                    </div>
+
+                    {/* Students section */}
+                    {family.estudiantes.length > 0 && (
+                      <div className="mb-3 pb-3 border-b border-gray-100">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Estudiantes:</p>
+                        <div className="space-y-1">
+                          {family.estudiantes.map(est => (
+                            <p key={est.id} className="text-sm text-gray-700">
+                              • {est.nombre_alumno || est.nombre} {est.salon && `(${est.salon})`}
+                            </p>
+                          ))}
+                        </div>
                       </div>
-                      {c.grupo && (
-                        <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">{c.grupo}</span>
-                      )}
-                    </label>
-                  )
-                })
+                    )}
+
+                    {/* Parents section with quick selectors */}
+                    {family.papas.length > 0 && (
+                      <div className="mb-3">
+                        <p className="text-xs font-medium text-gray-500 mb-2">Papás:</p>
+                        <div className="space-y-2 mb-3">
+                          {family.papas.map(papa => {
+                            const roleLabel = papa.relationship_type === 'papa' ? 'Papá' : papa.relationship_type === 'mama' ? 'Mamá' : 'Tutor'
+                            return (
+                              <div key={papa.id} className="text-sm text-gray-700 flex justify-between items-center">
+                                <span>{roleLabel}: {papa.nombre} ({papa.telefono})</span>
+                              </div>
+                            )
+                          })}
+                        </div>
+
+                        {/* Quick selectors: Mamá | Papá | Ambos */}
+                        <div className="flex gap-2">
+                          {family.papas.some(p => p.relationship_type === 'mama') && (
+                            <button
+                              onClick={() => setFamilySelections(prev => ({ ...prev, [family.nombre_familia]: 'mama' }))}
+                              className={`flex-1 text-xs font-medium px-3 py-2 rounded-lg transition-colors ${
+                                familySelections[family.nombre_familia] === 'mama'
+                                  ? 'bg-colibri text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              Mamá
+                            </button>
+                          )}
+                          {family.papas.some(p => p.relationship_type === 'papa') && (
+                            <button
+                              onClick={() => setFamilySelections(prev => ({ ...prev, [family.nombre_familia]: 'papa' }))}
+                              className={`flex-1 text-xs font-medium px-3 py-2 rounded-lg transition-colors ${
+                                familySelections[family.nombre_familia] === 'papa'
+                                  ? 'bg-colibri text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              Papá
+                            </button>
+                          )}
+                          {family.papas.length > 1 && (
+                            <button
+                              onClick={() => setFamilySelections(prev => ({ ...prev, [family.nombre_familia]: 'ambos' }))}
+                              className={`flex-1 text-xs font-medium px-3 py-2 rounded-lg transition-colors ${
+                                familySelections[family.nombre_familia] === 'ambos'
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              Ambos
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </div>
 
@@ -636,11 +700,11 @@ export default function CampaignDetailPage() {
               </button>
               <button
                 onClick={handleAddContacts}
-                disabled={selectedContactIds.size === 0 || addingContacts}
+                disabled={Object.keys(familySelections).length === 0 || addingContacts}
                 className="flex-1 btn-primary flex items-center justify-center gap-2 text-sm"
               >
                 {addingContacts ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-                {addingContacts ? 'Agregando...' : `Agregar ${selectedContactIds.size > 0 ? selectedContactIds.size : ''}`}
+                {addingContacts ? 'Agregando...' : `Agregar ${Object.keys(familySelections).length > 0 ? Object.keys(familySelections).length + ' familia(s)' : ''}`}
               </button>
             </div>
           </div>
