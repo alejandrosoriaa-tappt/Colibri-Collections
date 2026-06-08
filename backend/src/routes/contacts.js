@@ -595,4 +595,122 @@ router.post('/cleanup', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
+// ============================================================
+// FAMILY STRUCTURE — Link parents/guardians to students
+// ============================================================
+
+// GET /api/contacts/family/by-student/:studentName
+// Get all family members (parents/guardians) for a student
+router.get('/family/by-student/:studentName', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { studentName } = req.params
+    const { data: family, error } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, relationship_type, priority, status')
+      .eq('tenant_id', req.tenantId)
+      .eq('nombre_alumno', studentName)
+      .neq('relationship_type', 'student')
+      .not('student_id', 'is', null)
+      .order('priority', { ascending: false })
+
+    if (error) throw error
+    return res.json({ family: family || [] })
+  } catch (err) {
+    console.error('GET /family/by-student error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/contacts/:contactId/link-student
+// Link a parent/guardian to a student
+router.post('/:contactId/link-student', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { contactId } = req.params
+    const { studentId, relationshipType, priority } = req.body
+
+    if (!studentId || !relationshipType) {
+      return res.status(400).json({ error: 'studentId and relationshipType required' })
+    }
+
+    if (!['papa', 'mama', 'tutor', 'otro'].includes(relationshipType)) {
+      return res.status(400).json({ error: 'Invalid relationshipType' })
+    }
+
+    // Verify both contacts exist and belong to same tenant
+    const [contactErr, studentErr] = await Promise.all([
+      supabase.from('contacts').select('id').eq('id', contactId).eq('tenant_id', req.tenantId).single(),
+      supabase.from('contacts').select('id').eq('id', studentId).eq('tenant_id', req.tenantId).single()
+    ])
+
+    if (contactErr || studentErr) {
+      return res.status(404).json({ error: 'Contact or student not found' })
+    }
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .update({
+        student_id: studentId,
+        relationship_type: relationshipType,
+        priority: priority || 0,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', contactId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return res.json({ contact: data })
+  } catch (err) {
+    console.error('POST /link-student error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// GET /api/contacts/:studentId/family
+// Get all family members for a student by student contact ID
+router.get('/:studentId/family', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { studentId } = req.params
+    const { data: family, error } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, relationship_type, priority, status')
+      .eq('tenant_id', req.tenantId)
+      .eq('student_id', studentId)
+      .order('priority', { ascending: false })
+
+    if (error) throw error
+    return res.json({ family: family || [] })
+  } catch (err) {
+    console.error('GET /:studentId/family error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/contacts/:contactId/unlink-student
+// Unlink a parent/guardian from a student
+router.post('/:contactId/unlink-student', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { contactId } = req.params
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .update({
+        student_id: null,
+        relationship_type: null,
+        priority: null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', contactId)
+      .eq('tenant_id', req.tenantId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return res.json({ contact: data })
+  } catch (err) {
+    console.error('POST /unlink-student error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 export default router

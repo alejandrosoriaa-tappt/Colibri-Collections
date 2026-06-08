@@ -458,3 +458,64 @@ export async function getContactsForBroadcast(tenantId, groupFilter = null) {
   if (error) throw error
   return data
 }
+
+// ================================================================
+// FAMILY STRUCTURE
+// ================================================================
+
+/**
+ * Get all family members (parents/guardians) for a student
+ * @param tenantId - tenant UUID
+ * @param studentId - student contact ID
+ * @returns array of family contacts with relationship type
+ */
+export async function getStudentFamily(tenantId, studentId) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, nombre, apellido, telefono, relationship_type, priority, status')
+    .eq('tenant_id', tenantId)
+    .eq('student_id', studentId)
+    .neq('status', 'inactive')
+    .order('priority', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Get all family members by student name (nombre_alumno)
+ * Useful for campaigns where you search by student name
+ */
+export async function getStudentFamilyByName(tenantId, studentName) {
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('id, nombre, apellido, telefono, relationship_type, priority, status, nombre_alumno')
+    .eq('tenant_id', tenantId)
+    .eq('nombre_alumno', studentName)
+    .not('student_id', 'is', null)
+    .neq('relationship_type', 'student')
+    .neq('status', 'inactive')
+    .order('priority', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+/**
+ * Get all students (contacts with nombre_alumno) for a tenant
+ * Used to populate student selectors in campaign creation
+ */
+export async function getStudentsByTenant(tenantId, { limit = 100, offset = 0 } = {}) {
+  const { data, count, error } = await supabase
+    .from('contacts')
+    .select('id, nombre_alumno, grupo, nombre', { count: 'exact' })
+    .eq('tenant_id', tenantId)
+    .not('nombre_alumno', 'is', null)
+    .neq('nombre_alumno', '')
+    .neq('status', 'inactive')
+    .order('nombre_alumno', { ascending: true })
+    .range(offset, offset + limit - 1)
+
+  if (error) throw error
+  return { data, count }
+}
