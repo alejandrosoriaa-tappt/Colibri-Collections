@@ -40,12 +40,21 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const isCondominio = orgType === 'condominio'
   const isClub       = orgType === 'club' || orgType === 'gimnasio'
 
+  // Para colegios: estructura de familia
+  const [familyForm, setFamilyForm] = useState({
+    nombre_familia: '',
+    nombre_mama: '',
+    nombre_papa: '',
+    estudiantes: [''],
+    email: '',
+    telefono: '',
+  })
+
   const [form, setForm] = useState({
     nombre: '', apellido: '', telefono: '', email: '',
     grupo: '', payment_link: '',
-    // Colegio / Academia
+    // Colegio / Academia (legacy)
     seccion: '', grado: '', salon: '', nombre_alumno: '',
-    nombre_familia: '', relationship_type: 'student', priority: 0,
     // Condominio
     fraccionamiento: '', torre: '', num_interior: '',
     // Club / Gym
@@ -55,8 +64,73 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const [error, setError] = useState(null)
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+  const setFamily = k => e => setFamilyForm(f => ({ ...f, [k]: e.target.value }))
 
   const gradosDisponibles = GRADOS[form.seccion] || []
+
+  const handleSubmitFamily = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      const { nombre_familia, nombre_mama, nombre_papa, estudiantes, email, telefono } = familyForm
+
+      if (!nombre_familia.trim()) throw new Error('Nombre de familia es requerido')
+      if (!email.trim()) throw new Error('Correo electrónico es requerido')
+      if (!telefono.trim()) throw new Error('WhatsApp es requerido')
+
+      const estudiantesValidos = estudiantes.filter(e => e.trim())
+      if (estudiantesValidos.length === 0) throw new Error('Al menos un alumno es requerido')
+
+      // Crear mamá si existe
+      if (nombre_mama.trim()) {
+        const [apellido, ...rest] = nombre_mama.trim().split(' ')
+        await contactsAPI.create({
+          nombre: nombre_mama.trim(),
+          apellido: '',
+          telefono: telefono.trim(),
+          email: email.trim(),
+          nombre_familia: nombre_familia.trim(),
+          relationship_type: 'mama',
+          priority: 1,
+          org_type: orgType
+        })
+      }
+
+      // Crear papá si existe
+      if (nombre_papa.trim()) {
+        await contactsAPI.create({
+          nombre: nombre_papa.trim(),
+          apellido: '',
+          telefono: telefono.trim(),
+          email: email.trim(),
+          nombre_familia: nombre_familia.trim(),
+          relationship_type: 'papa',
+          priority: 0,
+          org_type: orgType
+        })
+      }
+
+      // Crear alumnos
+      for (const alumno of estudiantesValidos) {
+        await contactsAPI.create({
+          nombre: alumno.trim(),
+          apellido: '',
+          telefono: '',
+          email: '',
+          nombre_familia: nombre_familia.trim(),
+          relationship_type: 'student',
+          nombre_alumno: alumno.trim(),
+          org_type: orgType
+        })
+      }
+
+      onSaved()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message)
+      setSaving(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -75,10 +149,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           seccion: form.seccion || undefined,
           grado: form.grado || undefined,
           salon: form.salon.trim() || undefined,
-          nombre_alumno: form.nombre_alumno.trim() || undefined,
-          nombre_familia: form.nombre_familia.trim() || undefined,
-          relationship_type: form.relationship_type || 'student',
-          priority: parseInt(form.priority) || 0
+          nombre_alumno: form.nombre_alumno.trim() || undefined
         }),
         // Condominio
         ...(isCondominio && {
@@ -114,86 +185,87 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+        <form onSubmit={isColegio ? handleSubmitFamily : handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
           {error && (
             <div className="flex items-center gap-2 p-3 bg-md-error-container rounded-2xl text-sm text-md-on-error-container">
               <AlertCircle size={14} className="flex-shrink-0" /> {error}
             </div>
           )}
 
-          {/* ── COLEGIO / ACADEMIA ── */}
+          {/* ── COLEGIO / ACADEMIA — FAMILIA ── */}
           {isColegio && (
             <>
               <div>
-                <label className="label">Nombre de Familia <span className="text-md-error">*</span></label>
-                <input className="input" value={form.nombre_familia} onChange={set('nombre_familia')}
+                <label className="label">Apellido de Familia <span className="text-md-error">*</span></label>
+                <input className="input" value={familyForm.nombre_familia} onChange={setFamily('nombre_familia')}
                   placeholder="Ej. García López" required autoFocus />
-                <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido de la familia para agrupar estudiantes y papás</p>
+                <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido que identifica a la familia</p>
               </div>
 
               <div>
-                <label className="label">Tipo de contacto <span className="text-md-error">*</span></label>
-                <select className="input" value={form.relationship_type} onChange={set('relationship_type')} required>
-                  <option value="student">Estudiante</option>
-                  <option value="mama">Mamá</option>
-                  <option value="papa">Papá</option>
-                  <option value="tutor">Tutor</option>
-                  <option value="otro">Otro</option>
-                </select>
+                <label className="label">Nombre de Mamá</label>
+                <input className="input" value={familyForm.nombre_mama} onChange={setFamily('nombre_mama')}
+                  placeholder="Ej. Rosa López" />
               </div>
 
-              {form.relationship_type !== 'student' && (
+              <div>
+                <label className="label">Nombre de Papá</label>
+                <input className="input" value={familyForm.nombre_papa} onChange={setFamily('nombre_papa')}
+                  placeholder="Ej. Juan García" />
+              </div>
+
+              <div>
+                <label className="label">Nombres de Alumnos <span className="text-md-error">*</span></label>
+                <div className="space-y-2">
+                  {familyForm.estudiantes.map((alumno, idx) => (
+                    <div key={idx} className="flex gap-2 items-center">
+                      <input
+                        className="input flex-1"
+                        value={alumno}
+                        onChange={e => setFamilyForm(f => ({
+                          ...f,
+                          estudiantes: f.estudiantes.map((a, i) => i === idx ? e.target.value : a)
+                        }))}
+                        placeholder={`Alumno ${idx + 1}`}
+                      />
+                      {familyForm.estudiantes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.filter((_, i) => i !== idx)
+                          }))}
+                          className="text-md-error hover:text-md-error-dark"
+                        >
+                          <X size={18} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, ''] }))}
+                  className="mt-2 text-sm text-md-primary hover:text-md-primary-dark font-medium flex items-center gap-1"
+                >
+                  <UserPlus size={14} /> Agregar otro alumno
+                </button>
+              </div>
+
+              <div className="pt-1 border-t border-md-outline-variant space-y-4">
                 <div>
-                  <label className="label">¿Es contacto principal? <span className="text-md-on-surface-variant font-normal">(recibir mensajes primero)</span></label>
-                  <select className="input" value={form.priority} onChange={set('priority')}>
-                    <option value="1">Sí, es principal</option>
-                    <option value="0">No, es secundario</option>
-                  </select>
+                  <label className="label">Correo Electrónico <span className="text-md-error">*</span></label>
+                  <input className="input" type="email" value={familyForm.email} onChange={setFamily('email')}
+                    placeholder="familia@ejemplo.com" required />
                 </div>
-              )}
 
-              <div>
-                <label className="label">{form.relationship_type === 'student' ? 'Nombre del alumno' : 'Nombre del papá/mamá'} <span className="text-md-error">*</span></label>
-                <input className="input" value={form.nombre} onChange={set('nombre')}
-                  placeholder={form.relationship_type === 'student' ? 'Ej. Carlos García' : 'Ej. Rosa López'} required />
-                <p className="text-xs text-md-on-surface-variant mt-1.5">
-                  {form.relationship_type === 'student' ? 'Nombre del estudiante inscrito' : 'Nombre del papá, mamá o tutor'}
-                </p>
-              </div>
-
-              <div>
-                <label className="label">Apellido</label>
-                <input className="input" value={form.apellido} onChange={set('apellido')}
-                  placeholder="Ej. García" />
-              </div>
-
-              {form.relationship_type === 'student' && (
-                <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-3">
-                  <label className="label">Sección escolar</label>
-                  <select className="input" value={form.seccion} onChange={e => setForm(f => ({ ...f, seccion: e.target.value, grado: '' }))}>
-                    <option value="">— Selecciona —</option>
-                    {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <label className="label">Grado</label>
-                  {gradosDisponibles.length ? (
-                    <select className="input" value={form.grado} onChange={set('grado')}>
-                      <option value="">— Selecciona —</option>
-                      {gradosDisponibles.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  ) : (
-                    <input className="input" value={form.grado} onChange={set('grado')} placeholder="Ej. 3ro" />
-                  )}
-                </div>
                 <div>
-                  <label className="label">Salón</label>
-                  <input className="input text-center" value={form.salon} onChange={set('salon')}
-                    placeholder="A" maxLength={3} />
+                  <label className="label">WhatsApp <span className="text-md-error">*</span></label>
+                  <input className="input font-mono" value={familyForm.telefono} onChange={setFamily('telefono')}
+                    placeholder="+521XXXXXXXXXX" required />
+                  <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
                 </div>
               </div>
-              )}
             </>
           )}
 
@@ -309,7 +381,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             </button>
             <button type="submit" disabled={saving} className="flex-1 btn-primary text-sm py-2.5 flex items-center justify-center gap-2">
               {saving ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />}
-              {saving ? 'Guardando...' : 'Agregar'}
+              {saving ? 'Guardando...' : isColegio ? 'Agregar Familia' : 'Agregar'}
             </button>
           </div>
         </form>
