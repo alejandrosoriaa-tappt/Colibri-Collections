@@ -36,12 +36,13 @@ function daysSince(dateStr) {
 // ── Add Contact Modal (dinámico según org_type) ───────────────────────────────
 function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const orgConfig    = getOrgConfig(orgType)
-  const isColegio    = orgType === 'colegio' || orgType === 'academia'
-  const isCondominio = orgType === 'condominio'
-  const isClub       = orgType === 'club' || orgType === 'gimnasio'
+  const normalizedOrgType = orgType?.toLowerCase?.() || ''
+  const isColegio    = normalizedOrgType === 'colegio' || normalizedOrgType === 'academia' || normalizedOrgType === 'escuela'
+  const isCondominio = normalizedOrgType === 'condominio'
+  const isClub       = normalizedOrgType === 'club' || normalizedOrgType === 'gimnasio'
 
   // Debug
-  console.log('AddContactModal opened with orgType:', orgType, 'isColegio:', isColegio)
+  console.log('AddContactModal opened with orgType:', orgType, 'normalized:', normalizedOrgType, 'isColegio:', isColegio)
 
   // Para colegios: estructura de familia
   const [familyForm, setFamilyForm] = useState({
