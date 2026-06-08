@@ -84,11 +84,29 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
       const estudiantesValidos = estudiantes.filter(e => e.nombre.trim())
       if (estudiantesValidos.length === 0) throw new Error('Al menos un alumno es requerido')
 
-      // Crear mamá si existe
+      // Crear alumnos primero (para obtener sus IDs)
+      const studentIds = []
+      for (const alumno of estudiantesValidos) {
+        const nombreCompleto = `${alumno.nombre.trim()} ${alumno.apellidos.trim()}`.trim()
+        const studentRes = await contactsAPI.create({
+          nombre: alumno.nombre.trim(),
+          apellido: alumno.apellidos.trim() || undefined,
+          telefono: '',
+          email: '',
+          nombre_familia: nombre_familia.trim(),
+          relationship_type: 'student',
+          nombre_alumno: nombreCompleto,
+          org_type: orgType
+        })
+        studentIds.push(studentRes.data.id)
+      }
+
+      // Crear mamá vinculada a todos los estudiantes
       if (nombre_mama.trim()) {
         const parts = nombre_mama.trim().split(' ')
         const nombre = parts[0]
         const apellido = parts.slice(1).join(' ')
+        // Vincular al primer alumno (en el futuro podría ser a todos)
         await contactsAPI.create({
           nombre: nombre,
           apellido: apellido,
@@ -97,15 +115,17 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'mama',
           priority: 1,
+          student_id: studentIds[0],
           org_type: orgType
         })
       }
 
-      // Crear papá si existe
+      // Crear papá vinculado a todos los estudiantes
       if (nombre_papa.trim()) {
         const parts = nombre_papa.trim().split(' ')
         const nombre = parts[0]
         const apellido = parts.slice(1).join(' ')
+        // Vincular al primer alumno (en el futuro podría ser a todos)
         await contactsAPI.create({
           nombre: nombre,
           apellido: apellido,
@@ -114,21 +134,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'papa',
           priority: 0,
-          org_type: orgType
-        })
-      }
-
-      // Crear alumnos
-      for (const alumno of estudiantesValidos) {
-        const nombreCompleto = `${alumno.nombre.trim()} ${alumno.apellidos.trim()}`.trim()
-        await contactsAPI.create({
-          nombre: alumno.nombre.trim(),
-          apellido: alumno.apellidos.trim() || undefined,
-          telefono: '',
-          email: '',
-          nombre_familia: nombre_familia.trim(),
-          relationship_type: 'student',
-          nombre_alumno: nombreCompleto,
+          student_id: studentIds[0],
           org_type: orgType
         })
       }
