@@ -44,10 +44,11 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const [familyForm, setFamilyForm] = useState({
     nombre_familia: '',
     nombre_mama: '',
+    telefono_mama: '',
     nombre_papa: '',
+    telefono_papa: '',
     estudiantes: [{ nombre: '', apellidos: '' }],
     email: '',
-    telefono: '',
   })
 
   const [form, setForm] = useState({
@@ -73,11 +74,12 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     setSaving(true)
     setError(null)
     try {
-      const { nombre_familia, nombre_mama, nombre_papa, estudiantes, email, telefono } = familyForm
+      const { nombre_familia, nombre_mama, telefono_mama, nombre_papa, telefono_papa, estudiantes, email } = familyForm
 
       if (!nombre_familia.trim()) throw new Error('Nombre de familia es requerido')
       if (!email.trim()) throw new Error('Correo electrónico es requerido')
-      if (!telefono.trim()) throw new Error('WhatsApp es requerido')
+      if (nombre_mama.trim() && !telefono_mama.trim()) throw new Error('WhatsApp de Mamá es requerido')
+      if (nombre_papa.trim() && !telefono_papa.trim()) throw new Error('WhatsApp de Papá es requerido')
 
       const estudiantesValidos = estudiantes.filter(e => e.nombre.trim())
       if (estudiantesValidos.length === 0) throw new Error('Al menos un alumno es requerido')
@@ -90,7 +92,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
         await contactsAPI.create({
           nombre: nombre,
           apellido: apellido,
-          telefono: telefono.trim(),
+          telefono: telefono_mama.trim(),
           email: email.trim(),
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'mama',
@@ -107,7 +109,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
         await contactsAPI.create({
           nombre: nombre,
           apellido: apellido,
-          telefono: telefono.trim(),
+          telefono: telefono_papa.trim(),
           email: email.trim(),
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'papa',
@@ -208,16 +210,30 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                 <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido que identifica a la familia</p>
               </div>
 
-              <div>
-                <label className="label">Nombre de Mamá</label>
-                <input className="input" value={familyForm.nombre_mama} onChange={setFamily('nombre_mama')}
-                  placeholder="Ej. Rosa López" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Nombre de Mamá</label>
+                  <input className="input" value={familyForm.nombre_mama} onChange={setFamily('nombre_mama')}
+                    placeholder="Ej. Rosa López" />
+                </div>
+                <div>
+                  <label className="label">WhatsApp Mamá</label>
+                  <input className="input font-mono text-sm" value={familyForm.telefono_mama} onChange={setFamily('telefono_mama')}
+                    placeholder="+521XXXXXXXXXX" />
+                </div>
               </div>
 
-              <div>
-                <label className="label">Nombre de Papá</label>
-                <input className="input" value={familyForm.nombre_papa} onChange={setFamily('nombre_papa')}
-                  placeholder="Ej. Juan García" />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">Nombre de Papá</label>
+                  <input className="input" value={familyForm.nombre_papa} onChange={setFamily('nombre_papa')}
+                    placeholder="Ej. Juan García" />
+                </div>
+                <div>
+                  <label className="label">WhatsApp Papá</label>
+                  <input className="input font-mono text-sm" value={familyForm.telefono_papa} onChange={setFamily('telefono_papa')}
+                    placeholder="+521XXXXXXXXXX" />
+                </div>
               </div>
 
               <div>
@@ -276,16 +292,10 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
 
               <div className="pt-1 border-t border-md-outline-variant space-y-4">
                 <div>
-                  <label className="label">Correo Electrónico <span className="text-md-error">*</span></label>
+                  <label className="label">Correo Electrónico de Familia <span className="text-md-error">*</span></label>
                   <input className="input" type="email" value={familyForm.email} onChange={setFamily('email')}
                     placeholder="familia@ejemplo.com" required />
-                </div>
-
-                <div>
-                  <label className="label">WhatsApp <span className="text-md-error">*</span></label>
-                  <input className="input font-mono" value={familyForm.telefono} onChange={setFamily('telefono')}
-                    placeholder="+521XXXXXXXXXX" required />
-                  <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
+                  <p className="text-xs text-md-on-surface-variant mt-1.5">Correo compartido para toda la familia</p>
                 </div>
               </div>
             </>
