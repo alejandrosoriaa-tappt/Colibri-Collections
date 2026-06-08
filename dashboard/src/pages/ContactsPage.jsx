@@ -45,7 +45,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     nombre_familia: '',
     nombre_mama: '',
     nombre_papa: '',
-    estudiantes: [''],
+    estudiantes: [{ nombre: '', apellidos: '' }],
     email: '',
     telefono: '',
   })
@@ -79,15 +79,17 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
       if (!email.trim()) throw new Error('Correo electrónico es requerido')
       if (!telefono.trim()) throw new Error('WhatsApp es requerido')
 
-      const estudiantesValidos = estudiantes.filter(e => e.trim())
+      const estudiantesValidos = estudiantes.filter(e => e.nombre.trim())
       if (estudiantesValidos.length === 0) throw new Error('Al menos un alumno es requerido')
 
       // Crear mamá si existe
       if (nombre_mama.trim()) {
-        const [apellido, ...rest] = nombre_mama.trim().split(' ')
+        const parts = nombre_mama.trim().split(' ')
+        const nombre = parts[0]
+        const apellido = parts.slice(1).join(' ')
         await contactsAPI.create({
-          nombre: nombre_mama.trim(),
-          apellido: '',
+          nombre: nombre,
+          apellido: apellido,
           telefono: telefono.trim(),
           email: email.trim(),
           nombre_familia: nombre_familia.trim(),
@@ -99,9 +101,12 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
 
       // Crear papá si existe
       if (nombre_papa.trim()) {
+        const parts = nombre_papa.trim().split(' ')
+        const nombre = parts[0]
+        const apellido = parts.slice(1).join(' ')
         await contactsAPI.create({
-          nombre: nombre_papa.trim(),
-          apellido: '',
+          nombre: nombre,
+          apellido: apellido,
           telefono: telefono.trim(),
           email: email.trim(),
           nombre_familia: nombre_familia.trim(),
@@ -113,14 +118,15 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
 
       // Crear alumnos
       for (const alumno of estudiantesValidos) {
+        const nombreCompleto = `${alumno.nombre.trim()} ${alumno.apellidos.trim()}`.trim()
         await contactsAPI.create({
-          nombre: alumno.trim(),
-          apellido: '',
+          nombre: alumno.nombre.trim(),
+          apellido: alumno.apellidos.trim() || undefined,
           telefono: '',
           email: '',
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'student',
-          nombre_alumno: alumno.trim(),
+          nombre_alumno: nombreCompleto,
           org_type: orgType
         })
       }
@@ -216,36 +222,52 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
 
               <div>
                 <label className="label">Nombres de Alumnos <span className="text-md-error">*</span></label>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {familyForm.estudiantes.map((alumno, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        className="input flex-1"
-                        value={alumno}
-                        onChange={e => setFamilyForm(f => ({
-                          ...f,
-                          estudiantes: f.estudiantes.map((a, i) => i === idx ? e.target.value : a)
-                        }))}
-                        placeholder={`Alumno ${idx + 1}`}
-                      />
-                      {familyForm.estudiantes.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setFamilyForm(f => ({
-                            ...f,
-                            estudiantes: f.estudiantes.filter((_, i) => i !== idx)
-                          }))}
-                          className="text-md-error hover:text-md-error-dark"
-                        >
-                          <X size={18} />
-                        </button>
-                      )}
+                    <div key={idx} className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2 flex gap-2 items-start">
+                        <div className="flex-1">
+                          <input
+                            className="input text-sm"
+                            value={alumno.nombre}
+                            onChange={e => setFamilyForm(f => ({
+                              ...f,
+                              estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, nombre: e.target.value } : a)
+                            }))}
+                            placeholder="Nombre"
+                            required
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <input
+                            className="input text-sm"
+                            value={alumno.apellidos}
+                            onChange={e => setFamilyForm(f => ({
+                              ...f,
+                              estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, apellidos: e.target.value } : a)
+                            }))}
+                            placeholder="Apellidos"
+                          />
+                        </div>
+                        {familyForm.estudiantes.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setFamilyForm(f => ({
+                              ...f,
+                              estudiantes: f.estudiantes.filter((_, i) => i !== idx)
+                            }))}
+                            className="text-md-error hover:text-md-error-dark pt-2"
+                          >
+                            <X size={18} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
                 <button
                   type="button"
-                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, ''] }))}
+                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, { nombre: '', apellidos: '' }] }))}
                   className="mt-2 text-sm text-md-primary hover:text-md-primary-dark font-medium flex items-center gap-1"
                 >
                   <UserPlus size={14} /> Agregar otro alumno
