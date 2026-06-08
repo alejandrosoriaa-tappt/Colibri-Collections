@@ -298,15 +298,13 @@ const TEMPLATES = {
   colegio: {
     filename: 'plantilla_colegio.xlsx',
     sheetName: 'Colegio',
-    headers: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TIPO RELACIÓN', 'NOMBRE PAPÁ/MAMÁ', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'PRIORIDAD', 'Liga_Pago', 'Matrícula'],
+    headers: ['NOMBRE FAMILIA', 'NOMBRE MAMÁ', 'WHATSAPP MAMÁ', 'NOMBRE PAPÁ', 'WHATSAPP PAPÁ', 'ALUMNO 1 NOMBRE', 'ALUMNO 1 APELLIDOS', 'ALUMNO 2 NOMBRE', 'ALUMNO 2 APELLIDOS', 'EMAIL'],
     rows: [
-      ['García López',     'Carlos García',     'student', 'Carlos García',  '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    '0', 'https://pago.ejemplo.com/001', 'MAT001'],
-      ['García López',     'Carlos García',     'mama',    'Rosa López',     '5512345679', 'Primaria',   '3ro', 'B', 'rosa@gmail.com',      '1', 'https://pago.ejemplo.com/001', 'MAT001'],
-      ['García López',     'Carlos García',     'papa',    'Juan García',    '5512345680', 'Primaria',   '3ro', 'B', 'juan@gmail.com',      '0', 'https://pago.ejemplo.com/001', 'MAT001'],
-      ['Hernández Soto',   'Sofía Hernández',   'student', 'Sofía Hernández','5587654321', 'Preescolar', '2do', 'A', '',                    '0', 'https://pago.ejemplo.com/002', 'MAT002'],
-      ['Hernández Soto',   'Sofía Hernández',   'mama',    'Laura Soto',     '5587654322', 'Preescolar', '2do', 'A', 'laura@gmail.com',     '1', 'https://pago.ejemplo.com/002', 'MAT002'],
+      ['García López',     'Rosa',        '5512345679', 'Juan',       '5512345680', 'Carlos',  'García López',   'Sofia',  'García López',   'familia@gmail.com'],
+      ['Hernández Soto',   'Laura',       '5587654322', '',           '',           'Sofia',  'Hernández Soto', '',       '',               'laura@gmail.com'],
+      ['Martínez Trejo',   'Ana',         '5511223344', 'Carlos',     '5511223345', 'Diego',  'Martínez Trejo', 'Lucas',  'Martínez Trejo', 'ana@gmail.com'],
     ],
-    widths: [16, 18, 14, 18, 14, 12, 8, 8, 24, 10, 28, 12],
+    widths: [16, 16, 16, 16, 16, 16, 18, 16, 18, 24],
   },
   academia: {
     filename: 'plantilla_academia.xlsx',
