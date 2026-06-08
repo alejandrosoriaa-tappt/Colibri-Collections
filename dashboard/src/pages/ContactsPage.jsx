@@ -78,6 +78,11 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     setSaving(true)
     setError(null)
     try {
+      // Debug: Mostrar qué tipo de formulario se está usando
+      if (!isColegio) {
+        throw new Error(`ERROR: Se detectó org_type="${orgType}" pero se espera "colegio" o "academia". Contacta al soporte.`)
+      }
+
       const { nombre_familia, nombre_mama, telefono_mama, nombre_papa, telefono_papa, estudiantes, email } = familyForm
 
       if (!nombre_familia.trim()) throw new Error('Nombre de familia es requerido')
