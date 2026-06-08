@@ -47,7 +47,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     telefono_mama: '',
     nombre_papa: '',
     telefono_papa: '',
-    estudiantes: [{ nombre: '', apellidos: '' }],
+    estudiantes: [{ nombre: '', apellidos: '', seccion: '', salon: '' }],
     email: '',
   })
 
@@ -96,6 +96,9 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           nombre_familia: nombre_familia.trim(),
           relationship_type: 'student',
           nombre_alumno: nombreCompleto,
+          seccion: alumno.seccion || undefined,
+          grado: alumno.grado || undefined,
+          salon: alumno.salon || undefined,
           org_type: orgType
         })
         studentIds.push(studentRes.data.id)
@@ -243,53 +246,83 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
               </div>
 
               <div>
-                <label className="label">Nombres de Alumnos <span className="text-md-error">*</span></label>
+                <label className="label">Alumnos <span className="text-md-error">*</span></label>
                 <div className="space-y-3">
                   {familyForm.estudiantes.map((alumno, idx) => (
-                    <div key={idx} className="grid grid-cols-2 gap-2">
-                      <div className="col-span-2 flex gap-2 items-start">
-                        <div className="flex-1">
-                          <input
-                            className="input text-sm"
-                            value={alumno.nombre}
-                            onChange={e => setFamilyForm(f => ({
-                              ...f,
-                              estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, nombre: e.target.value } : a)
-                            }))}
-                            placeholder="Nombre"
-                            required
-                          />
-                        </div>
-                        <div className="flex-1">
-                          <input
-                            className="input text-sm"
-                            value={alumno.apellidos}
-                            onChange={e => setFamilyForm(f => ({
-                              ...f,
-                              estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, apellidos: e.target.value } : a)
-                            }))}
-                            placeholder="Apellidos"
-                          />
-                        </div>
-                        {familyForm.estudiantes.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => setFamilyForm(f => ({
-                              ...f,
-                              estudiantes: f.estudiantes.filter((_, i) => i !== idx)
-                            }))}
-                            className="text-md-error hover:text-md-error-dark pt-2"
-                          >
-                            <X size={18} />
-                          </button>
-                        )}
+                    <div key={idx} className="border border-md-outline-variant rounded-xl p-3 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          className="input text-sm"
+                          value={alumno.nombre}
+                          onChange={e => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, nombre: e.target.value } : a)
+                          }))}
+                          placeholder="Nombre"
+                          required
+                        />
+                        <input
+                          className="input text-sm"
+                          value={alumno.apellidos}
+                          onChange={e => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, apellidos: e.target.value } : a)
+                          }))}
+                          placeholder="Apellidos"
+                        />
                       </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <select
+                          className="input text-sm"
+                          value={alumno.seccion || ''}
+                          onChange={e => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, seccion: e.target.value } : a)
+                          }))}
+                        >
+                          <option value="">Sección</option>
+                          {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                        <select
+                          className="input text-sm"
+                          value={alumno.grado || ''}
+                          onChange={e => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, grado: e.target.value } : a)
+                          }))}
+                        >
+                          <option value="">Grado</option>
+                          {(GRADOS[alumno.seccion] || []).map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                        <input
+                          className="input text-sm text-center"
+                          value={alumno.salon || ''}
+                          onChange={e => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, salon: e.target.value } : a)
+                          }))}
+                          placeholder="Salón"
+                          maxLength={3}
+                        />
+                      </div>
+                      {familyForm.estudiantes.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => setFamilyForm(f => ({
+                            ...f,
+                            estudiantes: f.estudiantes.filter((_, i) => i !== idx)
+                          }))}
+                          className="w-full text-sm text-md-error hover:text-md-error-dark font-medium py-1"
+                        >
+                          Eliminar alumno
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
                 <button
                   type="button"
-                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, { nombre: '', apellidos: '' }] }))}
+                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, { nombre: '', apellidos: '', seccion: '', salon: '' }] }))}
                   className="mt-2 text-sm text-md-primary hover:text-md-primary-dark font-medium flex items-center gap-1"
                 >
                   <UserPlus size={14} /> Agregar otro alumno
