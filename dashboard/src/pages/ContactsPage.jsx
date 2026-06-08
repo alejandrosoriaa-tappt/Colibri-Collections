@@ -45,6 +45,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     grupo: '', payment_link: '',
     // Colegio / Academia
     seccion: '', grado: '', salon: '', nombre_alumno: '',
+    nombre_familia: '', relationship_type: 'student', priority: 0,
     // Condominio
     fraccionamiento: '', torre: '', num_interior: '',
     // Club / Gym
@@ -74,7 +75,10 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           seccion: form.seccion || undefined,
           grado: form.grado || undefined,
           salon: form.salon.trim() || undefined,
-          nombre_alumno: form.nombre_alumno.trim() || undefined
+          nombre_alumno: form.nombre_alumno.trim() || undefined,
+          nombre_familia: form.nombre_familia.trim() || undefined,
+          relationship_type: form.relationship_type || 'student',
+          priority: parseInt(form.priority) || 0
         }),
         // Condominio
         ...(isCondominio && {
@@ -122,19 +126,49 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             <>
               <div>
                 <label className="label">Nombre de Familia <span className="text-md-error">*</span></label>
-                <input className="input" value={form.nombre} onChange={set('nombre')}
+                <input className="input" value={form.nombre_familia} onChange={set('nombre_familia')}
                   placeholder="Ej. García López" required autoFocus />
-                <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido o nombre con el que se identifica la familia</p>
+                <p className="text-xs text-md-on-surface-variant mt-1.5">Apellido de la familia para agrupar estudiantes y papás</p>
               </div>
 
               <div>
-                <label className="label">Nombre del alumno</label>
-                <input className="input" value={form.nombre_alumno} onChange={set('nombre_alumno')}
-                  placeholder="Ej. Carlos García" />
-                <p className="text-xs text-md-on-surface-variant mt-1.5">Nombre del estudiante inscrito</p>
+                <label className="label">Tipo de contacto <span className="text-md-error">*</span></label>
+                <select className="input" value={form.relationship_type} onChange={set('relationship_type')} required>
+                  <option value="student">Estudiante</option>
+                  <option value="mama">Mamá</option>
+                  <option value="papa">Papá</option>
+                  <option value="tutor">Tutor</option>
+                  <option value="otro">Otro</option>
+                </select>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              {form.relationship_type !== 'student' && (
+                <div>
+                  <label className="label">¿Es contacto principal? <span className="text-md-on-surface-variant font-normal">(recibir mensajes primero)</span></label>
+                  <select className="input" value={form.priority} onChange={set('priority')}>
+                    <option value="1">Sí, es principal</option>
+                    <option value="0">No, es secundario</option>
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="label">{form.relationship_type === 'student' ? 'Nombre del alumno' : 'Nombre del papá/mamá'} <span className="text-md-error">*</span></label>
+                <input className="input" value={form.nombre} onChange={set('nombre')}
+                  placeholder={form.relationship_type === 'student' ? 'Ej. Carlos García' : 'Ej. Rosa López'} required />
+                <p className="text-xs text-md-on-surface-variant mt-1.5">
+                  {form.relationship_type === 'student' ? 'Nombre del estudiante inscrito' : 'Nombre del papá, mamá o tutor'}
+                </p>
+              </div>
+
+              <div>
+                <label className="label">Apellido</label>
+                <input className="input" value={form.apellido} onChange={set('apellido')}
+                  placeholder="Ej. García" />
+              </div>
+
+              {form.relationship_type === 'student' && (
+                <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-3">
                   <label className="label">Sección escolar</label>
                   <select className="input" value={form.seccion} onChange={e => setForm(f => ({ ...f, seccion: e.target.value, grado: '' }))}>
@@ -159,6 +193,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                     placeholder="A" maxLength={3} />
                 </div>
               </div>
+              )}
             </>
           )}
 
