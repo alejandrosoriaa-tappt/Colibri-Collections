@@ -40,6 +40,9 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const isCondominio = orgType === 'condominio'
   const isClub       = orgType === 'club' || orgType === 'gimnasio'
 
+  // Debug
+  console.log('AddContactModal opened with orgType:', orgType, 'isColegio:', isColegio)
+
   // Para colegios: estructura de familia
   const [familyForm, setFamilyForm] = useState({
     nombre_familia: '',
