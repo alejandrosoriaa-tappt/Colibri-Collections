@@ -298,13 +298,15 @@ const TEMPLATES = {
   colegio: {
     filename: 'plantilla_colegio.xlsx',
     sheetName: 'Colegio',
-    headers: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'MENSAJE O RECORDATORIO', 'Liga_Pago', 'Matrícula'],
+    headers: ['NOMBRE FAMILIA', 'NOMBRE ALUMNO', 'TIPO RELACIÓN', 'NOMBRE PAPÁ/MAMÁ', 'TELÉFONO', 'SECCIÓN', 'GRADO', 'SALÓN', 'CORREO', 'PRIORIDAD', 'Liga_Pago', 'Matrícula'],
     rows: [
-      ['García López',     'Carlos García',     '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/001', 'MAT001'],
-      ['Hernández Soto',   'Sofía Hernández',   '5587654321', 'Preescolar', '2do', 'A', '',                    'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   'https://pago.ejemplo.com/002', 'MAT002'],
-      ['Martínez Trejo',   'Diego Martínez',    '5511223344', 'Secundaria', '1ro', 'C', 'mttrejo@hotmail.com', 'Tu colegiatura de junio está pendiente. Puedes pagarla en el siguiente enlace.',   '',                            'MAT003'],
+      ['García López',     'Carlos García',     'student', 'Carlos García',  '5512345678', 'Primaria',   '3ro', 'B', 'garcia@gmail.com',    '0', 'https://pago.ejemplo.com/001', 'MAT001'],
+      ['García López',     'Carlos García',     'mama',    'Rosa López',     '5512345679', 'Primaria',   '3ro', 'B', 'rosa@gmail.com',      '1', 'https://pago.ejemplo.com/001', 'MAT001'],
+      ['García López',     'Carlos García',     'papa',    'Juan García',    '5512345680', 'Primaria',   '3ro', 'B', 'juan@gmail.com',      '0', 'https://pago.ejemplo.com/001', 'MAT001'],
+      ['Hernández Soto',   'Sofía Hernández',   'student', 'Sofía Hernández','5587654321', 'Preescolar', '2do', 'A', '',                    '0', 'https://pago.ejemplo.com/002', 'MAT002'],
+      ['Hernández Soto',   'Sofía Hernández',   'mama',    'Laura Soto',     '5587654322', 'Preescolar', '2do', 'A', 'laura@gmail.com',     '1', 'https://pago.ejemplo.com/002', 'MAT002'],
     ],
-    widths: [22, 20, 14, 16, 8, 8, 28, 52, 36, 12],
+    widths: [16, 18, 14, 18, 14, 12, 8, 8, 24, 10, 28, 12],
   },
   academia: {
     filename: 'plantilla_academia.xlsx',
