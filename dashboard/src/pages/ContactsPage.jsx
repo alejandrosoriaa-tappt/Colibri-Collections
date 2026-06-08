@@ -421,30 +421,32 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             </>
           )}
 
-          {/* ── Campos comunes a todos ── */}
-          <div className="pt-1 border-t border-md-outline-variant space-y-4">
-            <div>
-              <label className="label">WhatsApp <span className="text-md-error">*</span></label>
-              <input className="input font-mono" value={form.telefono} onChange={set('telefono')}
-                placeholder="+521XXXXXXXXXX" required />
-              <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
-            </div>
+          {/* ── Campos comunes a todos (excepto colegio) ── */}
+          {!isColegio && (
+            <div className="pt-1 border-t border-md-outline-variant space-y-4">
+              <div>
+                <label className="label">WhatsApp <span className="text-md-error">*</span></label>
+                <input className="input font-mono" value={form.telefono} onChange={set('telefono')}
+                  placeholder="+521XXXXXXXXXX" required />
+                <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
+              </div>
 
-            <div>
-              <label className="label flex items-center gap-1.5">
-                <Mail size={12} className="text-md-on-surface-variant" />
-                Correo electrónico <span className="text-md-on-surface-variant font-normal">(opcional)</span>
-              </label>
-              <input className="input" type="email" value={form.email} onChange={set('email')}
-                placeholder="contacto@ejemplo.com" />
-            </div>
+              <div>
+                <label className="label flex items-center gap-1.5">
+                  <Mail size={12} className="text-md-on-surface-variant" />
+                  Correo electrónico <span className="text-md-on-surface-variant font-normal">(opcional)</span>
+                </label>
+                <input className="input" type="email" value={form.email} onChange={set('email')}
+                  placeholder="contacto@ejemplo.com" />
+              </div>
 
-            <div>
-              <label className="label">Liga de pago <span className="text-md-on-surface-variant font-normal">(opcional)</span></label>
-              <input className="input" value={form.payment_link} onChange={set('payment_link')}
-                placeholder="https://..." />
+              <div>
+                <label className="label">Liga de pago <span className="text-md-on-surface-variant font-normal">(opcional)</span></label>
+                <input className="input" value={form.payment_link} onChange={set('payment_link')}
+                  placeholder="https://..." />
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex gap-3 pt-1">
             <button type="button" onClick={onClose} className="flex-1 btn-outline text-sm py-2.5">
