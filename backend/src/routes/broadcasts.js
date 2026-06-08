@@ -9,6 +9,7 @@ import {
   getContactsForBroadcast,
   getTenant
 } from '../services/supabase.js'
+import supabase from '../services/supabase.js'
 import { sendWhatsAppTemplate } from '../services/whatsapp.js'
 import {
   TEMPLATE_NAMES,
@@ -165,15 +166,63 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
+
+        // Log the message in message_logs table
+        try {
+          await supabase.from('message_logs').insert({
+            tenant_id: req.tenantId,
+            contact_id: contact.id,
+            broadcast_id: broadcast.id,
+            phone: contact.telefono,
+            wa_message_id: result.wa_message_id,
+            type: 'broadcast',
+            status: 'sent',
+            sent_at: new Date().toISOString()
+          })
+          console.log(`Broadcast: logged message for ${contact.telefono}`)
+        } catch (logErr) {
+          console.error(`Broadcast: failed to log message for contact ${contact.id}:`, logErr)
+        }
       } else {
         failedCount++
         console.error(`Broadcast: ✗ failed ${contact.telefono} — code:${result.error_code} msg:${result.error}`)
+
+        // Log the failed message
+        try {
+          await supabase.from('message_logs').insert({
+            tenant_id: req.tenantId,
+            contact_id: contact.id,
+            broadcast_id: broadcast.id,
+            phone: contact.telefono,
+            type: 'broadcast',
+            status: 'failed',
+            error_message: result.error,
+            sent_at: new Date().toISOString()
+          })
+        } catch (logErr) {
+          console.error(`Broadcast: failed to log error for contact ${contact.id}:`, logErr)
+        }
       }
 
       await new Promise(r => setTimeout(r, 150))
     } catch (err) {
       failedCount++
       console.error(`Broadcast: error sending to contact ${contact.id}:`, err)
+
+      // Log the error
+      try {
+        await supabase.from('message_logs').insert({
+          tenant_id: req.tenantId,
+          contact_id: contact.id,
+          broadcast_id: broadcast.id,
+          type: 'broadcast',
+          status: 'failed',
+          error_message: err.message,
+          sent_at: new Date().toISOString()
+        })
+      } catch (logErr) {
+        console.error(`Broadcast: failed to log exception for contact ${contact.id}:`, logErr)
+      }
     }
   }
 
