@@ -100,17 +100,14 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
           throw new Error('Si incluyes papá, su WhatsApp es requerido')
         }
 
-        // Determinar teléfono por defecto para estudiantes (del primer padre/madre disponible)
-        const telefonoPorDefecto = telefono_mama?.trim() || telefono_papa?.trim() || null
-
-        // Crear alumnos primero
+        // Crear alumnos primero (SIN teléfono - será NULL)
         const studentIds = []
         for (const alumno of estudiantesValidos) {
           const nombreCompleto = `${alumno.nombre.trim()} ${alumno.apellidos.trim()}`.trim()
           const studentRes = await contactsAPI.create({
             nombre: alumno.nombre.trim(),
             apellido: alumno.apellidos.trim() || undefined,
-            telefono: telefonoPorDefecto || '+52UNKNOWN',  // Usar teléfono del padre/madre o placeholder
+            telefono: null,  // Estudiantes NO tienen teléfono (serán contactados a través de papás)
             email: '',
             nombre_familia: nombre_familia.trim(),
             relationship_type: 'student',
