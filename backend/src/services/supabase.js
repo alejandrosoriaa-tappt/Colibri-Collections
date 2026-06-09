@@ -452,11 +452,11 @@ export async function getContactsForBroadcast(tenantId, groupFilter = null) {
     .neq('telefono', '')
 
   if (Array.isArray(groupFilter) && groupFilter.length > 0) {
-    // Filter by grupo OR grado matching any item in the array
-    query = query.or(groupFilter.map(g => `grupo.eq.${g},grado.eq.${g}`).join(','))
+    // Filter: (grupo IN array) OR (grado IN array)
+    query = query.or(`grupo.in.(${groupFilter.map(g => `"${g}"`).join(',')}),grado.in.(${groupFilter.map(g => `"${g}"`).join(',')})`)
   } else if (typeof groupFilter === 'string' && groupFilter) {
-    // Filter by grupo OR grado matching the string
-    query = query.or(`grupo.eq.${groupFilter},grado.eq.${groupFilter}`)
+    // Filter: (grupo = value) OR (grado = value)
+    query = query.or(`grupo.eq."${groupFilter}",grado.eq."${groupFilter}"`)
   }
 
   const { data, error } = await query
