@@ -79,13 +79,26 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
       if (isColegio) {
         const { nombre_familia, nombre_mama, telefono_mama, nombre_papa, telefono_papa, estudiantes, email } = familyForm
 
-        if (!nombre_familia.trim()) throw new Error('Nombre de familia es requerido')
-        if (!email.trim()) throw new Error('Correo electrónico es requerido')
-        if (nombre_mama.trim() && !telefono_mama.trim()) throw new Error('WhatsApp de Mamá es requerido')
-        if (nombre_papa.trim() && !telefono_papa.trim()) throw new Error('WhatsApp de Papá es requerido')
+        // Validaciones mínimas
+        if (!nombre_familia?.trim()) {
+          throw new Error('Apellido de Familia es requerido')
+        }
+        if (!email?.trim()) {
+          throw new Error('Correo es requerido')
+        }
 
-        const estudiantesValidos = estudiantes.filter(e => e.nombre.trim())
-        if (estudiantesValidos.length === 0) throw new Error('Al menos un alumno es requerido')
+        const estudiantesValidos = estudiantes.filter(e => e.nombre?.trim())
+        if (estudiantesValidos.length === 0) {
+          throw new Error('Al menos un alumno es requerido')
+        }
+
+        // Validar papás solo si tienen nombre
+        if (nombre_mama?.trim() && !telefono_mama?.trim()) {
+          throw new Error('Si incluyes mamá, su WhatsApp es requerido')
+        }
+        if (nombre_papa?.trim() && !telefono_papa?.trim()) {
+          throw new Error('Si incluyes papá, su WhatsApp es requerido')
+        }
 
         // Crear alumnos primero
         const studentIds = []
