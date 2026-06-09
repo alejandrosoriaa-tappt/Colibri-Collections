@@ -710,10 +710,29 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
+// ── Helper: Agrupar contactos por familia (para colegios) ────────────────────
+function groupByFamily(contacts) {
+  const grouped = {}
+  contacts.forEach(c => {
+    const familia = c.nombre_familia || 'Sin familia'
+    if (!grouped[familia]) {
+      grouped[familia] = { papas: [], alumnos: [] }
+    }
+    if (c.relationship_type === 'student') {
+      grouped[familia].alumnos.push(c)
+    } else if (c.relationship_type === 'mama' || c.relationship_type === 'papa') {
+      grouped[familia].papas.push(c)
+    }
+  })
+  return grouped
+}
+
 export default function ContactsPage() {
   const { tenant } = useAuthStore()
   const orgType = tenant?.org_type || 'general'
   const orgConfig = getOrgConfig(orgType)
+  const normalizedOrgType = orgType?.toLowerCase?.().replace(/\s*\/\s*/g, '') || ''
+  const isColegio = normalizedOrgType.includes('colegio') || normalizedOrgType.includes('academia') || normalizedOrgType.includes('escuela')
   const isClub = orgType === 'club' || orgType === 'gimnasio'
   const [contacts, setContacts] = useState([])
   const [total, setTotal] = useState(0)
@@ -1043,13 +1062,29 @@ export default function ContactsPage() {
                           />
                         </td>
                         <td className="py-3 px-3">
-                          <p className={`text-sm font-medium ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
-                            {[c.nombre, c.apellido].filter(Boolean).join(' ')}
-                          </p>
-                          {c.nombre_alumno && (
-                            <p className="text-xs text-md-on-surface-variant mt-0.5">
-                              {orgConfig.studentLabel || 'Alumno'}: {c.nombre_alumno}
-                            </p>
+                          {isColegio && c.nombre_familia ? (
+                            <>
+                              <p className={`text-sm font-bold ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
+                                {c.nombre_familia}
+                              </p>
+                              <p className="text-xs text-md-on-surface-variant mt-0.5">
+                                {c.relationship_type === 'student' ? `${orgConfig.studentLabel || 'Alumno'}: ${c.nombre_alumno}${c.grado ? ` (${c.grado})` : ''}` :
+                                 c.relationship_type === 'mama' ? `Mamá: ${[c.nombre, c.apellido].filter(Boolean).join(' ')}` :
+                                 c.relationship_type === 'papa' ? `Papá: ${[c.nombre, c.apellido].filter(Boolean).join(' ')}` :
+                                 `${[c.nombre, c.apellido].filter(Boolean).join(' ')}`}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className={`text-sm font-medium ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
+                                {[c.nombre, c.apellido].filter(Boolean).join(' ')}
+                              </p>
+                              {c.nombre_alumno && (
+                                <p className="text-xs text-md-on-surface-variant mt-0.5">
+                                  {orgConfig.studentLabel || 'Alumno'}: {c.nombre_alumno}
+                                </p>
+                              )}
+                            </>
                           )}
                           {inactive && (
                             <span className="inline-flex items-center gap-1 text-xs text-orange-600 mt-0.5">
