@@ -430,36 +430,73 @@ export async function updateBroadcast(id, updates) {
 export async function getContactGroupsByTenant(tenantId) {
   const { data, error } = await supabase
     .from('contacts')
-    .select('grupo, grado')
+    .select('seccion, grado, salon, grupo')
     .eq('tenant_id', tenantId)
+    .neq('status', 'inactive')
   if (error) throw error
-  // Collect groups from both 'grupo' and 'grado' fields
+
+  // Build group names from normalized structure
   const groups = new Set()
   data.forEach(c => {
-    if (c.grupo) groups.add(c.grupo)
-    if (c.grado) groups.add(c.grado)
+    // New structure: seccion + grado + salon
+    if (c.seccion && c.grado && c.salon) {
+      groups.add(`${c.seccion} ${c.grado} ${c.salon}`)
+    } else if (c.seccion && c.grado) {
+      groups.add(`${c.seccion} ${c.grado}`)
+    }
+    // Fallback to old structure: grupo or grado
+    else if (c.grupo) {
+      groups.add(c.grupo)
+    } else if (c.grado) {
+      groups.add(c.grado)
+    }
   })
+
   return [...groups].sort()
 }
 
 export async function getContactsForBroadcast(tenantId, groupFilter = null) {
   let query = supabase
     .from('contacts')
-    .select('id, nombre, telefono, grupo, grado')
+    .select('id, nombre, telefono, seccion, grado, salon, grupo')
     .eq('tenant_id', tenantId)
     .eq('status', 'active')
     .not('telefono', 'is', null)
     .neq('telefono', '')
 
   if (Array.isArray(groupFilter) && groupFilter.length > 0) {
-    // Filter by grupo (new family system) OR grado (old system)
-    // grupo takes precedence: if group has a nombre in grupo, use that
-    const grupoConditions = groupFilter.map(g => `grupo.eq."${g}"`).join(',')
-    const gradoConditions = groupFilter.map(g => `grado.eq."${g}"`).join(',')
-    query = query.or(`${grupoConditions},${gradoConditions}`)
+    // Match against normalized group names: "Primaria 1ro A", "Secundaria 3ro B", etc.
+    const orConditions = groupFilter.map(groupName => {
+      // Parse group name like "Primaria 1ro A" into parts
+      const parts = groupName.trim().split(/\s+/)
+      const salon = parts[parts.length - 1] // Last part is usually salon letter
+      const grado = parts[parts.length - 2] // Second to last is grado
+      const seccion = parts.slice(0, -2).join(' ') // Everything else is seccion
+
+      // Build OR condition for this group
+      if (seccion && grado && salon) {
+        return `(seccion.eq."${seccion}",grado.eq."${grado}",salon.eq."${salon}")`
+      } else if (seccion && grado) {
+        return `(seccion.eq."${seccion}",grado.eq."${grado}")`
+      } else {
+        // Fallback to old system
+        return `(grupo.eq."${groupName}",grado.eq."${groupName}")`
+      }
+    }).join(',')
+
+    query = query.or(orConditions)
   } else if (typeof groupFilter === 'string' && groupFilter) {
-    // Filter by grupo OR grado matching the string
-    query = query.or(`grupo.eq."${groupFilter}",grado.eq."${groupFilter}"`)
+    // Single group filter
+    const parts = groupFilter.trim().split(/\s+/)
+    const salon = parts[parts.length - 1]
+    const grado = parts[parts.length - 2]
+    const seccion = parts.slice(0, -2).join(' ')
+
+    if (seccion && grado && salon) {
+      query = query.or(`(seccion.eq."${seccion}",grado.eq."${grado}",salon.eq."${salon}"),(grupo.eq."${groupFilter}"),(grado.eq."${groupFilter}")`)
+    } else {
+      query = query.or(`grupo.eq."${groupFilter}",grado.eq."${groupFilter}"`)
+    }
   }
 
   const { data, error } = await query
