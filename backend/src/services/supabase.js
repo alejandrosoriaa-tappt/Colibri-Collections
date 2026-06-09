@@ -430,28 +430,33 @@ export async function updateBroadcast(id, updates) {
 export async function getContactGroupsByTenant(tenantId) {
   const { data, error } = await supabase
     .from('contacts')
-    .select('grupo')
+    .select('grupo, grado')
     .eq('tenant_id', tenantId)
-    .not('grupo', 'is', null)
-    .neq('grupo', '')
   if (error) throw error
-  const groups = [...new Set(data.map(c => c.grupo).filter(Boolean))].sort()
-  return groups
+  // Collect groups from both 'grupo' and 'grado' fields
+  const groups = new Set()
+  data.forEach(c => {
+    if (c.grupo) groups.add(c.grupo)
+    if (c.grado) groups.add(c.grado)
+  })
+  return [...groups].sort()
 }
 
 export async function getContactsForBroadcast(tenantId, groupFilter = null) {
   let query = supabase
     .from('contacts')
-    .select('id, nombre, telefono, grupo')
+    .select('id, nombre, telefono, grupo, grado')
     .eq('tenant_id', tenantId)
     .eq('status', 'active')
     .not('telefono', 'is', null)
     .neq('telefono', '')
 
   if (Array.isArray(groupFilter) && groupFilter.length > 0) {
-    query = query.in('grupo', groupFilter)
+    // Filter by grupo OR grado matching any item in the array
+    query = query.or(groupFilter.map(g => `grupo.eq.${g},grado.eq.${g}`).join(','))
   } else if (typeof groupFilter === 'string' && groupFilter) {
-    query = query.eq('grupo', groupFilter)
+    // Filter by grupo OR grado matching the string
+    query = query.or(`grupo.eq.${groupFilter},grado.eq.${groupFilter}`)
   }
 
   const { data, error } = await query
