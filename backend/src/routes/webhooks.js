@@ -236,8 +236,8 @@ async function handleConektaSPEIPayment({ conektaCustomerId, amount, data }) {
 
       await sendWhatsAppTemplate(
         contact.telefono,
-        TEMPLATE_NAMES.CONFIRMACION_PAGO,
-        'es_MX',
+        TEMPLATE_NAMES.CONFIRMACION_PAGO.name,
+        TEMPLATE_NAMES.CONFIRMACION_PAGO.lang,
         confirmacionPagoComponents({
           nombre,
           orgName,

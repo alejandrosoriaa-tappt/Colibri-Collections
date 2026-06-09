@@ -138,13 +138,13 @@ async function sendCampaignMessage(campaign, message, tenant) {
       const orgName = tenant?.display_name || tenant?.name || ''
       const link    = invoice.liga_pago || tenant?.payment_link_general || ''
 
-      let templateName, components
+      let tpl, components
       const isOverdue = campaign.due_date && new Date(campaign.due_date) < new Date()
       const diasVencido = isOverdue ? getDaysSince(campaign.due_date) : 0
 
       if (isOverdue && diasVencido > 0) {
-        templateName = TEMPLATE_NAMES.AVISO_VENCIDO
-        components   = avisoVencidoComponents({
+        tpl        = TEMPLATE_NAMES.AVISO_VENCIDO
+        components = avisoVencidoComponents({
           nombre: contact.nombre,
           orgName,
           monto:       invoice.monto,
@@ -152,8 +152,8 @@ async function sendCampaignMessage(campaign, message, tenant) {
           diasVencido
         })
       } else {
-        templateName = TEMPLATE_NAMES.RECORDATORIO_PAGO
-        components   = recordatorioPagoComponents({
+        tpl        = TEMPLATE_NAMES.RECORDATORIO_PAGO
+        components = recordatorioPagoComponents({
           nombre:   contact.nombre,
           orgName,
           concepto: campaign.concept || 'pago mensual',
@@ -162,8 +162,8 @@ async function sendCampaignMessage(campaign, message, tenant) {
         })
       }
 
-      // Send via approved Meta template
-      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
+      // Send via approved Meta template (each template carries its own lang)
+      const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components)
 
       // Log the message
       const logData = {
@@ -173,7 +173,7 @@ async function sendCampaignMessage(campaign, message, tenant) {
         invoice_id: invoice.id,
         campaign_message_id: message.id,
         message_number: message.message_number,
-        message_text: `[template:${templateName}]`,
+        message_text: `[template:${tpl.name}]`,
         phone: contact.telefono,
         wa_message_id: result.wa_message_id || null,
         status: result.success ? 'sent' : 'failed',

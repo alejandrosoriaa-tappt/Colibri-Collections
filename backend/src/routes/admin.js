@@ -230,8 +230,8 @@ router.post('/tenants/:id/resend-welcome', authMiddleware, adminOnly, async (req
 
     const welcomeResult = await sendWhatsAppTemplate(
       tenant.admin_phone,
-      TEMPLATE_NAMES.BIENVENIDA_TENANT,
-      'es_MX',
+      TEMPLATE_NAMES.BIENVENIDA_TENANT.name,
+      TEMPLATE_NAMES.BIENVENIDA_TENANT.lang,
       bienvenidaTenantComponents({ nombre: tenant.display_name || tenant.name, orgName: 'Kollybry' })
     )
 
@@ -361,8 +361,8 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       // {{1}} = org name (who's being welcomed), {{2}} = "Kollybry" (the platform)
       const welcomeResult = await sendWhatsAppTemplate(
         admin_phone,
-        TEMPLATE_NAMES.BIENVENIDA_TENANT,
-        'es_MX',
+        TEMPLATE_NAMES.BIENVENIDA_TENANT.name,
+        TEMPLATE_NAMES.BIENVENIDA_TENANT.lang,
         bienvenidaTenantComponents({ nombre: org_name, orgName: 'Kollybry' })
       )
       whatsappSent = welcomeResult.success

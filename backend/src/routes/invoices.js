@@ -133,7 +133,7 @@ async function sendPaymentConfirmation(invoice, updatedInvoice) {
       : new Date().toISOString().split('T')[0]
 
     const components = confirmacionPagoComponents({ nombre: contact.nombre, orgName, concepto, monto, fecha })
-    const result = await sendWhatsAppTemplate(contact.telefono, TEMPLATE_NAMES.CONFIRMACION_PAGO, 'es_MX', components)
+    const result = await sendWhatsAppTemplate(contact.telefono, TEMPLATE_NAMES.CONFIRMACION_PAGO.name, TEMPLATE_NAMES.CONFIRMACION_PAGO.lang, components)
 
     if (result.success) {
       console.log(`Invoice ${invoice.id}: confirmación de pago enviada a ${contact.telefono}`)

@@ -4,20 +4,26 @@ import { formatCurrency, formatDate } from './messages.js'
 // REGISTERED META TEMPLATE NAMES
 // Must match exactly the names approved in Meta WhatsApp Manager (cuenta Kollybry).
 // ================================================================
+// Each entry: { name, lang }
+// lang MUST match EXACTLY how the template is registered in Meta WhatsApp Manager.
+// Verified against Meta WABA 948092824711194 on 2026-06-09:
+//   es_MX → bienvenida_credenciales, bienvenida_comunidad
+//   es    → comunicado, comunicado_imagen, confirmacion_pago,
+//           recordatorio_pago, aviso_vencido
 export const TEMPLATE_NAMES = {
-  // Onboarding: welcome message sent to new tenant admin
-  BIENVENIDA_TENANT:    'kollybry_bienvenida_credenciales',
-  // Community: sent to each contact the first time they're added to a tenant
-  BIENVENIDA_COMUNIDAD: 'kollybry_bienvenida_comunidad',
-  // Payments — link-based
-  RECORDATORIO_PAGO:    'kollybry_recordatorio_pago',
-  AVISO_VENCIDO:        'kollybry_aviso_vencido',
-  CONFIRMACION_PAGO:    'kollybry_confirmacion_pago',
-  // Payments — SPEI/CLABE (add-on)
-  RECORDATORIO_SPEI:    'kollybry_recordatorio_spei',
-  // Announcements
-  COMUNICADO:           'kollybry_comunicado',
-  COMUNICADO_IMAGEN:    'kollybry_comunicado_imagen',
+  // Onboarding (es_MX)
+  BIENVENIDA_TENANT:    { name: 'kollybry_bienvenida_credenciales', lang: 'es_MX' },
+  // Community (es_MX)
+  BIENVENIDA_COMUNIDAD: { name: 'kollybry_bienvenida_comunidad',    lang: 'es_MX' },
+  // Payments — link-based (es)
+  RECORDATORIO_PAGO:    { name: 'kollybry_recordatorio_pago',       lang: 'es'    },
+  AVISO_VENCIDO:        { name: 'kollybry_aviso_vencido',           lang: 'es'    },
+  CONFIRMACION_PAGO:    { name: 'kollybry_confirmacion_pago',       lang: 'es'    },
+  // Payments — SPEI/CLABE add-on (es_MX — not yet registered in Meta)
+  RECORDATORIO_SPEI:    { name: 'kollybry_recordatorio_spei',       lang: 'es_MX' },
+  // Announcements (es)
+  COMUNICADO:           { name: 'kollybry_comunicado',              lang: 'es'    },
+  COMUNICADO_IMAGEN:    { name: 'kollybry_comunicado_imagen',       lang: 'es'    },
 }
 
 // ================================================================
@@ -100,11 +106,14 @@ export function avisoVencidoComponents({ nombre, orgName, monto, concepto, diasV
 }
 
 /**
- * kollybry_comunicado
- * {{1}} titulo  {{2}} orgName  {{3}} cuerpo
+ * kollybry_comunicado (text-only)
+ * Registered in Meta (lang 'es') with exactly 2 positional params:
+ *   {{1}} orgName  {{2}} cuerpo
+ * NOTE: there is NO titulo param in the text template — only the image
+ * template (comunicadoImagenComponents) carries a titulo.
  */
-export function comunicadoComponents({ titulo, orgName, cuerpo }) {
-  return bodyOnly(titulo, orgName, cuerpo)
+export function comunicadoComponents({ orgName, cuerpo }) {
+  return bodyOnly(orgName, cuerpo)
 }
 
 /**

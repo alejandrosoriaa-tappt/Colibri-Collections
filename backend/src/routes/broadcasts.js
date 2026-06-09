@@ -144,7 +144,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
   // Determine which template to use
   const useImage = !!(media_url && media_type?.startsWith('image'))
-  const templateName = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
+  const tpl = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
 
   for (const contact of contacts) {
     try {
@@ -153,16 +153,21 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       // Substitute {nombre}, {apellido}, {nombre_completo} in the message body
       const nombre = contact.nombre || ''
       const apellido = contact.apellido || ''
-      const personalizedMessage = message
+      let personalizedMessage = message
         .replace(/\{nombre_completo\}/gi, [nombre, apellido].filter(Boolean).join(' '))
         .replace(/\{nombre\}/gi, nombre)
         .replace(/\{apellido\}/gi, apellido)
+
+      // Meta rejects template body params containing newlines, tabs, or 4+
+      // consecutive spaces (error 132018). Collapse all whitespace to single spaces.
+      personalizedMessage = personalizedMessage.replace(/\s+/g, ' ').trim()
 
       const components = useImage
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
         : comunicadoComponents({ titulo: title, orgName, cuerpo: personalizedMessage })
 
-      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
+      // Each template carries its own Meta-registered language code (tpl.lang)
+      const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components)
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
