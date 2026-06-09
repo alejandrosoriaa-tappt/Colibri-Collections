@@ -1012,7 +1012,106 @@ export default function ContactsPage() {
               </button>
             )}
           </div>
+        ) : isColegio ? (
+          // ═══════════════════════════════════════════════════════════════
+          // VISTA PARA COLEGIOS: Tabla de familias (una fila por familia)
+          // ═══════════════════════════════════════════════════════════════
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-md-outline-variant bg-md-surface-container-low">
+                  <tr>
+                    <th className="py-3 px-4 w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={el => { if (el) el.indeterminate = someSelected }}
+                        onChange={toggleAll}
+                        className="rounded accent-md-primary cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Familia</th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Mamá</th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Papá</th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Alumnos</th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Email</th>
+                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(groupByFamily(contacts)).map(([familia, { papas, alumnos }]) => {
+                    const familiaIds = [...papas, ...alumnos].map(c => c.id)
+                    const familySelected = familiaIds.some(id => selected.has(id))
+                    const mama = papas.find(p => p.relationship_type === 'mama')
+                    const papa = papas.find(p => p.relationship_type === 'papa')
+                    const email = papas[0]?.email || ''
+
+                    return (
+                      <tr key={familia} className={`border-b border-md-outline-variant/50 transition-colors ${
+                        familySelected ? 'bg-md-primary-container/30' : 'hover:bg-md-surface-container-low'
+                      }`}>
+                        <td className="py-3 px-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={familySelected}
+                            onChange={() => {
+                              const newSelected = new Set(selected)
+                              familiaIds.forEach(id => {
+                                if (familySelected) newSelected.delete(id)
+                                else newSelected.add(id)
+                              })
+                              setSelected(newSelected)
+                            }}
+                            className="rounded accent-md-primary cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3 px-3 text-sm font-bold text-md-on-surface">{familia}</td>
+                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                          {mama ? (
+                            <>
+                              <div>{mama.nombre} {mama.apellido || ''}</div>
+                              {mama.telefono && <div className="text-xs font-mono text-md-on-surface">{mama.telefono}</div>}
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                          {papa ? (
+                            <>
+                              <div>{papa.nombre} {papa.apellido || ''}</div>
+                              {papa.telefono && <div className="text-xs font-mono text-md-on-surface">{papa.telefono}</div>}
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                          {alumnos.length > 0 ? (
+                            <ul className="space-y-1">
+                              {alumnos.map(a => (
+                                <li key={a.id}>{a.nombre_alumno}{a.grado ? ` (${a.grado})` : ''}</li>
+                              ))}
+                            </ul>
+                          ) : '—'}
+                        </td>
+                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">{email || '—'}</td>
+                        <td className="py-3 px-3">
+                          <button
+                            onClick={() => setConfirmDelete({ ids: familiaIds })}
+                            title="Eliminar familia"
+                            className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
+          // ═══════════════════════════════════════════════════════════════
+          // VISTA PARA OTROS ORG_TYPES: Tabla normal de contactos
+          // ═══════════════════════════════════════════════════════════════
           <>
             <div className="overflow-x-auto">
               <table className="w-full">
