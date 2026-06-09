@@ -1027,123 +1027,72 @@ export default function ContactsPage() {
                         className="rounded accent-md-primary cursor-pointer"
                       />
                     </th>
-                    {isColegio ? (
-                      ['Familia', 'Mamá', 'Papá', 'Alumnos', 'Email', 'Acciones'].map(h => (
-                        <th key={h} className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">{h}</th>
-                      ))
-                    ) : (
-                      [
-                        orgConfig.contactLabel,
-                        'Teléfono',
-                        orgConfig.groupLabel,
-                        ...(isClub ? [orgConfig.idExternoLabel] : []),
-                        ...(tenant?.spei_addon_enabled ? ['CLABE SPEI'] : []),
-                        statusTab !== 'active' ? 'Inactivo desde' : 'Alta',
-                        'Acciones'
-                      ].map(h => (
-                        <th key={h} className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">{h}</th>
-                      ))
-                    )}
+                    {[
+                      orgConfig.contactLabel,
+                      'Teléfono',
+                      orgConfig.groupLabel,
+                      ...(isClub ? [orgConfig.idExternoLabel] : []),
+                      ...(tenant?.spei_addon_enabled ? ['CLABE SPEI'] : []),
+                      statusTab !== 'active' ? 'Inactivo desde' : 'Alta',
+                      'Acciones'
+                    ].map(h => (
+                      <th key={h} className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {isColegio ? (
-                    // VISTA PARA COLEGIOS: una fila por familia
-                    Object.entries(groupByFamily(contacts)).map(([familia, { papas, alumnos }]) => {
-                      const familiaIds = [...papas, ...alumnos].map(c => c.id)
-                      const familySelected = familiaIds.some(id => selected.has(id))
-                      const mama = papas.find(p => p.relationship_type === 'mama')
-                      const papa = papas.find(p => p.relationship_type === 'papa')
-                      const email = papas[0]?.email || ''
+                  {contacts.map(c => {
+                    const isSelected = selected.has(c.id)
+                    const inactive = c.status === 'inactive'
+                    const days = inactive ? daysSince(c.inactive_since) : null
 
-                      return (
-                        <tr key={familia} className={`border-b border-md-outline-variant/50 transition-colors ${
-                          familySelected ? 'bg-md-primary-container/30' : 'hover:bg-md-surface-container-low'
-                        }`}>
-                          <td className="py-3 px-4 w-10">
-                            <input
-                              type="checkbox"
-                              checked={familySelected}
-                              onChange={() => {
-                                const newSelected = new Set(selected)
-                                familiaIds.forEach(id => {
-                                  if (familySelected) newSelected.delete(id)
-                                  else newSelected.add(id)
-                                })
-                                setSelected(newSelected)
-                              }}
-                              className="rounded accent-md-primary cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-3 text-sm font-bold text-md-on-surface">{familia}</td>
-                          <td className="py-3 px-3 text-sm text-md-on-surface-variant">
-                            {mama ? `${mama.nombre} ${mama.apellido || ''}` : '—'}
-                            {mama?.telefono && <div className="text-xs font-mono text-md-on-surface">{mama.telefono}</div>}
-                          </td>
-                          <td className="py-3 px-3 text-sm text-md-on-surface-variant">
-                            {papa ? `${papa.nombre} ${papa.apellido || ''}` : '—'}
-                            {papa?.telefono && <div className="text-xs font-mono text-md-on-surface">{papa.telefono}</div>}
-                          </td>
-                          <td className="py-3 px-3 text-sm text-md-on-surface-variant">
-                            {alumnos.length > 0 ? (
-                              <ul className="space-y-1">
-                                {alumnos.map(a => (
-                                  <li key={a.id}>{a.nombre_alumno}{a.grado ? ` - ${a.grado}` : ''}</li>
-                                ))}
-                              </ul>
-                            ) : '—'}
-                          </td>
-                          <td className="py-3 px-3 text-sm text-md-on-surface-variant">{email || '—'}</td>
-                          <td className="py-3 px-3">
-                            <button
-                              onClick={() => setConfirmDelete({ ids: familiaIds })}
-                              title="Eliminar familia"
-                              className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
-                            >
-                              <Trash2 size={15} />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  ) : (
-                    // VISTA PARA OTROS ORG_TYPES: tabla normal
-                    contacts.map(c => {
-                      const isSelected = selected.has(c.id)
-                      const inactive = c.status === 'inactive'
-                      const days = inactive ? daysSince(c.inactive_since) : null
-
-                      return (
-                        <tr
-                          key={c.id}
-                          className={`border-b border-md-outline-variant/50 transition-colors ${
-                            isSelected ? 'bg-md-primary-container/30' : 'hover:bg-md-surface-container-low'
-                          }`}
-                        >
-                          <td className="py-3 px-4 w-10">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleOne(c.id)}
-                              className="rounded accent-md-primary cursor-pointer"
-                            />
-                          </td>
-                          <td className="py-3 px-3">
-                            <p className={`text-sm font-medium ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
-                              {[c.nombre, c.apellido].filter(Boolean).join(' ')}
-                            </p>
-                            {c.nombre_alumno && (
-                              <p className="text-xs text-md-on-surface-variant mt-0.5">
-                                {orgConfig.studentLabel || 'Alumno'}: {c.nombre_alumno}
+                    return (
+                      <tr
+                        key={c.id}
+                        className={`border-b border-md-outline-variant/50 transition-colors ${
+                          isSelected ? 'bg-md-primary-container/30' : 'hover:bg-md-surface-container-low'
+                        }`}
+                      >
+                        <td className="py-3 px-4 w-10">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => toggleOne(c.id)}
+                            className="rounded accent-md-primary cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-3 px-3">
+                          {isColegio && c.nombre_familia ? (
+                            <>
+                              <p className={`text-sm font-bold ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
+                                {c.nombre_familia}
                               </p>
-                            )}
-                            {inactive && (
-                              <span className="inline-flex items-center gap-1 text-xs text-orange-600 mt-0.5">
-                                <UserMinus size={10} /> Inactivo
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.telefono}</td>
+                              <p className="text-xs text-md-on-surface-variant mt-0.5">
+                                {c.relationship_type === 'student' ? `${orgConfig.studentLabel || 'Alumno'}: ${c.nombre_alumno}${c.grado ? ` (${c.grado})` : ''}` :
+                                 c.relationship_type === 'mama' ? `Mamá: ${[c.nombre, c.apellido].filter(Boolean).join(' ')}` :
+                                 c.relationship_type === 'papa' ? `Papá: ${[c.nombre, c.apellido].filter(Boolean).join(' ')}` :
+                                 `${[c.nombre, c.apellido].filter(Boolean).join(' ')}`}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p className={`text-sm font-medium ${inactive ? 'text-md-on-surface-variant' : 'text-md-on-surface'}`}>
+                                {[c.nombre, c.apellido].filter(Boolean).join(' ')}
+                              </p>
+                              {c.nombre_alumno && (
+                                <p className="text-xs text-md-on-surface-variant mt-0.5">
+                                  {orgConfig.studentLabel || 'Alumno'}: {c.nombre_alumno}
+                                </p>
+                              )}
+                            </>
+                          )}
+                          {inactive && (
+                            <span className="inline-flex items-center gap-1 text-xs text-orange-600 mt-0.5">
+                              <UserMinus size={10} /> Inactivo
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.telefono}</td>
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">{c.grupo || '—'}</td>
                         {isClub && (
                           <td className="py-3 px-3 text-sm text-md-on-surface-variant font-mono">{c.id_externo || '—'}</td>
@@ -1199,7 +1148,6 @@ export default function ContactsPage() {
                       </tr>
                     )
                   })}
-                  )}
                 </tbody>
               </table>
             </div>
