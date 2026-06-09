@@ -132,7 +132,6 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             email: email.trim(),
             nombre_familia: nombre_familia.trim(),
             relationship_type: 'mama',
-            priority: 1,
             student_id: studentIds[0],
             org_type: orgType
           })
@@ -150,7 +149,6 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
             email: email.trim(),
             nombre_familia: nombre_familia.trim(),
             relationship_type: 'papa',
-            priority: 0,
             student_id: studentIds[0],
             org_type: orgType
           })

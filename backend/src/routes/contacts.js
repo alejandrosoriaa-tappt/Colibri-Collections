@@ -250,7 +250,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     const {
       nombre, apellido, telefono, grupo, id_externo, payment_link,
       email, seccion, grado, salon, fraccionamiento, torre, num_interior,
-      nombre_alumno, org_type, relationship_type, student_id, nombre_familia, priority
+      nombre_alumno, org_type, relationship_type, student_id, nombre_familia
     } = req.body
 
     // Validación: nombre siempre requerido
@@ -288,7 +288,6 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         relationship_type: relationship_type?.trim() || null,
         student_id: student_id || null,
         nombre_familia: nombre_familia?.trim() || null,
-        priority: priority !== undefined ? priority : null,
         status: 'active'
       })
       .select()
