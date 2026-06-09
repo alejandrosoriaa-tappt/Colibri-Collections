@@ -452,10 +452,13 @@ export async function getContactsForBroadcast(tenantId, groupFilter = null) {
     .neq('telefono', '')
 
   if (Array.isArray(groupFilter) && groupFilter.length > 0) {
-    // Filter: (grupo IN array) OR (grado IN array)
-    query = query.or(`grupo.in.(${groupFilter.map(g => `"${g}"`).join(',')}),grado.in.(${groupFilter.map(g => `"${g}"`).join(',')})`)
+    // Filter by grupo (new family system) OR grado (old system)
+    // grupo takes precedence: if group has a nombre in grupo, use that
+    const grupoConditions = groupFilter.map(g => `grupo.eq."${g}"`).join(',')
+    const gradoConditions = groupFilter.map(g => `grado.eq."${g}"`).join(',')
+    query = query.or(`${grupoConditions},${gradoConditions}`)
   } else if (typeof groupFilter === 'string' && groupFilter) {
-    // Filter: (grupo = value) OR (grado = value)
+    // Filter by grupo OR grado matching the string
     query = query.or(`grupo.eq."${groupFilter}",grado.eq."${groupFilter}"`)
   }
 
