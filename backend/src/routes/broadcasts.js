@@ -162,7 +162,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
         : comunicadoComponents({ titulo: title, orgName, cuerpo: personalizedMessage })
 
-      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es', components)
+      const result = await sendWhatsAppTemplate(contact.telefono, templateName, 'es_MX', components)
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
