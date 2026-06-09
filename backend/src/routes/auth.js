@@ -70,29 +70,6 @@ router.post('/logout', authMiddleware, async (req, res) => {
   }
 })
 
-// GET /api/auth/debug (temporary - remove after debugging)
-router.get('/debug', authMiddleware, async (req, res) => {
-  try {
-    let tenantInfo = null
-    try {
-      tenantInfo = await getTenantByUser(req.user.id)
-    } catch (tenantErr) {
-      return res.json({ error: 'No tenant found', userId: req.user.id })
-    }
-
-    const tenant = tenantInfo?.tenants
-    return res.json({
-      userId: req.user.id,
-      email: req.user.email,
-      tenant: tenant,
-      org_type: tenant?.org_type,
-      org_type_typeof: typeof tenant?.org_type
-    })
-  } catch (err) {
-    console.error('Debug error:', err)
-    return res.status(500).json({ error: err.message })
-  }
-})
 
 // GET /api/auth/me
 router.get('/me', authMiddleware, async (req, res) => {
