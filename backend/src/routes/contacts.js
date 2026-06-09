@@ -250,14 +250,20 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     const {
       nombre, apellido, telefono, grupo, id_externo, payment_link,
       email, seccion, grado, salon, fraccionamiento, torre, num_interior,
-      nombre_alumno, org_type
+      nombre_alumno, org_type, relationship_type, student_id, nombre_familia, priority
     } = req.body
 
-    if (!nombre || !telefono) {
-      return res.status(400).json({ error: 'nombre y telefono son obligatorios' })
+    // Validación: nombre siempre requerido
+    if (!nombre) {
+      return res.status(400).json({ error: 'nombre es obligatorio' })
     }
 
-    const phone = telefono.trim().replace(/\s+/g, '')
+    // Teléfono es obligatorio EXCEPTO para estudiantes (relationship_type === 'student')
+    if (!telefono && relationship_type !== 'student') {
+      return res.status(400).json({ error: 'telefono es obligatorio' })
+    }
+
+    const phone = telefono ? telefono.trim().replace(/\s+/g, '') : null
     const autoGrupo = buildGrupo({ org_type, grupo, seccion, grado, salon, torre, num_interior, fraccionamiento })
 
     const { data, error } = await supabase
@@ -278,6 +284,11 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         torre: torre?.trim() || null,
         num_interior: num_interior?.trim() || null,
         nombre_alumno: nombre_alumno?.trim() || null,
+        // Campos de familia
+        relationship_type: relationship_type?.trim() || null,
+        student_id: student_id || null,
+        nombre_familia: nombre_familia?.trim() || null,
+        priority: priority !== undefined ? priority : null,
         status: 'active'
       })
       .select()

@@ -48,7 +48,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
     telefono_mama: '',
     nombre_papa: '',
     telefono_papa: '',
-    estudiantes: [{ nombre: '', apellidos: '', seccion: '', salon: '' }],
+    estudiantes: [{ nombre: '', apellidos: '', seccion: '', grado: '', salon: '' }],
     email: '',
   })
 
@@ -309,7 +309,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, { nombre: '', apellidos: '', seccion: '', salon: '' }] }))}
+                  onClick={() => setFamilyForm(f => ({ ...f, estudiantes: [...f.estudiantes, { nombre: '', apellidos: '', seccion: '', grado: '', salon: '' }] }))}
                   className="mt-2 text-sm text-md-primary hover:text-md-primary-dark font-medium flex items-center gap-1"
                 >
                   <UserPlus size={14} /> Agregar otro alumno
