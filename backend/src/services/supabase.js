@@ -443,23 +443,69 @@ export async function getContactGroupsByTenant(tenantId) {
 }
 
 export async function getContactsForBroadcast(tenantId, groupFilter = null) {
-  let query = supabase
-    .from('contacts')
-    .select('id, nombre, telefono, grupo')
-    .eq('tenant_id', tenantId)
-    .eq('status', 'active')
-    .not('telefono', 'is', null)
-    .neq('telefono', '')
+  // Normalize filter to an array of group names (or null = everyone)
+  let groups = null
+  if (Array.isArray(groupFilter) && groupFilter.length > 0) groups = groupFilter
+  else if (typeof groupFilter === 'string' && groupFilter) groups = [groupFilter]
 
-  if (Array.isArray(groupFilter) && groupFilter.length > 0) {
-    query = query.in('grupo', groupFilter)
-  } else if (typeof groupFilter === 'string' && groupFilter) {
-    query = query.eq('grupo', groupFilter)
+  // No filter → everyone active with a phone
+  if (!groups) {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, grupo')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active')
+      .not('telefono', 'is', null)
+      .neq('telefono', '')
+    if (error) throw error
+    return data
   }
 
-  const { data, error } = await query
-  if (error) throw error
-  return data
+  // Filtered by school group(s). In schools the grade lives on the STUDENT
+  // (who usually has no phone), so we must resolve students → their parents
+  // (linked by nombre_familia) and message the parents' phones.
+  const { data: matched, error: mErr } = await supabase
+    .from('contacts')
+    .select('id, nombre, apellido, telefono, grupo, relationship_type, nombre_familia')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .in('grupo', groups)
+  if (mErr) throw mErr
+
+  const byPhone = new Map()
+  const families = new Set()
+
+  for (const c of matched) {
+    if (c.relationship_type === 'student') {
+      if (c.nombre_familia) families.add(c.nombre_familia)
+      // a student WITH a phone also gets included directly
+      if (c.telefono) byPhone.set(c.telefono, { id: c.id, nombre: c.nombre, apellido: c.apellido, telefono: c.telefono, grupo: c.grupo })
+    } else if (c.telefono) {
+      // non-student directly tagged with the group (e.g. standalone parent)
+      byPhone.set(c.telefono, { id: c.id, nombre: c.nombre, apellido: c.apellido, telefono: c.telefono, grupo: c.grupo })
+    }
+  }
+
+  // Pull parents/guardians of the matched students' families
+  if (families.size > 0) {
+    const { data: parents, error: pErr } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, telefono, grupo, relationship_type, nombre_familia')
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active')
+      .in('nombre_familia', [...families])
+      .neq('relationship_type', 'student')
+      .not('telefono', 'is', null)
+      .neq('telefono', '')
+    if (pErr) throw pErr
+    for (const p of parents) {
+      if (!byPhone.has(p.telefono)) {
+        byPhone.set(p.telefono, { id: p.id, nombre: p.nombre, apellido: p.apellido, telefono: p.telefono, grupo: p.grupo })
+      }
+    }
+  }
+
+  return [...byPhone.values()]
 }
 
 // ================================================================
