@@ -114,6 +114,8 @@ export default function BroadcastsPage() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(EMPTY_FORM)
   const [previewCount, setPreviewCount] = useState(null)
+  const [previewContacts, setPreviewContacts] = useState([])
+  const [showRecipients, setShowRecipients] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [formError, setFormError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
@@ -156,13 +158,18 @@ export default function BroadcastsPage() {
     }
   }, [searchParams])
 
-  // Preview count when group selection changes
+  // Preview count + recipient list when group selection changes
   useEffect(() => {
     if (!showForm) return
     setPreviewCount(null)
+    setPreviewContacts([])
+    setShowRecipients(false)
     const groupParam = form.group_filters.length > 0 ? form.group_filters.join(',') : undefined
     broadcastsAPI.preview(groupParam)
-      .then(res => setPreviewCount(res.data.count))
+      .then(res => {
+        setPreviewCount(res.data.count)
+        setPreviewContacts(res.data.contacts || [])
+      })
       .catch(() => setPreviewCount(null))
   }, [form.group_filters, showForm])
 
@@ -424,13 +431,40 @@ export default function BroadcastsPage() {
                   </div>
                 )}
 
-                {/* Preview count */}
+                {/* Preview count — click to expand the recipient list */}
                 {previewCount !== null && (
-                  <div className="flex items-center gap-1.5 mt-2">
-                    <Eye size={13} className="text-colibri" />
-                    <span className="text-xs text-colibri font-medium">
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowRecipients(v => !v)}
+                      className="flex items-center gap-1.5 text-xs text-colibri font-medium hover:underline"
+                      title={showRecipients ? 'Ocultar destinatarios' : 'Ver quiénes recibirán el mensaje'}
+                    >
+                      <Eye size={13} />
                       {previewCount} contacto{previewCount !== 1 ? 's' : ''} recibirán este mensaje
-                    </span>
+                      <ChevronDown size={12} className={`transition-transform ${showRecipients ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showRecipients && previewContacts.length > 0 && (
+                      <div className="mt-2 border border-gray-200 rounded-xl bg-gray-50 max-h-44 overflow-y-auto divide-y divide-gray-100">
+                        {previewContacts.map(c => (
+                          <div key={c.id} className="flex items-center justify-between px-3 py-1.5 text-xs">
+                            <span className="text-gray-800 font-medium truncate">
+                              {c.nombre} {c.apellido}
+                            </span>
+                            <span className="flex items-center gap-2 flex-shrink-0 ml-2">
+                              {c.grupo && <span className="px-1.5 py-0.5 bg-colibri/10 text-colibri rounded text-[10px]">{c.grupo}</span>}
+                              <span className="font-mono text-gray-500">{c.telefono}</span>
+                            </span>
+                          </div>
+                        ))}
+                        {previewCount > previewContacts.length && (
+                          <div className="px-3 py-1.5 text-[11px] text-gray-400 text-center">
+                            … y {previewCount - previewContacts.length} más
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

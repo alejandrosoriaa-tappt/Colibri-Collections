@@ -46,7 +46,7 @@ router.get('/groups', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 })
 
-// GET /api/broadcasts/preview — count contacts for group(s)
+// GET /api/broadcasts/preview — count + recipient list for group(s)
 router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     // group can be a single string or comma-separated list
@@ -57,7 +57,15 @@ router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
       groupFilter = parts.length === 1 ? parts[0] : parts
     }
     const contacts = await getContactsForBroadcast(req.tenantId, groupFilter)
-    return res.json({ count: contacts.length })
+    // Return the recipients so the UI can show who will receive the message
+    const recipients = contacts.slice(0, 200).map(c => ({
+      id: c.id,
+      nombre: c.nombre,
+      apellido: c.apellido || '',
+      telefono: c.telefono,
+      grupo: c.grupo || null
+    }))
+    return res.json({ count: contacts.length, contacts: recipients })
   } catch (err) {
     console.error('GET /broadcasts/preview error:', err)
     return res.status(500).json({ error: err.message })
