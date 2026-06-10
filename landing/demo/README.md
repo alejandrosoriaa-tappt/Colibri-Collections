@@ -1,7 +1,14 @@
-# Demo del producto
+# Capturas del demo tour
 
-`demo.mp4` — video del tour del producto (hecho en CapCut, H.264 + AAC).
-Se reproduce en el modal que abre el botón "Ver demo" de la landing.
+Capturas reales del producto que alimentan el carrusel "Ver demo" de la landing:
 
-Para actualizarlo: exporta el nuevo video como MP4 (H.264) y reemplaza `demo.mp4`.
-Mantenerlo ligero (< 10 MB) para que cargue rápido.
+| Archivo | Pantalla |
+|---|---|
+| 01-login.png | Inicio de sesión |
+| 02-inicio.png | Dashboard (resumen + campañas) |
+| 03-mensajes.png | Mensajes (lista de comunicados) |
+| 04-comunicado.png | Modal "Nuevo comunicado" |
+| 05-contactos.png | Contactos / Familias |
+
+Para actualizar: reemplaza el PNG con el mismo nombre. Si falta un archivo,
+el slide muestra un placeholder "Captura próximamente" — el demo no se rompe.

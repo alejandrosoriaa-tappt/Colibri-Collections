@@ -665,13 +665,12 @@
     .demo-overlay.open { display: flex; }
 
     .demo-card {
-      /* narrow, phone-like frame — the demo video is vertical (9:16) */
-      width: min(420px, 100%);
+      width: min(1080px, 100%);
       background: var(--md-surface);
       border-radius: 28px; overflow: hidden;
       box-shadow: var(--shadow-3);
       display: flex; flex-direction: column;
-      max-height: 94vh;
+      max-height: 92vh;
     }
 
     .demo-head {
@@ -689,19 +688,61 @@
     }
     .demo-close:hover { background: var(--md-surface-variant); }
 
-    .demo-video-wrap {
-      background: #0b120e;
+    /* progress bar (autoplay) */
+    .demo-progress { height: 3px; background: var(--md-surface-container); }
+    .demo-progress-fill {
+      height: 100%; width: 0%; background: var(--md-primary);
+      transition: width 0.1s linear;
+    }
+
+    .demo-stage { position: relative; background: var(--md-surface-container-low); }
+    .demo-shot {
+      display: none; align-items: center; justify-content: center;
+      padding: 18px 18px 6px;
+    }
+    .demo-shot.active { display: flex; }
+    .demo-shot img {
+      max-width: 100%; max-height: 56vh; object-fit: contain;
+      border-radius: 14px; border: 1px solid var(--md-outline-variant);
+      box-shadow: var(--shadow-2); background: #fff;
+    }
+    /* placeholder when screenshot file is missing */
+    .demo-shot.demo-missing img { display: none; }
+    .demo-shot.demo-missing::after {
+      content: '🖼 Captura próximamente';
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 320px;
+      border-radius: 14px; border: 2px dashed var(--md-outline-variant);
+      color: var(--md-on-surface-variant); font-size: 15px; font-weight: 500;
+      background: repeating-linear-gradient(45deg, var(--md-surface-container-low), var(--md-surface-container-low) 12px, var(--md-surface-container) 12px, var(--md-surface-container) 24px);
+    }
+
+    .demo-arrow {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 42px; height: 42px; border-radius: 50%;
+      border: none; cursor: pointer; font-size: 18px;
+      background: rgba(255,255,255,0.92); color: var(--md-primary);
+      box-shadow: var(--shadow-1);
       display: flex; align-items: center; justify-content: center;
     }
-    .demo-video-wrap video {
-      width: 100%; max-height: 72vh; display: block; outline: none;
-      aspect-ratio: 9 / 16; object-fit: contain;
-    }
+    .demo-arrow:hover { background: #fff; }
+    .demo-prev { left: 14px; }
+    .demo-next { right: 14px; }
+
+    .demo-caption { padding: 14px 24px 6px; text-align: center; }
+    .demo-caption h4 { font-size: 19px; font-weight: 700; color: var(--md-on-surface); margin-bottom: 4px; }
+    .demo-caption p { font-size: 14px; color: var(--md-on-surface-variant); max-width: 560px; margin: 0 auto; }
 
     .demo-foot {
       display: flex; align-items: center; justify-content: space-between;
       padding: 12px 22px 18px; gap: 12px;
     }
+    .demo-dots { display: flex; gap: 7px; }
+    .demo-dot {
+      width: 9px; height: 9px; border-radius: 50%; border: none; cursor: pointer;
+      background: var(--md-outline-variant); padding: 0; transition: all 0.2s;
+    }
+    .demo-dot.active { background: var(--md-primary); width: 24px; border-radius: 5px; }
     .demo-cta-mini {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 9px 20px; border-radius: 999px;
@@ -1174,7 +1215,7 @@
   })
 </script>
 
-<!-- ═══ DEMO MODAL — product video ═══ -->
+<!-- ═══ DEMO MODAL — product tour ═══ -->
 <div class="demo-overlay" id="demoOverlay">
   <div class="demo-card">
     <div class="demo-head">
@@ -1184,38 +1225,118 @@
       </div>
       <button class="demo-close" onclick="closeDemo()" aria-label="Cerrar">✕</button>
     </div>
+    <div class="demo-progress"><div class="demo-progress-fill" id="demoProgress"></div></div>
 
-    <div class="demo-video-wrap">
-      <video id="demoVideo" src="/demo/demo.mp4" controls playsinline preload="metadata"></video>
+    <div class="demo-stage" id="demoStage">
+      <!-- slides injected by JS -->
+      <button class="demo-arrow demo-prev" onclick="demoNav(-1)" aria-label="Anterior">‹</button>
+      <button class="demo-arrow demo-next" onclick="demoNav(1)" aria-label="Siguiente">›</button>
     </div>
 
-    <div class="demo-foot" style="justify-content:center;">
+    <div class="demo-caption">
+      <h4 id="demoTitle"></h4>
+      <p id="demoDesc"></p>
+    </div>
+
+    <div class="demo-foot">
+      <div class="demo-dots" id="demoDots"></div>
       <a href="#contacto" class="demo-cta-mini" onclick="closeDemo()">Quiero una demo personalizada →</a>
     </div>
   </div>
 </div>
 
 <script>
-  // ── Demo video modal ───────────────────────────────────────
+  // ── Demo tour ──────────────────────────────────────────────
+  const DEMO_SLIDES = [
+    { img: '/demo/01-login.png',      title: 'Acceso seguro para tu organización', desc: 'Cada colegio o comunidad entra con su propia cuenta. Tus datos viven separados y protegidos.' },
+    { img: '/demo/02-inicio.png',     title: 'Todo tu panorama en un vistazo',     desc: 'Mensajes enviados, entregados y leídos, más tus campañas de cobranza activas con su avance en tiempo real.' },
+    { img: '/demo/03-mensajes.png',   title: 'Comunicados y recordatorios',        desc: 'El historial completo de cada comunicado: a quién se envió, cuántos lo recibieron y cuántos lo leyeron.' },
+    { img: '/demo/04-comunicado.png', title: 'Envía a quien tú elijas',            desc: 'Selecciona sección, grado o salón — o toda la escuela — y tu mensaje llega por WhatsApp en segundos.' },
+    { img: '/demo/05-contactos.png',  title: 'Familias siempre organizadas',       desc: 'Papás y alumnos vinculados por familia, con filtros por grado y carga masiva desde Excel.' },
+  ]
+
+  const AUTOPLAY_MS = 4500
+  let demoIdx = 0
+  let demoTimer = null
+  let demoT0 = 0
+
   const overlay = document.getElementById('demoOverlay')
-  const demoVideo = document.getElementById('demoVideo')
+  const stage = document.getElementById('demoStage')
+  const dotsEl = document.getElementById('demoDots')
+
+  // Build slides + dots once
+  DEMO_SLIDES.forEach((s, i) => {
+    const shot = document.createElement('div')
+    shot.className = 'demo-shot'
+    shot.innerHTML = `<img src="${s.img}" alt="${s.title}" loading="lazy"
+      onerror="this.parentElement.classList.add('demo-missing')" />`
+    stage.insertBefore(shot, stage.querySelector('.demo-prev'))
+
+    const dot = document.createElement('button')
+    dot.className = 'demo-dot'
+    dot.setAttribute('aria-label', `Ir a paso ${i + 1}`)
+    dot.onclick = () => demoGo(i)
+    dotsEl.appendChild(dot)
+  })
+
+  function demoRender() {
+    stage.querySelectorAll('.demo-shot').forEach((el, i) => el.classList.toggle('active', i === demoIdx))
+    dotsEl.querySelectorAll('.demo-dot').forEach((el, i) => el.classList.toggle('active', i === demoIdx))
+    document.getElementById('demoTitle').textContent = DEMO_SLIDES[demoIdx].title
+    document.getElementById('demoDesc').textContent = DEMO_SLIDES[demoIdx].desc
+  }
+
+  function demoGo(i) {
+    demoIdx = (i + DEMO_SLIDES.length) % DEMO_SLIDES.length
+    demoRender()
+    demoRestartTimer()
+  }
+  function demoNav(d) { demoGo(demoIdx + d) }
+
+  // Autoplay with progress bar
+  function demoTick() {
+    const pct = Math.min(100, ((Date.now() - demoT0) / AUTOPLAY_MS) * 100)
+    document.getElementById('demoProgress').style.width = pct + '%'
+    if (pct >= 100) demoGo(demoIdx + 1)
+  }
+  function demoRestartTimer() {
+    clearInterval(demoTimer)
+    demoT0 = Date.now()
+    demoTimer = setInterval(demoTick, 80)
+  }
 
   function openDemo() {
+    demoIdx = 0
+    demoRender()
     overlay.classList.add('open')
     document.body.style.overflow = 'hidden'
-    demoVideo.currentTime = 0
-    demoVideo.play().catch(() => {}) // allowed: triggered by user click
+    demoRestartTimer()
   }
   function closeDemo() {
     overlay.classList.remove('open')
     document.body.style.overflow = ''
-    demoVideo.pause()
+    clearInterval(demoTimer)
+    document.getElementById('demoProgress').style.width = '0%'
   }
 
+  // Close on backdrop click / Esc, navigate with arrows
   overlay.addEventListener('click', e => { if (e.target === overlay) closeDemo() })
   document.addEventListener('keydown', e => {
-    if (overlay.classList.contains('open') && e.key === 'Escape') closeDemo()
+    if (!overlay.classList.contains('open')) return
+    if (e.key === 'Escape') closeDemo()
+    if (e.key === 'ArrowRight') demoNav(1)
+    if (e.key === 'ArrowLeft') demoNav(-1)
   })
+
+  // Touch swipe
+  let touchX = null
+  stage.addEventListener('touchstart', e => { touchX = e.touches[0].clientX }, { passive: true })
+  stage.addEventListener('touchend', e => {
+    if (touchX === null) return
+    const dx = e.changedTouches[0].clientX - touchX
+    if (Math.abs(dx) > 40) demoNav(dx < 0 ? 1 : -1)
+    touchX = null
+  }, { passive: true })
 </script>
 </body>
 </html>
