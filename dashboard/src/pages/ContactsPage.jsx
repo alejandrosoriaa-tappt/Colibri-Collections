@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Search, Users, Loader2, ChevronLeft, ChevronRight, UserPlus,
   X, CheckCircle2, AlertCircle, UserMinus, UserCheck, Trash2,
-  RefreshCw, Upload, AlertTriangle, Info, Mail, Download
+  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send
 } from 'lucide-react'
-import { contactsAPI, uploadAPI } from '../lib/api.js'
+import { contactsAPI, uploadAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
 
@@ -711,6 +712,124 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
   )
 }
 
+// ── Modal: Enviar mensaje directo a una familia ───────────────────────────────
+function FamilyMessageModal({ familia, members, onClose, onSent }) {
+  const [title, setTitle] = useState('')
+  const [message, setMessage] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState(null)
+
+  // Only members with a phone actually receive the WhatsApp
+  const recipients = members.filter(m => m.telefono)
+
+  const handleSend = async (e) => {
+    e.preventDefault()
+    if (!title.trim() || !message.trim()) {
+      setError('Título y mensaje son obligatorios')
+      return
+    }
+    if (recipients.length === 0) {
+      setError('Esta familia no tiene ningún teléfono registrado')
+      return
+    }
+    setSending(true)
+    setError(null)
+    try {
+      await broadcastsAPI.send({
+        title: title.trim(),
+        message: message.trim(),
+        contact_ids: recipients.map(r => r.id),
+        group_filter: `Familia ${familia}`
+      })
+      onSent(recipients.length)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al enviar el mensaje')
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-md-outline-variant">
+          <div>
+            <h2 className="font-semibold text-md-on-surface">Mensaje a familia {familia}</h2>
+            <p className="text-xs text-md-on-surface-variant mt-0.5">Se enviará por WhatsApp</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container">
+            <X size={18} className="text-md-on-surface-variant" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSend} className="p-5 space-y-4">
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl">
+              <AlertCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {/* Recipients */}
+          <div className="p-3 bg-md-surface-container-low rounded-xl">
+            <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
+              Recibirán el mensaje ({recipients.length})
+            </p>
+            {recipients.length > 0 ? (
+              <ul className="space-y-0.5">
+                {recipients.map(r => (
+                  <li key={r.id} className="text-sm text-md-on-surface flex items-center gap-2">
+                    <span>{r.nombre} {r.apellido || ''}</span>
+                    <span className="text-xs font-mono text-md-on-surface-variant">{r.telefono}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-md-error">Sin teléfonos registrados en esta familia</p>
+            )}
+          </div>
+
+          <div>
+            <label className="label">Título *</label>
+            <input
+              className="input"
+              placeholder="Ej. Recordatorio de junta, Aviso de pago..."
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="label">Mensaje *</label>
+            <textarea
+              className="input resize-none"
+              rows={4}
+              placeholder={`Escribe aquí el mensaje para la familia ${familia}...`}
+              value={message}
+              onChange={e => setMessage(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="flex gap-3 pt-1">
+            <button type="button" onClick={onClose} className="flex-1 btn-tonal text-sm" disabled={sending}>
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={sending || recipients.length === 0}
+              className="flex-1 btn-primary text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Enviar ahora
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 // ── Helper: Agrupar contactos por familia (para colegios) ────────────────────
 function groupByFamily(contacts) {
@@ -750,6 +869,19 @@ export default function ContactsPage() {
   const [showSync, setShowSync] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(null) // { ids }
   const [confirmDelete, setConfirmDelete] = useState(null)         // { ids }
+  const [familyMsg, setFamilyMsg] = useState(null)                 // { familia, members }
+
+  // School filters (colegio view): filter families by their students' group
+  const navigate = useNavigate()
+  const [filtroSeccion, setFiltroSeccion] = useState('')
+  const [filtroGrado, setFiltroGrado] = useState('')
+  const [filtroSalon, setFiltroSalon] = useState('')
+  const hasSchoolFilter = !!(filtroSeccion || filtroGrado || filtroSalon)
+
+  const alumnoMatchesFilter = (a) =>
+    (!filtroSeccion || a.seccion === filtroSeccion) &&
+    (!filtroGrado || a.grado === filtroGrado) &&
+    (!filtroSalon || a.salon === filtroSalon)
 
   // Toast
   const [toast, setToast] = useState(null)
@@ -883,6 +1015,17 @@ export default function ContactsPage() {
           onConfirm={() => handleDelete(confirmDelete.ids)}
         />
       )}
+      {familyMsg && (
+        <FamilyMessageModal
+          familia={familyMsg.familia}
+          members={familyMsg.members}
+          onClose={() => setFamilyMsg(null)}
+          onSent={(n) => {
+            setFamilyMsg(null)
+            showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''} de la familia`)
+          }}
+        />
+      )}
 
       {/* Toast */}
       {toast && (
@@ -952,6 +1095,64 @@ export default function ContactsPage() {
           />
         </div>
       </div>
+
+      {/* School filters: Sección / Grado / Salón */}
+      {isColegio && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="input !w-auto text-sm"
+            value={filtroSeccion}
+            onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado('') }}
+          >
+            <option value="">Sección: todas</option>
+            {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select
+            className="input !w-auto text-sm"
+            value={filtroGrado}
+            onChange={e => setFiltroGrado(e.target.value)}
+          >
+            <option value="">Grado: todos</option>
+            {(filtroSeccion ? GRADOS[filtroSeccion] : ['1ro', '2do', '3ro', '4to', '5to', '6to']).map(g => (
+              <option key={g} value={g}>{g}</option>
+            ))}
+          </select>
+          <select
+            className="input !w-auto text-sm"
+            value={filtroSalon}
+            onChange={e => setFiltroSalon(e.target.value)}
+          >
+            <option value="">Salón: todos</option>
+            {SALONES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+
+          {hasSchoolFilter && (
+            <>
+              <button
+                onClick={() => { setFiltroSeccion(''); setFiltroGrado(''); setFiltroSalon('') }}
+                className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-md-on-surface-variant hover:text-md-on-surface rounded-full hover:bg-md-surface-container transition-colors"
+              >
+                <X size={13} /> Limpiar filtros
+              </button>
+              <button
+                onClick={() => {
+                  // Collect the distinct groups of the students matching the filter
+                  const grupos = new Set()
+                  contacts.forEach(c => {
+                    if (c.relationship_type === 'student' && c.grupo && alumnoMatchesFilter(c)) grupos.add(c.grupo)
+                  })
+                  if (grupos.size > 0) {
+                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent([...grupos].join(','))}`)
+                  }
+                }}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity ml-auto"
+              >
+                <Send size={13} /> Enviar comunicado a este grupo
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Bulk action bar */}
       {selected.size > 0 && (
@@ -1041,12 +1242,14 @@ export default function ContactsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(groupByFamily(contacts)).map(([familia, { papas, alumnos }]) => {
+                  {Object.entries(groupByFamily(contacts))
+                    .filter(([, { alumnos }]) => !hasSchoolFilter || alumnos.some(alumnoMatchesFilter))
+                    .map(([familia, { papas, alumnos }]) => {
                     const familiaIds = [...papas, ...alumnos].map(c => c.id)
                     const familySelected = familiaIds.some(id => selected.has(id))
                     const mama = papas.find(p => p.relationship_type === 'mama')
                     const papa = papas.find(p => p.relationship_type === 'papa')
-                    const email = papas[0]?.email || ''
+                    const email = papas[0]?.email || alumnos.find(a => a.email)?.email || ''
 
                     return (
                       <tr key={familia} className={`border-b border-md-outline-variant/50 transition-colors ${
@@ -1088,20 +1291,36 @@ export default function ContactsPage() {
                           {alumnos.length > 0 ? (
                             <ul className="space-y-1">
                               {alumnos.map(a => (
-                                <li key={a.id}>{a.nombre_alumno}{a.grado ? ` (${a.grado})` : ''}</li>
+                                <li key={a.id} className="flex items-center gap-1.5 flex-wrap">
+                                  <span>{a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim()}</span>
+                                  {(a.grupo || a.grado) && (
+                                    <span className="inline-block px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded text-[11px] font-medium">
+                                      {a.grupo || a.grado}
+                                    </span>
+                                  )}
+                                </li>
                               ))}
                             </ul>
                           ) : '—'}
                         </td>
                         <td className="py-3 px-3 text-sm text-md-on-surface-variant">{email || '—'}</td>
                         <td className="py-3 px-3">
-                          <button
-                            onClick={() => setConfirmDelete({ ids: familiaIds })}
-                            title="Eliminar familia"
-                            className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setFamilyMsg({ familia, members: [...papas, ...alumnos] })}
+                              title="Enviar mensaje a esta familia"
+                              className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
+                            >
+                              <Send size={15} />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete({ ids: familiaIds })}
+                              title="Eliminar familia"
+                              className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     )

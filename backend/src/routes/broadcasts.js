@@ -66,7 +66,7 @@ router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
 
 // POST /api/broadcasts — create and send
 router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
-  const { title, message, group_filter, group_filters, media_url, media_type, media_filename } = req.body
+  const { title, message, group_filter, group_filters, contact_ids, media_url, media_type, media_filename } = req.body
 
   if (!title || !message) {
     return res.status(400).json({ error: 'title and message are required' })
@@ -83,16 +83,30 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   // Get contacts
   let contacts
   try {
-    contacts = await getContactsForBroadcast(req.tenantId, effectiveFilter)
+    if (Array.isArray(contact_ids) && contact_ids.length > 0) {
+      // Direct send to specific contacts (e.g. one family from the Contactos page)
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('id, nombre, apellido, telefono, grupo')
+        .eq('tenant_id', req.tenantId)
+        .eq('status', 'active')
+        .in('id', contact_ids)
+        .not('telefono', 'is', null)
+        .neq('telefono', '')
+      if (error) throw error
+      contacts = data
+    } else {
+      contacts = await getContactsForBroadcast(req.tenantId, effectiveFilter)
+    }
   } catch (err) {
     return res.status(500).json({ error: 'Failed to get contacts' })
   }
 
   if (contacts.length === 0) {
-    return res.status(400).json({ error: 'No hay contactos en el grupo seleccionado' })
+    return res.status(400).json({ error: 'No hay contactos con teléfono en la selección' })
   }
 
-  // Label for display
+  // Label for display — for contact_ids sends the frontend passes a label in group_filter
   const groupLabel = Array.isArray(effectiveFilter)
     ? effectiveFilter.join(', ')
     : (effectiveFilter || null)

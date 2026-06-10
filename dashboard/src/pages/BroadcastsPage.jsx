@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Radio, Plus, X, Loader2, AlertCircle, CheckCircle2,
-  Users, Send, FileText, Eye
+  Users, Send, FileText, Eye, ChevronDown, Check
 } from 'lucide-react'
 import { broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -17,6 +17,31 @@ const EMPTY_FORM = {
   message: '',
   group_filters: [],   // array of selected groups (empty = todos)
   media_url: '',
+}
+
+// School sections in display order; anything else falls into "Otros grupos"
+const SECTION_ORDER = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria']
+
+// Bucket group names ("Primaria 1ro A") by section for the dropdown,
+// sorted by grade number then salon letter.
+function organizeGroups(groups) {
+  const buckets = new Map()
+  for (const g of groups) {
+    const first = g.split(' ')[0]
+    const key = SECTION_ORDER.includes(first) ? first : 'Otros grupos'
+    if (!buckets.has(key)) buckets.set(key, [])
+    buckets.get(key).push(g)
+  }
+  const byGrade = (a, b) => {
+    const na = parseInt(a.split(' ')[1]) || 0
+    const nb = parseInt(b.split(' ')[1]) || 0
+    return na - nb || a.localeCompare(b)
+  }
+  const out = []
+  for (const sec of [...SECTION_ORDER, 'Otros grupos']) {
+    if (buckets.has(sec)) out.push({ name: sec, groups: buckets.get(sec).sort(byGrade) })
+  }
+  return out
 }
 
 function BroadcastCard({ broadcast }) {
@@ -93,6 +118,17 @@ export default function BroadcastsPage() {
   const [formError, setFormError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
   const [showVars, setShowVars] = useState(false)
+  const [groupsOpen, setGroupsOpen] = useState(false)
+  const groupsRef = useRef(null)
+
+  // Close the groups dropdown when clicking outside of it
+  useEffect(() => {
+    const onClick = (e) => {
+      if (groupsRef.current && !groupsRef.current.contains(e.target)) setGroupsOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
 
   const load = useCallback(() => {
     Promise.all([
@@ -109,11 +145,12 @@ export default function BroadcastsPage() {
 
   useEffect(() => { load() }, [load])
 
-  // Auto-open form if navigated with ?new=1
+  // Auto-open form if navigated with ?new=1 (optionally ?groups=A,B preselects)
   useEffect(() => {
     if (searchParams.get('new') === '1') {
+      const preGroups = (searchParams.get('groups') || '').split(',').map(s => s.trim()).filter(Boolean)
       setShowForm(true)
-      setForm(EMPTY_FORM)
+      setForm({ ...EMPTY_FORM, group_filters: preGroups })
       setFormError(null)
       setSearchParams({}, { replace: true })
     }
@@ -300,40 +337,91 @@ export default function BroadcastsPage() {
                 />
               </div>
 
-              {/* Group selector — multi-select pills */}
+              {/* Group selector — multi-select dropdown grouped by section */}
               <div>
                 <label className="label">Destinatarios</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="relative" ref={groupsRef}>
                   <button
                     type="button"
-                    onClick={() => setForm(f => ({ ...f, group_filters: [] }))}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                      form.group_filters.length === 0
-                        ? 'bg-colibri text-white border-colibri'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
-                    }`}
+                    onClick={() => setGroupsOpen(o => !o)}
+                    className="input flex items-center justify-between text-left w-full"
                   >
-                    Todos
+                    <span className={form.group_filters.length === 0 ? 'text-gray-500' : 'text-gray-900'}>
+                      {form.group_filters.length === 0
+                        ? 'Todos los contactos'
+                        : form.group_filters.length === 1
+                        ? form.group_filters[0]
+                        : `${form.group_filters.length} grupos seleccionados`}
+                    </span>
+                    <ChevronDown size={16} className={`text-gray-400 flex-shrink-0 transition-transform ${groupsOpen ? 'rotate-180' : ''}`} />
                   </button>
-                  {groups.map(g => (
-                    <button
-                      key={g}
-                      type="button"
-                      onClick={() => toggleGroup(g)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                        form.group_filters.includes(g)
-                          ? 'bg-colibri text-white border-colibri'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
-                      }`}
-                    >
-                      {g}
-                    </button>
-                  ))}
+
+                  {groupsOpen && (
+                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto py-1">
+                      {/* Todos */}
+                      <button
+                        type="button"
+                        onClick={() => { setForm(f => ({ ...f, group_filters: [] })); setGroupsOpen(false) }}
+                        className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50"
+                      >
+                        <span className="font-medium text-gray-900">Todos los contactos</span>
+                        {form.group_filters.length === 0 && <Check size={15} className="text-colibri" />}
+                      </button>
+
+                      {organizeGroups(groups).map(sec => {
+                        const allSelected = sec.groups.every(g => form.group_filters.includes(g))
+                        return (
+                          <div key={sec.name}>
+                            {/* Section header — click toggles the whole section */}
+                            <button
+                              type="button"
+                              onClick={() => setForm(f => ({
+                                ...f,
+                                group_filters: allSelected
+                                  ? f.group_filters.filter(g => !sec.groups.includes(g))
+                                  : [...new Set([...f.group_filters, ...sec.groups])]
+                              }))}
+                              className="w-full flex items-center justify-between px-3 py-1.5 mt-1 bg-gray-50 border-y border-gray-100 hover:bg-gray-100"
+                              title={allSelected ? `Quitar toda ${sec.name}` : `Seleccionar toda ${sec.name}`}
+                            >
+                              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{sec.name}</span>
+                              <span className="text-[10px] text-colibri font-medium">
+                                {allSelected ? 'Quitar todos' : 'Elegir todos'}
+                              </span>
+                            </button>
+                            {sec.groups.map(g => {
+                              const sel = form.group_filters.includes(g)
+                              return (
+                                <button
+                                  key={g}
+                                  type="button"
+                                  onClick={() => toggleGroup(g)}
+                                  className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50"
+                                >
+                                  <span className={sel ? 'text-colibri font-medium' : 'text-gray-700'}>{g}</span>
+                                  {sel && <Check size={15} className="text-colibri" />}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </div>
+
+                {/* Selected groups as removable chips */}
                 {form.group_filters.length > 0 && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Seleccionados: {form.group_filters.join(', ')}
-                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {form.group_filters.map(g => (
+                      <span key={g} className="inline-flex items-center gap-1 px-2 py-0.5 bg-colibri/10 text-colibri rounded-lg text-xs font-medium">
+                        {g}
+                        <button type="button" onClick={() => toggleGroup(g)} className="hover:text-red-500">
+                          <X size={11} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 )}
 
                 {/* Preview count */}
