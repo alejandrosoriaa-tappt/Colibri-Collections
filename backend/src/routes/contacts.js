@@ -6,6 +6,7 @@ import { parse as csvParse } from 'csv-parse/sync'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import { createConektaCustomer, isConektaConfigured } from '../services/conekta.js'
+import { buildEscolarGrupo } from '../utils/schoolCatalog.js'
 import supabase, {
   getContactsByTenant,
   getContact,
@@ -232,8 +233,9 @@ async function maybeAssignCLABE(contact, tenantId) {
 
 function buildGrupo({ org_type, grupo, seccion, grado, salon, torre, num_interior, fraccionamiento }) {
   if (org_type === 'colegio' || org_type === 'academia') {
-    const parts = [seccion, grado, salon].filter(Boolean)
-    return parts.length ? parts.join(' ') : grupo || null
+    // Vocabulario controlado: normaliza y arma "Seccion Grado Salon" consistente
+    const { grupo: g } = buildEscolarGrupo({ seccion, grado, salon })
+    return g || grupo || null
   }
   if (org_type === 'condominio') {
     const parts = [fraccionamiento, torre, num_interior].filter(Boolean)
@@ -264,6 +266,13 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     }
 
     const phone = telefono ? telefono.trim().replace(/\s+/g, '') : null
+
+    // Normaliza sección/grado/salón contra el catálogo canónico (colegio/academia)
+    const isEscolar = org_type === 'colegio' || org_type === 'academia'
+    const esc = isEscolar
+      ? buildEscolarGrupo({ seccion, grado, salon })
+      : { grupo: null, seccion: null, grado: null, salon: null }
+
     const autoGrupo = buildGrupo({ org_type, grupo, seccion, grado, salon, torre, num_interior, fraccionamiento })
 
     const { data, error } = await supabase
@@ -277,9 +286,9 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         id_externo: id_externo?.trim() || null,
         payment_link: payment_link?.trim() || null,
         email: email?.trim() || null,
-        seccion: seccion?.trim() || null,
-        grado: grado?.trim() || null,
-        salon: salon?.trim() || null,
+        seccion: isEscolar ? esc.seccion : (seccion?.trim() || null),
+        grado: isEscolar ? esc.grado : (grado?.trim() || null),
+        salon: isEscolar ? esc.salon : (salon?.trim() || null),
         fraccionamiento: fraccionamiento?.trim() || null,
         torre: torre?.trim() || null,
         num_interior: num_interior?.trim() || null,

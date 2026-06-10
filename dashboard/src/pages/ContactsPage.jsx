@@ -8,15 +8,16 @@ import { contactsAPI, uploadAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
 
-// ── Sección escolar options ────────────────────────────────────────────────────
-const SECCIONES = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria / Bachillerato', 'Universidad']
+// ── Catálogo escolar canónico (vocabulario controlado) ──────────────────────────
+// Estos valores deben coincidir EXACTO con backend/src/utils/schoolCatalog.js
+const SECCIONES = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria']
 const GRADOS = {
-  'Preescolar':              ['1ro', '2do', '3ro'],
-  'Primaria':                ['1ro', '2do', '3ro', '4to', '5to', '6to'],
-  'Secundaria':              ['1ro', '2do', '3ro'],
-  'Preparatoria / Bachillerato': ['1ro', '2do', '3ro'],
-  'Universidad':             ['1ro', '2do', '3ro', '4to', '5to', '6to', '7mo', '8vo', '9no'],
+  'Preescolar':   ['1ro', '2do', '3ro'],
+  'Primaria':     ['1ro', '2do', '3ro', '4to', '5to', '6to'],
+  'Secundaria':   ['1ro', '2do', '3ro'],
+  'Preparatoria': ['1ro', '2do', '3ro'],
 }
+const SALONES = ['A', 'B', 'C', 'D', 'E']
 
 const PAGE_SIZE = 50
 
@@ -292,16 +293,17 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                           <option value="">Grado</option>
                           {(GRADOS[alumno.seccion] || []).map(g => <option key={g} value={g}>{g}</option>)}
                         </select>
-                        <input
-                          className="input text-sm text-center"
+                        <select
+                          className="input text-sm"
                           value={alumno.salon || ''}
                           onChange={e => setFamilyForm(f => ({
                             ...f,
                             estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, salon: e.target.value } : a)
                           }))}
-                          placeholder="Salón"
-                          maxLength={3}
-                        />
+                        >
+                          <option value="">Salón</option>
+                          {SALONES.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
                       </div>
                       {familyForm.estudiantes.length > 1 && (
                         <button

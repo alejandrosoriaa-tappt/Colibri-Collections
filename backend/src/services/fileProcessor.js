@@ -9,6 +9,7 @@ import {
 } from './supabase.js'
 import { sendOperationalNotification } from './notifier.js'
 import { normalizePhone } from '../utils/phone.js'
+import { buildEscolarGrupo } from '../utils/schoolCatalog.js'
 
 // Column alias mappings (all lowercase)
 const COLUMN_ALIASES = {
@@ -156,9 +157,9 @@ export async function processFile({
       }
 
       // Org-specific fields
-      const seccion         = get('seccion')
-      const grado           = get('grado')
-      const salon           = get('salon')
+      let seccion           = get('seccion')
+      let grado             = get('grado')
+      let salon             = get('salon')
       const fraccionamiento = get('fraccionamiento')
       const torre           = get('torre')
       const num_interior    = get('num_interior')
@@ -166,8 +167,13 @@ export async function processFile({
 
       // Auto-build grupo from org-specific fields
       let grupo = rawGrupo
-      if ((orgType === 'colegio' || orgType === 'academia') && (seccion || grado || salon)) {
-        grupo = [seccion, grado, salon].filter(Boolean).join(' ')
+      if (orgType === 'colegio' || orgType === 'academia') {
+        // Vocabulario controlado: normaliza y arma "Seccion Grado Salon" consistente
+        const esc = buildEscolarGrupo({ seccion, grado, salon })
+        seccion = esc.seccion
+        grado   = esc.grado
+        salon   = esc.salon
+        if (esc.grupo) grupo = esc.grupo
       } else if (orgType === 'condominio' && (fraccionamiento || torre || num_interior)) {
         grupo = [fraccionamiento, torre, num_interior].filter(Boolean).join(' · ')
       }
