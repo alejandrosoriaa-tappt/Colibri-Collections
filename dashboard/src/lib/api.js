@@ -2,8 +2,19 @@ import axios from 'axios'
 import supabase from './supabase.js'
 
 const env = window.__env__ || {}
+const mainBaseURL = env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+
 const api = axios.create({
-  baseURL: env.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
+  baseURL: mainBaseURL,
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// CRM runs on its own Railway service; falls back to the main backend if unset
+const crmApi = axios.create({
+  baseURL: env.VITE_CRM_API_BASE_URL || import.meta.env.VITE_CRM_API_BASE_URL || mainBaseURL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -11,35 +22,35 @@ const api = axios.create({
 })
 
 // Request interceptor: add auth token
-api.interceptors.request.use(
-  async (config) => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session?.access_token) {
-      config.headers.Authorization = `Bearer ${session.access_token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
+const attachToken = async (config) => {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`
+  }
+  return config
+}
+
+api.interceptors.request.use(attachToken, (error) => Promise.reject(error))
+crmApi.interceptors.request.use(attachToken, (error) => Promise.reject(error))
 
 // Response interceptor: handle auth errors
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    if (error.response?.status === 401) {
-      // Attempt token refresh
-      const { data: { session } } = await supabase.auth.refreshSession()
-      if (session) {
-        error.config.headers.Authorization = `Bearer ${session.access_token}`
-        return api.request(error.config)
-      }
-      // If refresh fails, sign out
-      await supabase.auth.signOut()
-      window.location.href = '/login'
+const handleAuthError = (instance) => async (error) => {
+  if (error.response?.status === 401) {
+    // Attempt token refresh
+    const { data: { session } } = await supabase.auth.refreshSession()
+    if (session) {
+      error.config.headers.Authorization = `Bearer ${session.access_token}`
+      return instance.request(error.config)
     }
-    return Promise.reject(error)
+    // If refresh fails, sign out
+    await supabase.auth.signOut()
+    window.location.href = '/login'
   }
-)
+  return Promise.reject(error)
+}
+
+api.interceptors.response.use((response) => response, handleAuthError(api))
+crmApi.interceptors.response.use((response) => response, handleAuthError(crmApi))
 
 // ================================================================
 // AUTH
@@ -173,17 +184,17 @@ export const teamAPI = {
 // CRM
 // ================================================================
 export const crmAPI = {
-  stats:              ()           => api.get('/api/crm/stats'),
-  upcomingFollowups:  ()           => api.get('/api/crm/followups/upcoming'),
-  listClients:        (params)     => api.get('/api/crm/clients', { params }),
-  getClient:          (id)         => api.get(`/api/crm/clients/${id}`),
-  createClient:       (data)       => api.post('/api/crm/clients', data),
-  updateClient:       (id, data)   => api.put(`/api/crm/clients/${id}`, data),
-  deleteClient:       (id)         => api.delete(`/api/crm/clients/${id}`),
-  logActivity:        (id, data)   => api.post(`/api/crm/clients/${id}/activities`, data),
-  createFollowup:     (id, data)   => api.post(`/api/crm/clients/${id}/followups`, data),
-  updateFollowup:     (id, data)   => api.put(`/api/crm/followups/${id}`, data),
-  deleteFollowup:     (id)         => api.delete(`/api/crm/followups/${id}`),
+  stats:              ()           => crmApi.get('/api/crm/stats'),
+  upcomingFollowups:  ()           => crmApi.get('/api/crm/followups/upcoming'),
+  listClients:        (params)     => crmApi.get('/api/crm/clients', { params }),
+  getClient:          (id)         => crmApi.get(`/api/crm/clients/${id}`),
+  createClient:       (data)       => crmApi.post('/api/crm/clients', data),
+  updateClient:       (id, data)   => crmApi.put(`/api/crm/clients/${id}`, data),
+  deleteClient:       (id)         => crmApi.delete(`/api/crm/clients/${id}`),
+  logActivity:        (id, data)   => crmApi.post(`/api/crm/clients/${id}/activities`, data),
+  createFollowup:     (id, data)   => crmApi.post(`/api/crm/clients/${id}/followups`, data),
+  updateFollowup:     (id, data)   => crmApi.put(`/api/crm/followups/${id}`, data),
+  deleteFollowup:     (id)         => crmApi.delete(`/api/crm/followups/${id}`),
 }
 
 // ================================================================
