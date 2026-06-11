@@ -21,7 +21,11 @@ export const TEMPLATE_NAMES = {
   CONFIRMACION_PAGO:    { name: 'kollybry_confirmacion_pago',       lang: 'es'    },
   // Payments — SPEI/CLABE add-on (es_MX — not yet registered in Meta)
   RECORDATORIO_SPEI:    { name: 'kollybry_recordatorio_spei',       lang: 'es_MX' },
-  // Announcements (es)
+  // Announcements
+  // COMUNICADO_UTIL is the UTILITY-category version (approved 2026-06-10):
+  // exempt from Meta's per-user marketing frequency cap, so school notices
+  // always deliver. Same 2 body params as the old marketing template.
+  COMUNICADO_UTIL:      { name: 'kollybry_comunicado_util',         lang: 'es_MX' },
   COMUNICADO:           { name: 'kollybry_comunicado',              lang: 'es'    },
   COMUNICADO_IMAGEN:    { name: 'kollybry_comunicado_imagen',       lang: 'es'    },
 }

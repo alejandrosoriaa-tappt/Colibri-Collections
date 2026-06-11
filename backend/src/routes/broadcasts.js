@@ -28,7 +28,33 @@ router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
       limit: Number(limit),
       offset
     })
-    return res.json({ broadcasts: data, total: count })
+
+    // Aggregate delivery/read KPIs from message_logs per broadcast.
+    // (clicked_count needs a link-redirect tracker; WhatsApp doesn't report clicks.)
+    const ids = (data || []).map(b => b.id)
+    const stats = {}
+    if (ids.length > 0) {
+      const { data: logs, error: logErr } = await supabase
+        .from('message_logs')
+        .select('broadcast_id, delivered_at, read_at')
+        .in('broadcast_id', ids)
+      if (!logErr) {
+        for (const l of logs || []) {
+          const s = stats[l.broadcast_id] || (stats[l.broadcast_id] = { delivered: 0, read: 0 })
+          if (l.read_at) { s.read++; s.delivered++ } // read implies delivered
+          else if (l.delivered_at) s.delivered++
+        }
+      }
+    }
+
+    const broadcasts = (data || []).map(b => ({
+      ...b,
+      delivered_count: stats[b.id]?.delivered || 0,
+      read_count: stats[b.id]?.read || 0,
+      clicked_count: 0
+    }))
+
+    return res.json({ broadcasts, total: count })
   } catch (err) {
     console.error('GET /broadcasts error:', err)
     return res.status(500).json({ error: err.message })
@@ -164,9 +190,11 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     console.warn('Broadcast: could not load tenant name:', e.message)
   }
 
-  // Determine which template to use
+  // Determine which template to use. Text comunicados go out as UTILITY
+  // (kollybry_comunicado_util) so they're exempt from Meta's per-user
+  // marketing frequency cap; the image template only exists as MARKETING.
   const useImage = !!(media_url && media_type?.startsWith('image'))
-  const tpl = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO
+  const tpl = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO_UTIL
 
   for (const contact of contacts) {
     try {
