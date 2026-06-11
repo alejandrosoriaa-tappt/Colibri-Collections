@@ -170,6 +170,23 @@ export const teamAPI = {
 }
 
 // ================================================================
+// CRM
+// ================================================================
+export const crmAPI = {
+  stats:              ()           => api.get('/api/crm/stats'),
+  upcomingFollowups:  ()           => api.get('/api/crm/followups/upcoming'),
+  listClients:        (params)     => api.get('/api/crm/clients', { params }),
+  getClient:          (id)         => api.get(`/api/crm/clients/${id}`),
+  createClient:       (data)       => api.post('/api/crm/clients', data),
+  updateClient:       (id, data)   => api.put(`/api/crm/clients/${id}`, data),
+  deleteClient:       (id)         => api.delete(`/api/crm/clients/${id}`),
+  logActivity:        (id, data)   => api.post(`/api/crm/clients/${id}/activities`, data),
+  createFollowup:     (id, data)   => api.post(`/api/crm/clients/${id}/followups`, data),
+  updateFollowup:     (id, data)   => api.put(`/api/crm/followups/${id}`, data),
+  deleteFollowup:     (id)         => api.delete(`/api/crm/followups/${id}`),
+}
+
+// ================================================================
 // ADMIN
 // ================================================================
 export const adminAPI = {
