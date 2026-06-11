@@ -36,13 +36,17 @@ router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
     if (ids.length > 0) {
       const { data: logs, error: logErr } = await supabase
         .from('message_logs')
-        .select('broadcast_id, delivered_at, read_at')
+        .select('broadcast_id, status, delivered_at, read_at')
         .in('broadcast_id', ids)
       if (!logErr) {
         for (const l of logs || []) {
           const s = stats[l.broadcast_id] || (stats[l.broadcast_id] = { delivered: 0, read: 0 })
-          if (l.read_at) { s.read++; s.delivered++ } // read implies delivered
-          else if (l.delivered_at) s.delivered++
+          // status is the source of truth (webhook always updates it);
+          // timestamps were only added later, so use both. read ⇒ delivered.
+          const isRead = !!l.read_at || l.status === 'read'
+          const isDelivered = isRead || !!l.delivered_at || l.status === 'delivered'
+          if (isRead) s.read++
+          if (isDelivered) s.delivered++
         }
       }
     }
