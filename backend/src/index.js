@@ -18,6 +18,7 @@ import adminRouter from './routes/admin.js'
 import broadcastsRouter from './routes/broadcasts.js'
 import settingsRouter from './routes/settings.js'
 import sheetsRouter from './routes/sheets.js'
+import crmRouter from './routes/crm.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -96,6 +97,7 @@ app.use('/api/admin', adminRouter)
 app.use('/api/broadcasts', broadcastsRouter)
 app.use('/api/settings', settingsRouter)
 app.use('/api/sheets', sheetsRouter)
+app.use('/api/crm', crmRouter)
 
 // 404 handler
 app.use((req, res) => {
