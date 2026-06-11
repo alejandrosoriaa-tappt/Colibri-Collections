@@ -1,10 +1,9 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
-import supabase from '../services/supabase.js'
+import pool from '../services/railwayPg.js'
 
 const router = Router()
-
 router.use(authMiddleware)
 router.use(inferTenantGuard)
 
@@ -12,51 +11,57 @@ router.use(inferTenantGuard)
 
 router.get('/stats', async (req, res) => {
   const { tenantId } = req
+  try {
+    const [clientsRes, followupsRes] = await Promise.all([
+      pool.query('SELECT status, prioridad FROM crm_clients WHERE tenant_id = $1', [tenantId]),
+      pool.query(
+        'SELECT id FROM crm_followups WHERE tenant_id = $1 AND completado = false AND fecha_recordatorio >= NOW()',
+        [tenantId]
+      )
+    ])
 
-  const [clientsRes, followupsRes] = await Promise.all([
-    supabase.from('crm_clients').select('status, prioridad').eq('tenant_id', tenantId),
-    supabase.from('crm_followups')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .eq('completado', false)
-      .gte('fecha_recordatorio', new Date().toISOString())
-  ])
+    const por_status = {}
+    const por_prioridad = {}
+    clientsRes.rows.forEach(c => {
+      por_status[c.status] = (por_status[c.status] || 0) + 1
+      por_prioridad[c.prioridad] = (por_prioridad[c.prioridad] || 0) + 1
+    })
 
-  if (clientsRes.error) return res.status(500).json({ error: clientsRes.error.message })
-
-  const clients = clientsRes.data || []
-  const por_status = {}
-  const por_prioridad = {}
-
-  clients.forEach(c => {
-    por_status[c.status] = (por_status[c.status] || 0) + 1
-    por_prioridad[c.prioridad] = (por_prioridad[c.prioridad] || 0) + 1
-  })
-
-  res.json({
-    total: clients.length,
-    por_status,
-    por_prioridad,
-    followups_pendientes: followupsRes.data?.length || 0
-  })
+    res.json({
+      total: clientsRes.rows.length,
+      por_status,
+      por_prioridad,
+      followups_pendientes: followupsRes.rows.length
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Upcoming follow-ups ───────────────────────────────────────────────────────
 
 router.get('/followups/upcoming', async (req, res) => {
   const { tenantId } = req
-
-  const { data, error } = await supabase
-    .from('crm_followups')
-    .select('*, crm_clients(id, razon_social, nombre_contacto)')
-    .eq('tenant_id', tenantId)
-    .eq('completado', false)
-    .gte('fecha_recordatorio', new Date().toISOString())
-    .order('fecha_recordatorio', { ascending: true })
-    .limit(20)
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.json(data)
+  try {
+    const result = await pool.query(`
+      SELECT f.*,
+        json_build_object(
+          'id',              c.id,
+          'razon_social',    c.razon_social,
+          'nombre_contacto', c.nombre_contacto
+        ) AS crm_clients
+      FROM crm_followups f
+      JOIN crm_clients c ON c.id = f.client_id
+      WHERE f.tenant_id = $1
+        AND f.completado = false
+        AND f.fecha_recordatorio >= NOW()
+      ORDER BY f.fecha_recordatorio ASC
+      LIMIT 20
+    `, [tenantId])
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Clients list ──────────────────────────────────────────────────────────────
@@ -65,19 +70,23 @@ router.get('/clients', async (req, res) => {
   const { tenantId } = req
   const { status, prioridad, q } = req.query
 
-  let query = supabase
-    .from('crm_clients')
-    .select('*')
-    .eq('tenant_id', tenantId)
-    .order('updated_at', { ascending: false })
+  const conditions = ['tenant_id = $1']
+  const values = [tenantId]
+  let i = 2
 
-  if (status) query = query.eq('status', status)
-  if (prioridad) query = query.eq('prioridad', prioridad)
-  if (q) query = query.ilike('razon_social', `%${q}%`)
+  if (status)   { conditions.push(`status = $${i++}`);              values.push(status) }
+  if (prioridad){ conditions.push(`prioridad = $${i++}`);           values.push(prioridad) }
+  if (q)        { conditions.push(`razon_social ILIKE $${i++}`);    values.push(`%${q}%`) }
 
-  const { data, error } = await query
-  if (error) return res.status(500).json({ error: error.message })
-  res.json(data)
+  try {
+    const result = await pool.query(
+      `SELECT * FROM crm_clients WHERE ${conditions.join(' AND ')} ORDER BY updated_at DESC`,
+      values
+    )
+    res.json(result.rows)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Single client ─────────────────────────────────────────────────────────────
@@ -85,20 +94,23 @@ router.get('/clients', async (req, res) => {
 router.get('/clients/:id', async (req, res) => {
   const { tenantId } = req
   const { id } = req.params
+  try {
+    const [clientRes, activitiesRes, followupsRes] = await Promise.all([
+      pool.query('SELECT * FROM crm_clients WHERE id = $1 AND tenant_id = $2', [id, tenantId]),
+      pool.query('SELECT * FROM crm_activities WHERE client_id = $1 AND tenant_id = $2 ORDER BY fecha DESC', [id, tenantId]),
+      pool.query('SELECT * FROM crm_followups WHERE client_id = $1 AND tenant_id = $2 ORDER BY fecha_recordatorio ASC', [id, tenantId])
+    ])
 
-  const [clientRes, activitiesRes, followupsRes] = await Promise.all([
-    supabase.from('crm_clients').select('*').eq('id', id).eq('tenant_id', tenantId).single(),
-    supabase.from('crm_activities').select('*').eq('client_id', id).eq('tenant_id', tenantId).order('fecha', { ascending: false }),
-    supabase.from('crm_followups').select('*').eq('client_id', id).eq('tenant_id', tenantId).order('fecha_recordatorio', { ascending: true })
-  ])
+    if (!clientRes.rows[0]) return res.status(404).json({ error: 'Cliente no encontrado' })
 
-  if (clientRes.error) return res.status(404).json({ error: 'Cliente no encontrado' })
-
-  res.json({
-    ...clientRes.data,
-    activities: activitiesRes.data || [],
-    followups: followupsRes.data || []
-  })
+    res.json({
+      ...clientRes.rows[0],
+      activities: activitiesRes.rows,
+      followups:  followupsRes.rows
+    })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Create client ─────────────────────────────────────────────────────────────
@@ -111,34 +123,27 @@ router.post('/clients', async (req, res) => {
     website, direccion, ciudad, estado, giro, notas, status, prioridad
   } = req.body
 
-  if (!razon_social?.trim()) {
-    return res.status(400).json({ error: 'La razón social es requerida' })
+  if (!razon_social?.trim()) return res.status(400).json({ error: 'La razón social es requerida' })
+
+  try {
+    const result = await pool.query(`
+      INSERT INTO crm_clients
+        (tenant_id, razon_social, nombre_contacto, cargo, telefono, email,
+         website, direccion, ciudad, estado, giro, notas, status, prioridad, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+      RETURNING *
+    `, [
+      tenantId, razon_social.trim(),
+      nombre_contacto || null, cargo    || null, telefono  || null,
+      email      || null, website  || null, direccion || null,
+      ciudad     || null, estado   || null, giro      || null,
+      notas      || null, status   || 'prospecto', prioridad || 'media',
+      userId
+    ])
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
   }
-
-  const { data, error } = await supabase
-    .from('crm_clients')
-    .insert({
-      tenant_id: tenantId,
-      razon_social: razon_social.trim(),
-      nombre_contacto: nombre_contacto || null,
-      cargo: cargo || null,
-      telefono: telefono || null,
-      email: email || null,
-      website: website || null,
-      direccion: direccion || null,
-      ciudad: ciudad || null,
-      estado: estado || null,
-      giro: giro || null,
-      notas: notas || null,
-      status: status || 'prospecto',
-      prioridad: prioridad || 'media',
-      created_by: userId
-    })
-    .select()
-    .single()
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.status(201).json(data)
 })
 
 // ── Update client ─────────────────────────────────────────────────────────────
@@ -146,26 +151,38 @@ router.post('/clients', async (req, res) => {
 router.put('/clients/:id', async (req, res) => {
   const { tenantId } = req
   const { id } = req.params
-  const updates = { ...req.body }
+  const {
+    razon_social, nombre_contacto, cargo, telefono, email,
+    website, direccion, ciudad, estado, giro, notas, status, prioridad
+  } = req.body
 
-  delete updates.id
-  delete updates.tenant_id
-  delete updates.created_by
-  delete updates.created_at
-  delete updates.activities
-  delete updates.followups
-  updates.updated_at = new Date().toISOString()
+  try {
+    const result = await pool.query(`
+      UPDATE crm_clients SET
+        razon_social    = COALESCE($3, razon_social),
+        nombre_contacto = $4,
+        cargo           = $5,
+        telefono        = $6,
+        email           = $7,
+        website         = $8,
+        direccion       = $9,
+        ciudad          = $10,
+        estado          = $11,
+        giro            = $12,
+        notas           = $13,
+        status          = COALESCE($14, status),
+        prioridad       = COALESCE($15, prioridad),
+        updated_at      = NOW()
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING *
+    `, [id, tenantId, razon_social, nombre_contacto, cargo, telefono, email,
+        website, direccion, ciudad, estado, giro, notas, status, prioridad])
 
-  const { data, error } = await supabase
-    .from('crm_clients')
-    .update(updates)
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-    .select()
-    .single()
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.json(data)
+    if (!result.rows[0]) return res.status(404).json({ error: 'Cliente no encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Delete client ─────────────────────────────────────────────────────────────
@@ -173,15 +190,12 @@ router.put('/clients/:id', async (req, res) => {
 router.delete('/clients/:id', async (req, res) => {
   const { tenantId } = req
   const { id } = req.params
-
-  const { error } = await supabase
-    .from('crm_clients')
-    .delete()
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.json({ ok: true })
+  try {
+    await pool.query('DELETE FROM crm_clients WHERE id = $1 AND tenant_id = $2', [id, tenantId])
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Log activity ──────────────────────────────────────────────────────────────
@@ -194,28 +208,19 @@ router.post('/clients/:id/activities', async (req, res) => {
 
   if (!tipo) return res.status(400).json({ error: 'El tipo de actividad es requerido' })
 
-  const { data, error } = await supabase
-    .from('crm_activities')
-    .insert({
-      client_id: id,
-      tenant_id: tenantId,
-      tipo,
-      descripcion: descripcion || null,
-      fecha: fecha || new Date().toISOString(),
-      created_by: userId
-    })
-    .select()
-    .single()
+  try {
+    const result = await pool.query(`
+      INSERT INTO crm_activities (client_id, tenant_id, tipo, descripcion, fecha, created_by)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *
+    `, [id, tenantId, tipo, descripcion || null, fecha || new Date().toISOString(), userId])
 
-  if (error) return res.status(500).json({ error: error.message })
+    await pool.query('UPDATE crm_clients SET updated_at = NOW() WHERE id = $1', [id])
 
-  await supabase
-    .from('crm_clients')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-
-  res.status(201).json(data)
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Schedule follow-up ────────────────────────────────────────────────────────
@@ -230,20 +235,17 @@ router.post('/clients/:id/followups', async (req, res) => {
     return res.status(400).json({ error: 'Fecha y descripción son requeridas' })
   }
 
-  const { data, error } = await supabase
-    .from('crm_followups')
-    .insert({
-      client_id: id,
-      tenant_id: tenantId,
-      fecha_recordatorio,
-      descripcion: descripcion.trim(),
-      created_by: userId
-    })
-    .select()
-    .single()
+  try {
+    const result = await pool.query(`
+      INSERT INTO crm_followups (client_id, tenant_id, fecha_recordatorio, descripcion, created_by)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [id, tenantId, fecha_recordatorio, descripcion.trim(), userId])
 
-  if (error) return res.status(500).json({ error: error.message })
-  res.status(201).json(data)
+    res.status(201).json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Toggle follow-up complete ─────────────────────────────────────────────────
@@ -253,16 +255,18 @@ router.put('/followups/:id', async (req, res) => {
   const { id } = req.params
   const { completado } = req.body
 
-  const { data, error } = await supabase
-    .from('crm_followups')
-    .update({ completado: Boolean(completado) })
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-    .select()
-    .single()
+  try {
+    const result = await pool.query(`
+      UPDATE crm_followups SET completado = $3
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING *
+    `, [id, tenantId, Boolean(completado)])
 
-  if (error) return res.status(500).json({ error: error.message })
-  res.json(data)
+    if (!result.rows[0]) return res.status(404).json({ error: 'Follow-up no encontrado' })
+    res.json(result.rows[0])
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Delete follow-up ──────────────────────────────────────────────────────────
@@ -270,15 +274,12 @@ router.put('/followups/:id', async (req, res) => {
 router.delete('/followups/:id', async (req, res) => {
   const { tenantId } = req
   const { id } = req.params
-
-  const { error } = await supabase
-    .from('crm_followups')
-    .delete()
-    .eq('id', id)
-    .eq('tenant_id', tenantId)
-
-  if (error) return res.status(500).json({ error: error.message })
-  res.json({ ok: true })
+  try {
+    await pool.query('DELETE FROM crm_followups WHERE id = $1 AND tenant_id = $2', [id, tenantId])
+    res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 export default router
