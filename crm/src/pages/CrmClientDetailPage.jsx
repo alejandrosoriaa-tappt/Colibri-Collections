@@ -384,7 +384,15 @@ export default function CrmClientDetailPage() {
             <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Field label="Giro / Industria" icon={<Briefcase size={14} />} editing={editing}>
                 {editing ? (
-                  <input name="giro" value={form.giro} onChange={handleChange} placeholder="Ej. Tecnología, Retail…" className={inputCls} />
+                  <select name="giro" value={form.giro} onChange={handleChange} className={inputCls}>
+                    <option value="">— Seleccionar —</option>
+                    <option value="Colegio">Colegio</option>
+                    <option value="Condominio">Condominio</option>
+                    <option value="Gimnasio">Gimnasio</option>
+                    <option value="Academia">Academia</option>
+                    <option value="Estudio">Estudio</option>
+                    <option value="Otro">Otro</option>
+                  </select>
                 ) : (
                   <span>{client?.giro || <Empty />}</span>
                 )}
