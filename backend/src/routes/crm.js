@@ -1,11 +1,17 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
-import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import pool from '../services/railwayPg.js'
 
 const router = Router()
 router.use(authMiddleware)
-router.use(inferTenantGuard)
+
+// Personal CRM: the authenticated user's own ID is the tenant scope.
+// No multi-tenant lookup needed — this CRM belongs to a single user (NKUVO Labs).
+router.use((req, res, next) => {
+  if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' })
+  req.tenantId = req.user.id
+  next()
+})
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
