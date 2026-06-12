@@ -17,9 +17,6 @@ import BroadcastsPage from './pages/BroadcastsPage.jsx'
 import MensajesPage from './pages/MensajesPage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import TenantsPage from './pages/admin/TenantsPage.jsx'
-import CrmDashboardPage from './pages/CrmDashboardPage.jsx'
-import CrmClientsPage from './pages/CrmClientsPage.jsx'
-import CrmClientDetailPage from './pages/CrmClientDetailPage.jsx'
 
 /**
  * Redirects to "/" if the current user's role doesn't allow this route.
@@ -67,11 +64,6 @@ export default function App() {
           <Route path="/campaigns/:id"   element={<RoleRoute><CampaignDetailPage /></RoleRoute>} />
           <Route path="/upload"          element={<RoleRoute><UploadPage /></RoleRoute>} />
           <Route path="/messages"        element={<RoleRoute><MessagesPage /></RoleRoute>} />
-
-          {/* CRM — owner only */}
-          <Route path="/crm"                    element={<RoleRoute><CrmDashboardPage /></RoleRoute>} />
-          <Route path="/crm/clients"            element={<RoleRoute><CrmClientsPage /></RoleRoute>} />
-          <Route path="/crm/clients/:id"        element={<RoleRoute><CrmClientDetailPage /></RoleRoute>} />
 
           {/* owner only */}
           <Route path="/settings"        element={<RoleRoute><SettingsPage /></RoleRoute>} />
