@@ -7,6 +7,16 @@ const useAuthStore = create((set) => ({
   isLoading: true,
   error: null,
 
+  loginWithGoogle: async () => {
+    const redirectTo = window.location.origin + '/crm'
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo }
+    })
+    if (error) return { success: false, error: error.message }
+    return { success: true }
+  },
+
   login: async (email, password) => {
     set({ isLoading: true, error: null })
     try {
@@ -62,8 +72,8 @@ const useAuthStore = create((set) => ({
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_OUT' || !session) {
     useAuthStore.setState({ user: null, session: null, isLoading: false })
-  } else if (event === 'TOKEN_REFRESHED' && session) {
-    useAuthStore.setState({ session, user: session.user })
+  } else if (session) {
+    useAuthStore.setState({ session, user: session.user, isLoading: false })
   }
 })
 

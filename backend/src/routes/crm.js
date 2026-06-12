@@ -1,11 +1,29 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
-import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import pool from '../services/railwayPg.js'
 
 const router = Router()
 router.use(authMiddleware)
-router.use(inferTenantGuard)
+
+// Personal CRM: the authenticated user's own ID is the tenant scope.
+// No multi-tenant lookup needed — this CRM belongs to a single user (NKUVO Labs).
+// CRM_ALLOWED_EMAILS (comma-separated) restricts access so Kollybry tenant
+// users sharing the same Supabase project can't reach the CRM.
+router.use((req, res, next) => {
+  if (!req.user?.id) return res.status(401).json({ error: 'Unauthorized' })
+
+  const allowed = (process.env.CRM_ALLOWED_EMAILS || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+
+  if (allowed.length && !allowed.includes(req.user.email?.toLowerCase())) {
+    return res.status(403).json({ error: 'Acceso restringido' })
+  }
+
+  req.tenantId = req.user.id
+  next()
+})
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
 
