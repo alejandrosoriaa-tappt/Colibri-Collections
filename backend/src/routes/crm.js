@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
 import pool from '../services/railwayPg.js'
+import { notifyFollowupCreated, notifyFollowupCancelled } from '../services/tappt.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -260,7 +261,16 @@ router.post('/clients/:id/followups', async (req, res) => {
       RETURNING *
     `, [id, tenantId, fecha_recordatorio, descripcion.trim(), userId])
 
-    res.status(201).json(result.rows[0])
+    const followup = result.rows[0]
+
+    // Notificar a Tappt (no bloquea la respuesta)
+    const clientRes = await pool.query(
+      'SELECT id, razon_social, nombre_contacto, telefono FROM crm_clients WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    )
+    notifyFollowupCreated(followup, clientRes.rows[0])
+
+    res.status(201).json(followup)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
@@ -281,6 +291,10 @@ router.put('/followups/:id', async (req, res) => {
     `, [id, tenantId, Boolean(completado)])
 
     if (!result.rows[0]) return res.status(404).json({ error: 'Follow-up no encontrado' })
+
+    // Si se marca como completado antes de la fecha, cancelar el recordatorio en Tappt
+    if (result.rows[0].completado) notifyFollowupCancelled(id)
+
     res.json(result.rows[0])
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -294,6 +308,7 @@ router.delete('/followups/:id', async (req, res) => {
   const { id } = req.params
   try {
     await pool.query('DELETE FROM crm_followups WHERE id = $1 AND tenant_id = $2', [id, tenantId])
+    notifyFollowupCancelled(id)
     res.json({ ok: true })
   } catch (err) {
     res.status(500).json({ error: err.message })
