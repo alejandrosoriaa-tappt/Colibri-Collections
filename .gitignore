@@ -6,3 +6,7 @@ backend/.env
 dashboard/.env
 *.env.local
 .DS_Store
+crm/node_modules/
+crm/dist/
+crm/.env
+crm/.env.production.local

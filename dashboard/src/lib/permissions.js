@@ -18,7 +18,7 @@ export const ROLE_LABELS = {
  * Paths are matched with startsWith so /campaigns covers /campaigns/:id.
  */
 const ROLE_ROUTES = {
-  owner:   ['/', '/mensajes', '/broadcasts', '/contacts', '/campaigns', '/upload', '/messages', '/settings', '/crm'],
+  owner:   ['/', '/mensajes', '/broadcasts', '/contacts', '/campaigns', '/upload', '/messages', '/settings'],
   billing: ['/', '/mensajes', '/broadcasts', '/contacts', '/campaigns', '/upload', '/messages'],
   comms:   ['/', '/mensajes', '/broadcasts'],
 }
@@ -40,7 +40,6 @@ export function canAccess(role, pathname) {
  */
 export const NAV_ITEMS = [
   { to: '/',         label: 'Inicio',         iconName: 'LayoutDashboard', exact: true,  roles: ['owner', 'billing', 'comms'] },
-  { to: '/crm',      label: 'CRM Clientes',   iconName: 'Briefcase',       exact: false, roles: ['owner'] },
   { to: '/mensajes', label: 'Mensajes',        iconName: 'MessageSquare',  exact: false, roles: ['owner', 'billing', 'comms'] },
   { to: '/contacts', label: 'Contactos',       iconName: 'Users',          exact: false, roles: ['owner', 'billing'] },
   { to: '/settings', label: 'Configuración',   iconName: 'Settings',       exact: false, roles: ['owner'] },
