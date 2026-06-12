@@ -215,7 +215,29 @@ export default function CrmClientDetailPage() {
   const statusCfg = STATUS_CONFIG[form.status] || STATUS_CONFIG.prospecto
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
+    <div className="max-w-5xl mx-auto space-y-5 pb-24 sm:pb-0">
+
+      {/* Mobile sticky save bar */}
+      {editing && (
+        <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-crm-surface border-t border-crm-outline-variant px-4 py-3 flex gap-3 shadow-md3-3">
+          <button
+            onClick={handleCancel}
+            className="flex-1 py-3 rounded-full border border-crm-outline-variant text-sm font-medium text-crm-on-surface-variant hover:bg-crm-surface-container transition-colors"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 bg-crm-primary text-crm-on-primary py-3 rounded-full text-sm font-medium shadow-md3-1 disabled:opacity-60"
+          >
+            {saving
+              ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              : <><Save size={15} /> {isNew ? 'Crear cliente' : 'Guardar'}</>
+            }
+          </button>
+        </div>
+      )}
 
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 text-sm text-crm-on-surface-variant">
@@ -284,8 +306,8 @@ export default function CrmClientDetailPage() {
                   </div>
                 </div>
 
-                {/* Edit / Save controls */}
-                <div className="flex gap-2 flex-shrink-0">
+                {/* Edit / Save controls — desktop */}
+                <div className="hidden sm:flex gap-2 flex-shrink-0">
                   {editing ? (
                     <>
                       <button
@@ -313,6 +335,24 @@ export default function CrmClientDetailPage() {
                     </button>
                   )}
                 </div>
+                {/* Cancel button — mobile only (save bar is at bottom) */}
+                {editing && (
+                  <button
+                    onClick={handleCancel}
+                    className="sm:hidden p-2 rounded-full hover:bg-black/10 text-crm-on-primary-container transition-colors flex-shrink-0"
+                    title="Cancelar"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+                {!editing && (
+                  <button
+                    onClick={() => setEditing(true)}
+                    className="sm:hidden flex items-center gap-1.5 bg-white/60 hover:bg-white/80 text-crm-on-primary-container px-3 py-1.5 rounded-full text-sm font-medium transition-colors flex-shrink-0"
+                  >
+                    <Edit2 size={14} /> Editar
+                  </button>
+                )}
               </div>
 
               {/* Status chips */}
