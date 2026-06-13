@@ -20,8 +20,8 @@ CREATE TABLE IF NOT EXISTS crm_clients (
   estado          TEXT,
   giro            TEXT,
   notas           TEXT,
-  status          TEXT        NOT NULL DEFAULT 'prospecto'
-    CHECK (status IN ('prospecto','contactado','negociacion','cliente','perdido','inactivo')),
+  status          TEXT        NOT NULL DEFAULT 'nuevo_registro'
+    CHECK (status IN ('nuevo_registro','prospecto','contactado','negociacion','cliente','perdido','inactivo')),
   prioridad       TEXT        NOT NULL DEFAULT 'media'
     CHECK (prioridad IN ('alta','media','baja')),
   created_by      UUID,
