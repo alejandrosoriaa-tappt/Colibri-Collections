@@ -722,6 +722,17 @@ function FamilyMessageModal({ label, groupLabel, members, onClose, onSent }) {
   // Only members with a phone actually receive the WhatsApp
   const recipients = members.filter(m => m.telefono)
 
+  // Group recipients by family for a clean summary (family names, not each person)
+  const familias = (() => {
+    const map = new Map()
+    for (const r of recipients) {
+      const fam = r.nombre_familia || `${r.nombre} ${r.apellido || ''}`.trim()
+      if (!map.has(fam)) map.set(fam, 0)
+      map.set(fam, map.get(fam) + 1)
+    }
+    return [...map.entries()] // [ [familia, #telefonos], ... ]
+  })()
+
   const handleSend = async (e) => {
     e.preventDefault()
     if (!title.trim() || !message.trim()) {
@@ -769,21 +780,20 @@ function FamilyMessageModal({ label, groupLabel, members, onClose, onSent }) {
             </div>
           )}
 
-          {/* Recipients */}
+          {/* Recipients — summarized by family, not by each person */}
           <div className="p-3 bg-md-surface-container-low rounded-xl">
             <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
-              Recibirán el mensaje ({recipients.length})
+              {familias.length} familia{familias.length !== 1 ? 's' : ''} · {recipients.length} {recipients.length === 1 ? 'teléfono' : 'teléfonos'}
             </p>
-            {recipients.length > 0 ? (
-              <ul className="space-y-0.5 max-h-36 overflow-y-auto">
-                {recipients.map(r => (
-                  <li key={r.id} className="text-sm text-md-on-surface flex items-center gap-2">
-                    <span>{r.nombre} {r.apellido || ''}</span>
-                    {r.nombre_familia && <span className="text-[10px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{r.nombre_familia}</span>}
-                    <span className="text-xs font-mono text-md-on-surface-variant">{r.telefono}</span>
-                  </li>
+            {familias.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                {familias.map(([fam, n]) => (
+                  <span key={fam} className="inline-flex items-center gap-1 text-sm px-2 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded-lg">
+                    {fam}
+                    {n > 1 && <span className="text-[10px] opacity-70">×{n}</span>}
+                  </span>
                 ))}
-              </ul>
+              </div>
             ) : (
               <p className="text-sm text-md-error">Sin teléfonos registrados en la selección</p>
             )}
