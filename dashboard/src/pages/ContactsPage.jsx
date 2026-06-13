@@ -713,7 +713,7 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
 }
 
 // ── Modal: Enviar mensaje directo a una familia ───────────────────────────────
-function FamilyMessageModal({ familia, members, onClose, onSent }) {
+function FamilyMessageModal({ label, groupLabel, members, onClose, onSent }) {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -729,7 +729,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
       return
     }
     if (recipients.length === 0) {
-      setError('Esta familia no tiene ningún teléfono registrado')
+      setError('No hay ningún teléfono registrado en la selección')
       return
     }
     setSending(true)
@@ -739,7 +739,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
         title: title.trim(),
         message: message.trim(),
         contact_ids: recipients.map(r => r.id),
-        group_filter: `Familia ${familia}`
+        group_filter: groupLabel
       })
       onSent(recipients.length)
     } catch (err) {
@@ -753,7 +753,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-md-outline-variant">
           <div>
-            <h2 className="font-semibold text-md-on-surface">Mensaje a familia {familia}</h2>
+            <h2 className="font-semibold text-md-on-surface">Mensaje a {label}</h2>
             <p className="text-xs text-md-on-surface-variant mt-0.5">Se enviará por WhatsApp</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container">
@@ -775,16 +775,17 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
               Recibirán el mensaje ({recipients.length})
             </p>
             {recipients.length > 0 ? (
-              <ul className="space-y-0.5">
+              <ul className="space-y-0.5 max-h-36 overflow-y-auto">
                 {recipients.map(r => (
                   <li key={r.id} className="text-sm text-md-on-surface flex items-center gap-2">
                     <span>{r.nombre} {r.apellido || ''}</span>
+                    {r.nombre_familia && <span className="text-[10px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{r.nombre_familia}</span>}
                     <span className="text-xs font-mono text-md-on-surface-variant">{r.telefono}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-md-error">Sin teléfonos registrados en esta familia</p>
+              <p className="text-sm text-md-error">Sin teléfonos registrados en la selección</p>
             )}
           </div>
 
@@ -804,7 +805,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
             <textarea
               className="input resize-none"
               rows={4}
-              placeholder={`Escribe aquí el mensaje para la familia ${familia}...`}
+              placeholder={`Escribe aquí el mensaje para ${label}...`}
               value={message}
               onChange={e => setMessage(e.target.value)}
               required
@@ -1017,12 +1018,14 @@ export default function ContactsPage() {
       )}
       {familyMsg && (
         <FamilyMessageModal
-          familia={familyMsg.familia}
+          label={familyMsg.label}
+          groupLabel={familyMsg.groupLabel}
           members={familyMsg.members}
           onClose={() => setFamilyMsg(null)}
           onSent={(n) => {
             setFamilyMsg(null)
-            showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''} de la familia`)
+            setSelected(new Set())
+            showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''}`)
           }}
         />
       )}
@@ -1160,6 +1163,24 @@ export default function ContactsPage() {
           <span className="text-sm font-medium text-md-on-primary-container flex-1">
             {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
           </span>
+          {isColegio && statusTab !== 'inactive' && (
+            <button
+              onClick={() => {
+                const members = contacts.filter(c => selected.has(c.id))
+                const fams = [...new Set(members.map(c => c.nombre_familia).filter(Boolean))]
+                const label = fams.length === 1 ? `familia ${fams[0]}` : `${fams.length} familias`
+                const groupLabel = fams.length === 1
+                  ? `Familia ${fams[0]}`
+                  : fams.length <= 3
+                  ? `Familias: ${fams.join(', ')}`
+                  : `Familias: ${fams.slice(0, 3).join(', ')} y ${fams.length - 3} más`
+                setFamilyMsg({ label, groupLabel, members })
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity"
+            >
+              <Send size={13} /> Enviar mensaje
+            </button>
+          )}
           {statusTab !== 'inactive' && (
             <button
               onClick={() => setConfirmDeactivate({ ids: selectedIds })}
@@ -1307,7 +1328,11 @@ export default function ContactsPage() {
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => setFamilyMsg({ familia, members: [...papas, ...alumnos] })}
+                              onClick={() => setFamilyMsg({
+                                label: `familia ${familia}`,
+                                groupLabel: `Familia ${familia}`,
+                                members: [...papas, ...alumnos]
+                              })}
                               title="Enviar mensaje a esta familia"
                               className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
                             >
