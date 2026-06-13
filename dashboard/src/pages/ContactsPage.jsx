@@ -879,6 +879,29 @@ export default function ContactsPage() {
   const [filtroSalon, setFiltroSalon] = useState('')
   const hasSchoolFilter = !!(filtroSeccion || filtroGrado || filtroSalon)
 
+  // Catálogo real del tenant (combinaciones sección/grado/salón presentes).
+  // Los filtros se construyen a partir de esto → se adaptan por tenant
+  // (Primaria/Secundaria en un colegio, Casa de Niños/Taller en Montessori).
+  const [catalog, setCatalog] = useState([])
+  useEffect(() => {
+    if (!isColegio) return
+    contactsAPI.catalog()
+      .then(res => setCatalog(res.data.combos || []))
+      .catch(() => setCatalog([]))
+  }, [isColegio])
+
+  // Opciones en cascada: grado depende de sección, salón de ambos.
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))]
+  const seccionOptions = uniq(catalog.map(c => c.seccion)).sort()
+  const gradoOptions = uniq(
+    catalog.filter(c => !filtroSeccion || c.seccion === filtroSeccion).map(c => c.grado)
+  ).sort()
+  const salonOptions = uniq(
+    catalog
+      .filter(c => (!filtroSeccion || c.seccion === filtroSeccion) && (!filtroGrado || c.grado === filtroGrado))
+      .map(c => c.salon)
+  ).sort()
+
   const alumnoMatchesFilter = (a) =>
     (!filtroSeccion || a.seccion === filtroSeccion) &&
     (!filtroGrado || a.grado === filtroGrado) &&
@@ -1105,20 +1128,18 @@ export default function ContactsPage() {
           <select
             className="input !w-auto text-sm"
             value={filtroSeccion}
-            onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado('') }}
+            onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado(''); setFiltroSalon('') }}
           >
             <option value="">Sección: todas</option>
-            {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
+            {seccionOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
             value={filtroGrado}
-            onChange={e => setFiltroGrado(e.target.value)}
+            onChange={e => { setFiltroGrado(e.target.value); setFiltroSalon('') }}
           >
             <option value="">Grado: todos</option>
-            {(filtroSeccion ? GRADOS[filtroSeccion] : ['1ro', '2do', '3ro', '4to', '5to', '6to']).map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
+            {gradoOptions.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
@@ -1126,7 +1147,7 @@ export default function ContactsPage() {
             onChange={e => setFiltroSalon(e.target.value)}
           >
             <option value="">Salón: todos</option>
-            {SALONES.map(s => <option key={s} value={s}>{s}</option>)}
+            {salonOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
           {hasSchoolFilter && (
@@ -1139,13 +1160,18 @@ export default function ContactsPage() {
               </button>
               <button
                 onClick={() => {
-                  // Collect the distinct groups of the students matching the filter
-                  const grupos = new Set()
-                  contacts.forEach(c => {
-                    if (c.relationship_type === 'student' && c.grupo && alumnoMatchesFilter(c)) grupos.add(c.grupo)
-                  })
-                  if (grupos.size > 0) {
-                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent([...grupos].join(','))}`)
+                  // Salones (grupos) que cumplen el filtro — tomados del CATÁLOGO
+                  // completo del tenant, no solo de la página visible.
+                  const grupos = uniq(
+                    catalog
+                      .filter(c =>
+                        (!filtroSeccion || c.seccion === filtroSeccion) &&
+                        (!filtroGrado || c.grado === filtroGrado) &&
+                        (!filtroSalon || c.salon === filtroSalon))
+                      .map(c => c.salon)
+                  )
+                  if (grupos.length > 0) {
+                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent(grupos.join(','))}`)
                   }
                 }}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity ml-auto"

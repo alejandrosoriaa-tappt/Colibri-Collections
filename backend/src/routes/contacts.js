@@ -133,6 +133,38 @@ router.get('/groups', authMiddleware, inferTenantGuard, async (req, res) => {
 })
 
 // ============================================================
+// GET /api/contacts/catalog
+// Distinct seccion/grado/salon combinations actually present for this
+// tenant. The Contactos filters build their options from this, so the
+// catalog adapts per tenant (a colegio shows Primaria/Secundaria, a
+// Montessori shows Casa de Niños/Taller, etc.) without hardcoding.
+// ============================================================
+router.get('/catalog', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .select('seccion, grado, salon')
+      .eq('tenant_id', req.tenantId)
+      .neq('status', 'inactive')
+    if (error) throw error
+
+    // Distinct {seccion, grado, salon} combos (any field may be null)
+    const seen = new Set()
+    const combos = []
+    for (const r of data) {
+      if (!r.seccion && !r.grado && !r.salon) continue
+      const key = `${r.seccion || ''}|${r.grado || ''}|${r.salon || ''}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      combos.push({ seccion: r.seccion || null, grado: r.grado || null, salon: r.salon || null })
+    }
+    return res.json({ combos })
+  } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// ============================================================
 // GET /api/contacts  — ?status=active|inactive|all
 // ============================================================
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {

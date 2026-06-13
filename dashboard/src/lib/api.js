@@ -76,6 +76,7 @@ export const campaignsAPI = {
 export const contactsAPI = {
   list: (params) => api.get('/api/contacts', { params }),
   groups: () => api.get('/api/contacts/groups'),
+  catalog: () => api.get('/api/contacts/catalog'),
   get: (id) => api.get(`/api/contacts/${id}`),
   create: (data) => api.post('/api/contacts', data),
   update: (id, data) => api.patch(`/api/contacts/${id}`, data),
@@ -137,7 +138,11 @@ export const broadcastsAPI = {
   list: (params) => api.get('/api/broadcasts', { params }),
   groups: () => api.get('/api/broadcasts/groups'),
   preview: (group) => api.get('/api/broadcasts/preview', { params: { group } }),
-  send: (data) => api.post('/api/broadcasts', data)
+  send: (data) => api.post('/api/broadcasts', data),
+  uploadMedia: (formData) => api.post('/api/broadcasts/media', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000
+  })
 }
 
 // ================================================================
