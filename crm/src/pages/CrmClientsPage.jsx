@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, Filter, ChevronRight, Building2, Phone,
-  MapPin, X, Briefcase
+  MapPin, X, Briefcase, ArrowUpDown, Clock, GitCommitHorizontal
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -39,6 +39,7 @@ export default function CrmClientsPage() {
   const giroTab         = searchParams.get('giro') || 'Todos'
   const statusFilter    = searchParams.get('status') || ''
   const prioridadFilter = searchParams.get('prioridad') || ''
+  const sortBy          = searchParams.get('sort') || 'pipeline'
 
   useEffect(() => {
     setLoading(true)
@@ -92,7 +93,7 @@ export default function CrmClientsPage() {
     return counts
   }, [allClients, giroTab])
 
-  // Filtered & sorted clients (pipeline order, then priority)
+  // Filtered & sorted clients
   const clients = useMemo(() => {
     let list = allClients
     if (giroTab !== 'Todos') list = list.filter(c => c.giro === giroTab)
@@ -102,11 +103,15 @@ export default function CrmClientsPage() {
       c.razon_social?.toLowerCase().includes(search.toLowerCase().trim())
     )
     return [...list].sort((a, b) => {
+      if (sortBy === 'reciente') {
+        return new Date(b.updated_at) - new Date(a.updated_at)
+      }
+      // pipeline: status order → priority
       const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
       if (si !== 0) return si
       return PRIO_ORDER.indexOf(a.prioridad) - PRIO_ORDER.indexOf(b.prioridad)
     })
-  }, [allClients, giroTab, statusFilter, prioridadFilter, search])
+  }, [allClients, giroTab, statusFilter, prioridadFilter, search, sortBy])
 
   const hasFilters = statusFilter || prioridadFilter || search
 
@@ -228,10 +233,37 @@ export default function CrmClientsPage() {
               </button>
             )
           })}
+
+          {/* Sort toggle */}
+          <div className="ml-auto flex items-center gap-1 bg-crm-surface-container rounded-full p-0.5">
+            <button
+              onClick={() => setFilter('sort', 'pipeline')}
+              title="Ordenar por pipeline"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                sortBy !== 'reciente'
+                  ? 'bg-crm-surface shadow-sm text-crm-on-surface'
+                  : 'text-crm-on-surface-variant hover:text-crm-on-surface'
+              }`}
+            >
+              <GitCommitHorizontal size={12} /> Pipeline
+            </button>
+            <button
+              onClick={() => setFilter('sort', 'reciente')}
+              title="Ordenar por más reciente"
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                sortBy === 'reciente'
+                  ? 'bg-crm-surface shadow-sm text-crm-on-surface'
+                  : 'text-crm-on-surface-variant hover:text-crm-on-surface'
+              }`}
+            >
+              <Clock size={12} /> Reciente
+            </button>
+          </div>
+
           {hasFilters && (
             <button
               onClick={clearFilters}
-              className="ml-auto px-2 py-1 rounded-full text-xs text-crm-on-surface-variant hover:text-crm-error transition-colors"
+              className="px-2 py-1 rounded-full text-xs text-crm-on-surface-variant hover:text-crm-error transition-colors"
               title="Limpiar filtros"
             >
               <X size={14} />
