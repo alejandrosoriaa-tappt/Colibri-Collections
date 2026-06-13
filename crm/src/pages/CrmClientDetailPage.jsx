@@ -8,21 +8,23 @@ import {
 import { crmAPI } from '../lib/api.js'
 
 const STATUS_OPTIONS = [
-  { value: 'prospecto',   label: 'Prospecto' },
-  { value: 'contactado',  label: 'Contactado' },
-  { value: 'negociacion', label: 'Negociación' },
-  { value: 'cliente',     label: 'Cliente' },
-  { value: 'perdido',     label: 'Perdido' },
-  { value: 'inactivo',    label: 'Inactivo' },
+  { value: 'nuevo_registro', label: 'Nuevo registro' },
+  { value: 'prospecto',      label: 'Prospecto' },
+  { value: 'contactado',     label: 'Contactado' },
+  { value: 'negociacion',    label: 'Negociación' },
+  { value: 'cliente',        label: 'Cliente' },
+  { value: 'perdido',        label: 'Perdido' },
+  { value: 'inactivo',       label: 'Inactivo' },
 ]
 
 const STATUS_CONFIG = {
-  prospecto:   { color: 'bg-slate-100 text-slate-700',    dot: 'bg-slate-400',  ring: 'ring-slate-300' },
-  contactado:  { color: 'bg-amber-100 text-amber-800',     dot: 'bg-amber-500',  ring: 'ring-amber-300' },
-  negociacion: { color: 'bg-orange-100 text-orange-800',   dot: 'bg-orange-500', ring: 'ring-orange-300' },
-  cliente:     { color: 'bg-green-100 text-green-800',     dot: 'bg-green-600',  ring: 'ring-green-300' },
-  perdido:     { color: 'bg-red-100 text-red-700',         dot: 'bg-red-500',    ring: 'ring-red-300' },
-  inactivo:    { color: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-400',   ring: 'ring-gray-300' },
+  nuevo_registro: { color: 'bg-blue-50 text-blue-700',       dot: 'bg-blue-400',   ring: 'ring-blue-300' },
+  prospecto:      { color: 'bg-slate-100 text-slate-700',    dot: 'bg-slate-400',  ring: 'ring-slate-300' },
+  contactado:     { color: 'bg-amber-100 text-amber-800',    dot: 'bg-amber-500',  ring: 'ring-amber-300' },
+  negociacion:    { color: 'bg-orange-100 text-orange-800',  dot: 'bg-orange-500', ring: 'ring-orange-300' },
+  cliente:        { color: 'bg-green-100 text-green-800',    dot: 'bg-green-600',  ring: 'ring-green-300' },
+  perdido:        { color: 'bg-red-100 text-red-700',        dot: 'bg-red-500',    ring: 'ring-red-300' },
+  inactivo:       { color: 'bg-gray-100 text-gray-500',      dot: 'bg-gray-400',   ring: 'ring-gray-300' },
 }
 
 const ACTIVITY_TYPES = [
@@ -59,7 +61,7 @@ function isOverdue(iso) {
 const BLANK = {
   razon_social: '', nombre_contacto: '', cargo: '', telefono: '',
   email: '', website: '', direccion: '', ciudad: '', estado: '',
-  giro: '', notas: '', status: 'prospecto', prioridad: 'media'
+  giro: '', notas: '', status: 'nuevo_registro', prioridad: 'media'
 }
 
 export default function CrmClientDetailPage() {

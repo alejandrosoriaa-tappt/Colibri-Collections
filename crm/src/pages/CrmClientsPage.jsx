@@ -1,57 +1,52 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, Filter, ChevronRight, Building2, Phone,
-  Mail, Globe, MapPin, Star, X, Briefcase
+  MapPin, X, Briefcase
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
 const STATUS_CONFIG = {
-  prospecto:   { label: 'Prospecto',   color: 'bg-slate-100 text-slate-700',    dot: 'bg-slate-400' },
-  contactado:  { label: 'Contactado',  color: 'bg-amber-100 text-amber-800',     dot: 'bg-amber-500' },
-  negociacion: { label: 'Negociación', color: 'bg-orange-100 text-orange-800',   dot: 'bg-orange-500' },
-  cliente:     { label: 'Cliente',     color: 'bg-green-100 text-green-800',     dot: 'bg-green-600' },
-  perdido:     { label: 'Perdido',     color: 'bg-red-100 text-red-700',         dot: 'bg-red-500' },
-  inactivo:    { label: 'Inactivo',    color: 'bg-gray-100 text-gray-500',       dot: 'bg-gray-400' },
+  nuevo_registro: { label: 'Nuevo registro', color: 'bg-blue-50 text-blue-700',     dot: 'bg-blue-400' },
+  prospecto:      { label: 'Prospecto',      color: 'bg-slate-100 text-slate-700',   dot: 'bg-slate-400' },
+  contactado:     { label: 'Contactado',     color: 'bg-amber-100 text-amber-800',   dot: 'bg-amber-500' },
+  negociacion:    { label: 'Negociación',    color: 'bg-orange-100 text-orange-800', dot: 'bg-orange-500' },
+  cliente:        { label: 'Cliente',        color: 'bg-green-100 text-green-800',   dot: 'bg-green-600' },
+  perdido:        { label: 'Perdido',        color: 'bg-red-100 text-red-700',       dot: 'bg-red-500' },
+  inactivo:       { label: 'Inactivo',       color: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
 }
+
+const STATUS_ORDER  = ['nuevo_registro', 'prospecto', 'contactado', 'negociacion', 'cliente', 'perdido', 'inactivo']
+const PRIO_ORDER    = ['alta', 'media', 'baja']
+const ALL_STATUSES  = STATUS_ORDER
+const GIRO_TABS     = ['Todos', 'Colegio', 'Condominio', 'Gimnasio', 'Academia', 'Estudio', 'Otro']
 
 const PRIORIDAD_CONFIG = {
-  alta:  { label: 'Alta',  color: 'text-red-600',   icon: '●●●' },
-  media: { label: 'Media', color: 'text-amber-600',  icon: '●●○' },
-  baja:  { label: 'Baja',  color: 'text-slate-400',  icon: '●○○' },
+  alta:  { label: 'Alta',  color: 'text-red-600',  icon: '●●●' },
+  media: { label: 'Media', color: 'text-amber-600', icon: '●●○' },
+  baja:  { label: 'Baja',  color: 'text-slate-400', icon: '●○○' },
 }
-
-const ALL_STATUSES = ['prospecto', 'contactado', 'negociacion', 'cliente', 'perdido', 'inactivo']
 const ALL_PRIORIDADES = ['alta', 'media', 'baja']
 
 export default function CrmClientsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [clients, setClients] = useState([])
+  const [allClients, setAllClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [deleting, setDeleting] = useState(null)
 
-  const statusFilter = searchParams.get('status') || ''
+  const giroTab         = searchParams.get('giro') || 'Todos'
+  const statusFilter    = searchParams.get('status') || ''
   const prioridadFilter = searchParams.get('prioridad') || ''
 
-  const load = useCallback(() => {
+  useEffect(() => {
     setLoading(true)
-    const params = {}
-    if (statusFilter) params.status = statusFilter
-    if (prioridadFilter) params.prioridad = prioridadFilter
-    if (search.trim()) params.q = search.trim()
-
-    crmAPI.listClients(params)
-      .then(r => setClients(r.data || []))
+    crmAPI.listClients({})
+      .then(r => setAllClients(r.data || []))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [statusFilter, prioridadFilter, search])
-
-  useEffect(() => {
-    const t = setTimeout(load, search ? 350 : 0)
-    return () => clearTimeout(t)
-  }, [load])
+  }, [])
 
   function setFilter(key, value) {
     const next = new URLSearchParams(searchParams)
@@ -72,7 +67,7 @@ export default function CrmClientsPage() {
     setDeleting(id)
     try {
       await crmAPI.deleteClient(id)
-      setClients(prev => prev.filter(c => c.id !== id))
+      setAllClients(prev => prev.filter(c => c.id !== id))
     } catch (err) {
       alert('Error al eliminar: ' + err.message)
     } finally {
@@ -80,10 +75,43 @@ export default function CrmClientsPage() {
     }
   }
 
+  // Count per giro tab (from all clients, no other filters applied)
+  const giroCounts = useMemo(() => {
+    const counts = { Todos: allClients.length }
+    GIRO_TABS.slice(1).forEach(g => {
+      counts[g] = allClients.filter(c => c.giro === g).length
+    })
+    return counts
+  }, [allClients])
+
+  // Status counts within current giro tab (before status/prioridad/search filter)
+  const statusCounts = useMemo(() => {
+    const base = giroTab === 'Todos' ? allClients : allClients.filter(c => c.giro === giroTab)
+    const counts = {}
+    ALL_STATUSES.forEach(s => { counts[s] = base.filter(c => c.status === s).length })
+    return counts
+  }, [allClients, giroTab])
+
+  // Filtered & sorted clients (pipeline order, then priority)
+  const clients = useMemo(() => {
+    let list = allClients
+    if (giroTab !== 'Todos') list = list.filter(c => c.giro === giroTab)
+    if (statusFilter)        list = list.filter(c => c.status === statusFilter)
+    if (prioridadFilter)     list = list.filter(c => c.prioridad === prioridadFilter)
+    if (search.trim())       list = list.filter(c =>
+      c.razon_social?.toLowerCase().includes(search.toLowerCase().trim())
+    )
+    return [...list].sort((a, b) => {
+      const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
+      if (si !== 0) return si
+      return PRIO_ORDER.indexOf(a.prioridad) - PRIO_ORDER.indexOf(b.prioridad)
+    })
+  }, [allClients, giroTab, statusFilter, prioridadFilter, search])
+
   const hasFilters = statusFilter || prioridadFilter || search
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
+    <div className="max-w-5xl mx-auto space-y-4">
 
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -106,7 +134,63 @@ export default function CrmClientsPage() {
         </button>
       </div>
 
-      {/* Search + filters */}
+      {/* Industry tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {GIRO_TABS.map(g => {
+          const count = giroCounts[g] || 0
+          const active = giroTab === g
+          if (g !== 'Todos' && count === 0) return null
+          return (
+            <button
+              key={g}
+              onClick={() => setFilter('giro', g === 'Todos' ? '' : g)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
+                active
+                  ? 'bg-crm-primary text-crm-on-primary border-transparent shadow-md3-1'
+                  : 'bg-crm-surface text-crm-on-surface-variant border-crm-outline-variant hover:bg-crm-surface-container'
+              }`}
+            >
+              {g}
+              {count > 0 && (
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  active ? 'bg-white/20 text-white' : 'bg-crm-surface-container text-crm-on-surface-variant'
+                }`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Pipeline status bar (clickable, shows counts) */}
+      <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {ALL_STATUSES.map(s => {
+          const cfg   = STATUS_CONFIG[s]
+          const count = statusCounts[s] || 0
+          if (count === 0) return null
+          const active = statusFilter === s
+          return (
+            <button
+              key={s}
+              onClick={() => setFilter('status', active ? '' : s)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                active
+                  ? `${cfg.color} border-transparent shadow-sm`
+                  : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
+              }`}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {cfg.label}
+              <span className={`px-1.5 py-0.5 rounded-full text-xs ${active ? 'bg-black/10' : 'bg-crm-surface-container'}`}>
+                {count}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Search + priority filters */}
       <div className="bg-crm-surface rounded-3xl border border-crm-outline-variant p-4 shadow-md3-1 space-y-3">
         <div className="relative">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-crm-on-surface-variant" />
@@ -124,64 +208,39 @@ export default function CrmClientsPage() {
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {/* Status filter */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <Filter size={13} className="text-crm-on-surface-variant" />
-            {ALL_STATUSES.map(s => {
-              const cfg = STATUS_CONFIG[s]
-              const active = statusFilter === s
-              return (
-                <button
-                  key={s}
-                  onClick={() => setFilter('status', active ? '' : s)}
-                  className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
-                    active
-                      ? `${cfg.color} border-transparent`
-                      : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
-                  }`}
-                >
-                  <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
-                  {cfg.label}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Priority filter */}
-          <div className="flex items-center gap-1.5 ml-auto">
-            {ALL_PRIORIDADES.map(p => {
-              const cfg = PRIORIDAD_CONFIG[p]
-              const active = prioridadFilter === p
-              return (
-                <button
-                  key={p}
-                  onClick={() => setFilter('prioridad', active ? '' : p)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                    active
-                      ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent'
-                      : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
-                  }`}
-                >
-                  <span className={active ? 'text-crm-on-primary-container' : cfg.color}>{cfg.icon}</span>
-                  {' '}{cfg.label}
-                </button>
-              )
-            })}
-            {hasFilters && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <Filter size={13} className="text-crm-on-surface-variant" />
+          {ALL_PRIORIDADES.map(p => {
+            const cfg    = PRIORIDAD_CONFIG[p]
+            const active = prioridadFilter === p
+            return (
               <button
-                onClick={clearFilters}
-                className="px-2 py-1 rounded-full text-xs text-crm-on-surface-variant hover:text-crm-error transition-colors"
-                title="Limpiar filtros"
+                key={p}
+                onClick={() => setFilter('prioridad', active ? '' : p)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  active
+                    ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent'
+                    : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
+                }`}
               >
-                <X size={14} />
+                <span className={active ? 'text-crm-on-primary-container' : cfg.color}>{cfg.icon}</span>
+                {' '}{cfg.label}
               </button>
-            )}
-          </div>
+            )
+          })}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="ml-auto px-2 py-1 rounded-full text-xs text-crm-on-surface-variant hover:text-crm-error transition-colors"
+              title="Limpiar filtros"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* List */}
+      {/* Client list */}
       {loading ? (
         <div className="flex items-center justify-center py-16">
           <div className="w-8 h-8 border-4 border-crm-primary border-t-transparent rounded-full animate-spin" />
@@ -190,12 +249,14 @@ export default function CrmClientsPage() {
         <div className="text-center py-16">
           <Briefcase size={40} className="text-crm-outline mx-auto mb-3" />
           <p className="text-crm-on-surface font-medium mb-1">
-            {hasFilters ? 'Sin resultados' : 'Aún no hay clientes'}
+            {hasFilters || giroTab !== 'Todos' ? 'Sin resultados' : 'Aún no hay clientes'}
           </p>
           <p className="text-sm text-crm-on-surface-variant mb-5">
-            {hasFilters ? 'Prueba otros filtros o busca con otras palabras.' : 'Agrega tu primer cliente para comenzar.'}
+            {hasFilters || giroTab !== 'Todos'
+              ? 'Prueba otros filtros o busca con otras palabras.'
+              : 'Agrega tu primer cliente para comenzar.'}
           </p>
-          {!hasFilters && (
+          {!hasFilters && giroTab === 'Todos' && (
             <button
               onClick={() => navigate('/crm/clients/new')}
               className="inline-flex items-center gap-2 bg-crm-primary text-crm-on-primary px-5 py-2.5 rounded-full text-sm font-medium"
@@ -221,7 +282,7 @@ export default function CrmClientsPage() {
 }
 
 function ClientRow({ client, onDelete, deleting }) {
-  const statusCfg = STATUS_CONFIG[client.status] || STATUS_CONFIG.prospecto
+  const statusCfg    = STATUS_CONFIG[client.status] || STATUS_CONFIG.prospecto
   const prioridadCfg = PRIORIDAD_CONFIG[client.prioridad] || PRIORIDAD_CONFIG.media
 
   return (
@@ -229,17 +290,15 @@ function ClientRow({ client, onDelete, deleting }) {
       to={`/crm/clients/${client.id}`}
       className="flex items-center gap-4 bg-crm-surface rounded-2xl border border-crm-outline-variant p-4 hover:bg-crm-surface-container-low hover:shadow-md3-2 transition-all group"
     >
-      {/* Avatar */}
       <div className="w-10 h-10 rounded-full bg-crm-primary-container flex items-center justify-center flex-shrink-0 font-bold text-crm-on-primary-container text-sm">
         {client.razon_social?.charAt(0)?.toUpperCase() || '?'}
       </div>
 
-      {/* Main info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-semibold text-crm-on-surface text-sm truncate">{client.razon_social}</span>
           {client.giro && (
-            <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2 py-0.5 rounded-full truncate">
+            <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2 py-0.5 rounded-full">
               {client.giro}
             </span>
           )}
@@ -264,7 +323,6 @@ function ClientRow({ client, onDelete, deleting }) {
         </div>
       </div>
 
-      {/* Priority + Status */}
       <div className="flex items-center gap-2 flex-shrink-0">
         <span className={`text-xs font-bold ${prioridadCfg.color}`} title={`Prioridad ${prioridadCfg.label}`}>
           {prioridadCfg.icon}
@@ -275,7 +333,6 @@ function ClientRow({ client, onDelete, deleting }) {
         </span>
       </div>
 
-      {/* Delete (visible on hover) */}
       <button
         onClick={e => onDelete(e, client.id)}
         disabled={deleting}
