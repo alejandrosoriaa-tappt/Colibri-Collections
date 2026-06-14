@@ -135,8 +135,8 @@ Devuelve EXACTAMENTE este JSON:
     model: MODEL,
     max_tokens: 2000,
     thinking: { type: 'adaptive' },
+    system,
     messages: [
-      { role: 'system', content: system },
       { role: 'user', content: prompt }
     ]
   })
