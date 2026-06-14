@@ -324,7 +324,7 @@ function FamiliesPreview({ g, onPatch }) {
           {resueltas.map((f, i) => (
             <div key={i} className="flex items-center justify-between text-xs bg-md-surface-container-low rounded-lg px-3 py-1.5">
               <span className="text-md-on-surface truncate">
-                {f.alumno}
+                {f.nombre_familia || f.alumno}
                 <span className="text-md-on-surface-variant"> · {f.recipients.length} 📱</span>
               </span>
               <span className="text-md-on-surface-variant flex-shrink-0">{fmtMoney(f.monto)}</span>
