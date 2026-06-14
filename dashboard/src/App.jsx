@@ -9,6 +9,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import CampaignsPage from './pages/CampaignsPage.jsx'
 import CampaignDetailPage from './pages/CampaignDetailPage.jsx'
+import CobranzaPage from './pages/CobranzaPage.jsx'
 import UploadPage from './pages/UploadPage.jsx'
 import ContactsPage from './pages/ContactsPage.jsx'
 import MessagesPage from './pages/MessagesPage.jsx'
@@ -60,6 +61,7 @@ export default function App() {
 
           {/* billing + owner */}
           <Route path="/contacts"        element={<RoleRoute><ContactsPage /></RoleRoute>} />
+          <Route path="/cobranza"        element={<RoleRoute><CobranzaPage /></RoleRoute>} />
           <Route path="/campaigns"       element={<RoleRoute><CampaignsPage /></RoleRoute>} />
           <Route path="/campaigns/:id"   element={<RoleRoute><CampaignDetailPage /></RoleRoute>} />
           <Route path="/upload"          element={<RoleRoute><UploadPage /></RoleRoute>} />

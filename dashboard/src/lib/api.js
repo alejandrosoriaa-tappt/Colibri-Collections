@@ -99,6 +99,17 @@ export const contactsAPI = {
 }
 
 // ================================================================
+// COBRANZA POR COLOR
+// ================================================================
+export const cobranzaAPI = {
+  analyze: (formData) => api.post('/api/cobranza/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  }),
+  commit: (campaigns) => api.post('/api/cobranza/commit', { campaigns }, { timeout: 120000 })
+}
+
+// ================================================================
 // INVOICES
 // ================================================================
 export const invoicesAPI = {

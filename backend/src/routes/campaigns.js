@@ -330,6 +330,7 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
       const lateFee = Number(campaign.late_fee_pct) || 0
       const vars = {
         nombre: contact.nombre,
+        alumno: contact.nombre_alumno || '',
         monto: invoice.monto,
         monto_con_recargo: calculateAmountWithLateFee(invoice.monto, lateFee),
         liga_pago: invoice.liga_pago || tenant?.payment_link_general || '',

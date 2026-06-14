@@ -35,7 +35,7 @@ export async function getCampaignMessages(campaignId) {
 export async function getInvoices({ campaign_id, status } = {}) {
   let query = supabase
     .from('invoices')
-    .select('*, contacts(id, nombre, apellido, telefono, grupo), campaigns(id, name, concept)')
+    .select('*, contacts(id, nombre, apellido, telefono, grupo, nombre_alumno), campaigns(id, name, concept)')
 
   if (campaign_id) query = query.eq('campaign_id', campaign_id)
   if (status) query = query.eq('status', status)

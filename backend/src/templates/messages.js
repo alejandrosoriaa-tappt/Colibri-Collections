@@ -3,6 +3,7 @@ export function buildMessage(template, vars = {}) {
 
   const replacements = {
     '{nombre}': vars.nombre || '',
+    '{alumno}': vars.alumno || '',
     '{monto}': vars.monto ? formatCurrency(vars.monto) : '',
     '{monto_con_recargo}': vars.monto_con_recargo ? formatCurrency(vars.monto_con_recargo) : '',
     '{liga_pago}': vars.liga_pago || '',
