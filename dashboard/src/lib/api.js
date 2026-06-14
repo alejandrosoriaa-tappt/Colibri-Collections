@@ -90,7 +90,12 @@ export const contactsAPI = {
     timeout: 60000
   }),
   cleanup: () => api.post('/api/contacts/cleanup'),
-  getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } })
+  getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } }),
+  aiAnalyze: (formData) => api.post('/api/contacts/ai-import/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  }),
+  aiCommit: (contacts) => api.post('/api/contacts/ai-import/commit', { contacts }, { timeout: 120000 })
 }
 
 // ================================================================

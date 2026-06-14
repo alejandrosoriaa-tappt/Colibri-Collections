@@ -8,6 +8,7 @@
     "migrate:crm": "node scripts/migrate-crm.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.104.1",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.0",
     "cors": "^2.8.5",

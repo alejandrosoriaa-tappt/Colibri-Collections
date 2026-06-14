@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, Users, Loader2, ChevronLeft, ChevronRight, UserPlus,
   X, CheckCircle2, AlertCircle, UserMinus, UserCheck, Trash2,
-  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send
+  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send, Sparkles, FileSpreadsheet
 } from 'lucide-react'
 import { contactsAPI, uploadAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -841,6 +841,161 @@ function FamilyMessageModal({ label, groupLabel, members, onClose, onSent }) {
   )
 }
 
+// ── Modal: Importar contactos con IA ──────────────────────────────────────────
+function AiImportModal({ onClose, onDone }) {
+  const [stage, setStage] = useState('upload')   // upload | analyzing | preview | committing
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)     // { mapping, summary, contacts }
+  const fileRef = useRef(null)
+
+  const handleFile = async (file) => {
+    if (!file) return
+    setError(null); setStage('analyzing')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await contactsAPI.aiAnalyze(fd)
+      setResult(res.data)
+      setStage('preview')
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo analizar el archivo')
+      setStage('upload')
+    }
+  }
+
+  const handleCommit = async () => {
+    setStage('committing'); setError(null)
+    try {
+      const res = await contactsAPI.aiCommit(result.contacts)
+      onDone(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo importar')
+      setStage('preview')
+    }
+  }
+
+  const m = result?.mapping
+  const s = result?.summary
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-md-outline-variant">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-md-primary" />
+            <div>
+              <h2 className="font-semibold text-md-on-surface">Importar contactos con IA</h2>
+              <p className="text-xs text-md-on-surface-variant mt-0.5">Sube tu lista en el formato que ya usas</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container">
+            <X size={18} className="text-md-on-surface-variant" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+              <AlertCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {stage === 'upload' && (
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-md-outline-variant rounded-2xl p-10 text-center cursor-pointer hover:border-md-primary hover:bg-md-primary-container/10 transition-colors"
+            >
+              <FileSpreadsheet size={36} className="text-md-on-surface-variant mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">Arrastra o haz clic para subir tu Excel/CSV</p>
+              <p className="text-xs text-md-on-surface-variant mt-1">
+                La IA detecta tus columnas, limpia teléfonos y acomoda los datos automáticamente
+              </p>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])} />
+            </div>
+          )}
+
+          {stage === 'analyzing' && (
+            <div className="py-12 text-center">
+              <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">La IA está leyendo tu archivo…</p>
+              <p className="text-xs text-md-on-surface-variant mt-1">Detectando columnas y normalizando (puede tardar ~10-20 seg)</p>
+            </div>
+          )}
+
+          {stage === 'preview' && result && (
+            <div className="space-y-4">
+              <div className="p-3 bg-md-primary-container/20 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles size={14} className="text-md-primary" />
+                  <span className="text-sm font-medium text-md-on-surface">Esto entendió la IA</span>
+                  <span className="ml-auto text-xs px-2 py-0.5 bg-md-primary-container text-md-on-primary-container rounded-full">
+                    {Math.round((m?.confidence || 0) * 100)}% confianza
+                  </span>
+                </div>
+                <p className="text-xs text-md-on-surface-variant leading-relaxed">{m?.notes}</p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Tipo: {m?.org_type}</span>
+                  {m?.has_family_structure && <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Estructura de familia</span>}
+                  {m?.sheet_is_salon && <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Pestaña = salón</span>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Contactos', value: s?.total_contactos },
+                  { label: 'Alumnos', value: s?.alumnos },
+                  { label: 'Con teléfono', value: s?.con_telefono }
+                ].map((x) => (
+                  <div key={x.label} className="bg-md-surface-container-low rounded-xl p-3 text-center">
+                    <div className="text-xl font-semibold text-md-on-surface">{x.value ?? 0}</div>
+                    <div className="text-[11px] text-md-on-surface-variant">{x.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {s?.grupos_lista?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
+                    Grupos/salones detectados ({s.grupos})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {s.grupos_lista.map((g) => (
+                      <span key={g} className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {m?.needs_admin_review && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">La IA no está del todo segura de este formato. Revisa el preview antes de confirmar.</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setStage('upload')} className="flex-1 btn-tonal text-sm">Otro archivo</button>
+                <button onClick={handleCommit} className="flex-1 btn-primary text-sm flex items-center justify-center gap-2">
+                  <CheckCircle2 size={14} /> Importar {s?.total_contactos} contactos
+                </button>
+              </div>
+            </div>
+          )}
+
+          {stage === 'committing' && (
+            <div className="py-12 text-center">
+              <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">Importando a tu base…</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 // ── Helper: Agrupar contactos por familia (para colegios) ────────────────────
 function groupByFamily(contacts) {
@@ -878,6 +1033,7 @@ export default function ContactsPage() {
   // Modals
   const [showAdd, setShowAdd] = useState(false)
   const [showSync, setShowSync] = useState(false)
+  const [showAiImport, setShowAiImport] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(null) // { ids }
   const [confirmDelete, setConfirmDelete] = useState(null)         // { ids }
   const [familyMsg, setFamilyMsg] = useState(null)                 // { familia, members }
@@ -1033,6 +1189,16 @@ export default function ContactsPage() {
           orgType={orgType}
         />
       )}
+      {showAiImport && (
+        <AiImportModal
+          onClose={() => setShowAiImport(false)}
+          onDone={(r) => {
+            setShowAiImport(false)
+            showToast(`Importados ${r.inserted} contactos${r.skipped ? ` (${r.skipped} duplicados omitidos)` : ''}`)
+            load()
+          }}
+        />
+      )}
       {confirmDeactivate && (
         <ConfirmDeactivateModal
           count={confirmDeactivate.ids.length}
@@ -1082,6 +1248,12 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowAiImport(true)}
+            className="btn-outline text-sm flex items-center gap-2 border-md-primary/40 text-md-primary"
+          >
+            <Sparkles size={14} /> Importar con IA
+          </button>
           <button
             onClick={() => setShowSync(true)}
             className="btn-outline text-sm flex items-center gap-2"

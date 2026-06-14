@@ -7,6 +7,7 @@ import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import { createConektaCustomer, isConektaConfigured } from '../services/conekta.js'
 import { buildEscolarGrupo } from '../utils/schoolCatalog.js'
+import { analyzeContactsFile } from '../services/aiImport.js'
 import supabase, {
   getContactsByTenant,
   getContact,
@@ -160,6 +161,69 @@ router.get('/catalog', authMiddleware, inferTenantGuard, async (req, res) => {
     }
     return res.json({ combos })
   } catch (err) {
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// ============================================================
+// POST /api/contacts/ai-import/analyze
+// Sube el archivo del tenant EN SU PROPIO FORMATO. La IA (Claude)
+// detecta las columnas, normaliza y devuelve un PREVIEW — no inserta.
+// ============================================================
+router.post('/ai-import/analyze', authMiddleware, inferTenantGuard, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' })
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: 'La importación con IA no está configurada (falta ANTHROPIC_API_KEY)' })
+    }
+    const result = await analyzeContactsFile(req.file.buffer)
+    return res.json(result)
+  } catch (err) {
+    console.error('POST /contacts/ai-import/analyze error:', err)
+    return res.status(500).json({ error: 'No se pudo analizar el archivo: ' + err.message })
+  }
+})
+
+// ============================================================
+// POST /api/contacts/ai-import/commit
+// Inserta los contactos ya normalizados (confirmados por el tenant).
+// ============================================================
+router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { contacts } = req.body
+    if (!Array.isArray(contacts) || contacts.length === 0) {
+      return res.status(400).json({ error: 'No hay contactos para importar' })
+    }
+    const ALLOWED = ['nombre', 'apellido', 'telefono', 'email', 'seccion', 'grado', 'salon',
+                     'grupo', 'nombre_familia', 'relationship_type', 'nombre_alumno', 'id_externo']
+    const rows = contacts.map((c) => {
+      const row = { tenant_id: req.tenantId, status: 'active' }
+      for (const k of ALLOWED) row[k] = c[k] ?? null
+      return row
+    })
+
+    let inserted = 0, skipped = 0
+    const CHUNK = 200
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const slice = rows.slice(i, i + CHUNK)
+      const { data, error } = await supabase
+        .from('contacts')
+        .upsert(slice, { onConflict: 'tenant_id,telefono', ignoreDuplicates: true })
+        .select('id')
+      if (error) {
+        // si falla el lote completo, insertamos 1 por 1 para no perder todo
+        for (const one of slice) {
+          const { error: e1 } = await supabase.from('contacts').insert(one)
+          if (e1) skipped++; else inserted++
+        }
+      } else {
+        inserted += (data?.length || 0)
+        skipped += slice.length - (data?.length || 0)
+      }
+    }
+    return res.json({ inserted, skipped, total: rows.length })
+  } catch (err) {
+    console.error('POST /contacts/ai-import/commit error:', err)
     return res.status(500).json({ error: err.message })
   }
 })
