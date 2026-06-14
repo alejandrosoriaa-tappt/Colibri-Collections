@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, Filter, ChevronRight, Building2, Phone,
-  MapPin, X, Briefcase, ArrowUpDown, Clock, GitCommitHorizontal
+  MapPin, X, Briefcase, Clock, GitCommitHorizontal, Zap, Star, Calendar
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -28,6 +28,25 @@ const PRIORIDAD_CONFIG = {
 }
 const ALL_PRIORIDADES = ['alta', 'media', 'baja']
 
+function relativeTime(iso) {
+  if (!iso) return ''
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 60)          return 'Ahora'
+  if (diff < 3600)        return `Hace ${Math.floor(diff / 60)} min`
+  if (diff < 86400)       return `Hace ${Math.floor(diff / 3600)}h`
+  if (diff < 86400 * 2)   return 'Ayer'
+  if (diff < 86400 * 7)   return `Hace ${Math.floor(diff / 86400)} días`
+  if (diff < 86400 * 30)  return `Hace ${Math.floor(diff / 86400 / 7)} sem`
+  if (diff < 86400 * 365) return `Hace ${Math.floor(diff / 86400 / 30)} mes`
+  return `Hace ${Math.floor(diff / 86400 / 365)} año`
+}
+
+const QUICK_FILTERS = [
+  { key: 'q_sin_contactar', label: 'Sin contactar', icon: Zap,      color: 'text-blue-600',  bg: 'bg-blue-50' },
+  { key: 'q_esta_semana',   label: 'Esta semana',   icon: Calendar,  color: 'text-green-700', bg: 'bg-green-50' },
+  { key: 'q_alta',          label: 'Alta prioridad', icon: Star,     color: 'text-red-600',   bg: 'bg-red-50' },
+]
+
 export default function CrmClientsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -40,6 +59,7 @@ export default function CrmClientsPage() {
   const statusFilter    = searchParams.get('status') || ''
   const prioridadFilter = searchParams.get('prioridad') || ''
   const sortBy          = searchParams.get('sort') || 'pipeline'
+  const quickFilter     = searchParams.get('quick') || ''
 
   useEffect(() => {
     setLoading(true)
@@ -53,6 +73,20 @@ export default function CrmClientsPage() {
     const next = new URLSearchParams(searchParams)
     if (value) next.set(key, value)
     else next.delete(key)
+    setSearchParams(next)
+  }
+
+  function toggleQuick(key) {
+    const next = new URLSearchParams(searchParams)
+    // quick filters are mutually exclusive; also clear status/prioridad conflicts
+    if (quickFilter === key) {
+      next.delete('quick')
+    } else {
+      next.set('quick', key)
+      // clear conflicting filters
+      if (key === 'q_sin_contactar') next.delete('status')
+      if (key === 'q_alta')          next.delete('prioridad')
+    }
     setSearchParams(next)
   }
 
@@ -76,7 +110,6 @@ export default function CrmClientsPage() {
     }
   }
 
-  // Count per giro tab (from all clients, no other filters applied)
   const giroCounts = useMemo(() => {
     const counts = { Todos: allClients.length }
     GIRO_TABS.slice(1).forEach(g => {
@@ -85,7 +118,6 @@ export default function CrmClientsPage() {
     return counts
   }, [allClients])
 
-  // Status counts within current giro tab (before status/prioridad/search filter)
   const statusCounts = useMemo(() => {
     const base = giroTab === 'Todos' ? allClients : allClients.filter(c => c.giro === giroTab)
     const counts = {}
@@ -93,27 +125,36 @@ export default function CrmClientsPage() {
     return counts
   }, [allClients, giroTab])
 
-  // Filtered & sorted clients
   const clients = useMemo(() => {
+    const weekAgo = Date.now() - 7 * 86400 * 1000
     let list = allClients
     if (giroTab !== 'Todos') list = list.filter(c => c.giro === giroTab)
-    if (statusFilter)        list = list.filter(c => c.status === statusFilter)
-    if (prioridadFilter)     list = list.filter(c => c.prioridad === prioridadFilter)
-    if (search.trim())       list = list.filter(c =>
+
+    // Quick filters (override status/prioridad when active)
+    if (quickFilter === 'q_sin_contactar') {
+      list = list.filter(c => c.status === 'nuevo_registro')
+    } else if (quickFilter === 'q_esta_semana') {
+      list = list.filter(c => new Date(c.updated_at) >= weekAgo)
+    } else if (quickFilter === 'q_alta') {
+      list = list.filter(c => c.prioridad === 'alta')
+    } else {
+      if (statusFilter)    list = list.filter(c => c.status === statusFilter)
+      if (prioridadFilter) list = list.filter(c => c.prioridad === prioridadFilter)
+    }
+
+    if (search.trim()) list = list.filter(c =>
       c.razon_social?.toLowerCase().includes(search.toLowerCase().trim())
     )
+
     return [...list].sort((a, b) => {
-      if (sortBy === 'reciente') {
-        return new Date(b.updated_at) - new Date(a.updated_at)
-      }
-      // pipeline: status order → priority
+      if (sortBy === 'reciente') return new Date(b.updated_at) - new Date(a.updated_at)
       const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
       if (si !== 0) return si
       return PRIO_ORDER.indexOf(a.prioridad) - PRIO_ORDER.indexOf(b.prioridad)
     })
-  }, [allClients, giroTab, statusFilter, prioridadFilter, search, sortBy])
+  }, [allClients, giroTab, statusFilter, prioridadFilter, search, sortBy, quickFilter])
 
-  const hasFilters = statusFilter || prioridadFilter || search
+  const hasFilters = statusFilter || prioridadFilter || search || quickFilter
 
   return (
     <div className="max-w-5xl mx-auto space-y-4">
@@ -142,7 +183,7 @@ export default function CrmClientsPage() {
       {/* Industry tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {GIRO_TABS.map(g => {
-          const count = giroCounts[g] || 0
+          const count  = giroCounts[g] || 0
           const active = giroTab === g
           if (g !== 'Todos' && count === 0) return null
           return (
@@ -168,17 +209,17 @@ export default function CrmClientsPage() {
         })}
       </div>
 
-      {/* Pipeline status bar (clickable, shows counts) */}
+      {/* Pipeline status bar */}
       <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {ALL_STATUSES.map(s => {
           const cfg   = STATUS_CONFIG[s]
           const count = statusCounts[s] || 0
           if (count === 0) return null
-          const active = statusFilter === s
+          const active = statusFilter === s && !quickFilter
           return (
             <button
               key={s}
-              onClick={() => setFilter('status', active ? '' : s)}
+              onClick={() => { setFilter('status', active ? '' : s); setFilter('quick', '') }}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                 active
                   ? `${cfg.color} border-transparent shadow-sm`
@@ -195,7 +236,28 @@ export default function CrmClientsPage() {
         })}
       </div>
 
-      {/* Search + priority filters */}
+      {/* Quick filters */}
+      <div className="flex gap-2 flex-wrap">
+        {QUICK_FILTERS.map(({ key, label, icon: Icon, color, bg }) => {
+          const active = quickFilter === key
+          return (
+            <button
+              key={key}
+              onClick={() => toggleQuick(key)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                active
+                  ? `${bg} ${color} border-transparent shadow-sm`
+                  : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
+              }`}
+            >
+              <Icon size={12} />
+              {label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Search + priority + sort */}
       <div className="bg-crm-surface rounded-3xl border border-crm-outline-variant p-4 shadow-md3-1 space-y-3">
         <div className="relative">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-crm-on-surface-variant" />
@@ -217,11 +279,11 @@ export default function CrmClientsPage() {
           <Filter size={13} className="text-crm-on-surface-variant" />
           {ALL_PRIORIDADES.map(p => {
             const cfg    = PRIORIDAD_CONFIG[p]
-            const active = prioridadFilter === p
+            const active = prioridadFilter === p && !quickFilter
             return (
               <button
                 key={p}
-                onClick={() => setFilter('prioridad', active ? '' : p)}
+                onClick={() => { setFilter('prioridad', active ? '' : p); setFilter('quick', '') }}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   active
                     ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent'
@@ -238,7 +300,6 @@ export default function CrmClientsPage() {
           <div className="ml-auto flex items-center gap-1 bg-crm-surface-container rounded-full p-0.5">
             <button
               onClick={() => setFilter('sort', 'pipeline')}
-              title="Ordenar por pipeline"
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
                 sortBy !== 'reciente'
                   ? 'bg-crm-surface shadow-sm text-crm-on-surface'
@@ -249,7 +310,6 @@ export default function CrmClientsPage() {
             </button>
             <button
               onClick={() => setFilter('sort', 'reciente')}
-              title="Ordenar por más reciente"
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
                 sortBy === 'reciente'
                   ? 'bg-crm-surface shadow-sm text-crm-on-surface'
@@ -280,22 +340,8 @@ export default function CrmClientsPage() {
       ) : clients.length === 0 ? (
         <div className="text-center py-16">
           <Briefcase size={40} className="text-crm-outline mx-auto mb-3" />
-          <p className="text-crm-on-surface font-medium mb-1">
-            {hasFilters || giroTab !== 'Todos' ? 'Sin resultados' : 'Aún no hay clientes'}
-          </p>
-          <p className="text-sm text-crm-on-surface-variant mb-5">
-            {hasFilters || giroTab !== 'Todos'
-              ? 'Prueba otros filtros o busca con otras palabras.'
-              : 'Agrega tu primer cliente para comenzar.'}
-          </p>
-          {!hasFilters && giroTab === 'Todos' && (
-            <button
-              onClick={() => navigate('/crm/clients/new')}
-              className="inline-flex items-center gap-2 bg-crm-primary text-crm-on-primary px-5 py-2.5 rounded-full text-sm font-medium"
-            >
-              <Plus size={15} /> Agregar cliente
-            </button>
-          )}
+          <p className="text-crm-on-surface font-medium mb-1">Sin resultados</p>
+          <p className="text-sm text-crm-on-surface-variant mb-5">Prueba otros filtros o busca con otras palabras.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -316,6 +362,7 @@ export default function CrmClientsPage() {
 function ClientRow({ client, onDelete, deleting }) {
   const statusCfg    = STATUS_CONFIG[client.status] || STATUS_CONFIG.prospecto
   const prioridadCfg = PRIORIDAD_CONFIG[client.prioridad] || PRIORIDAD_CONFIG.media
+  const timeAgo      = relativeTime(client.updated_at)
 
   return (
     <Link
@@ -350,6 +397,11 @@ function ClientRow({ client, onDelete, deleting }) {
           {client.ciudad && (
             <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
               <MapPin size={10} /> {client.ciudad}
+            </span>
+          )}
+          {timeAgo && (
+            <span className="text-xs text-crm-on-surface-variant/60 flex items-center gap-1">
+              <Clock size={10} /> {timeAgo}
             </span>
           )}
         </div>
