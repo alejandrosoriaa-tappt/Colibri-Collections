@@ -1,24 +1,41 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Sparkles, FileSpreadsheet, Loader2, AlertCircle, AlertTriangle,
-  CircleDollarSign, Check, Users, ChevronDown, ChevronRight
+  CircleDollarSign, Check, Users, ChevronDown, ChevronRight, RotateCcw
 } from 'lucide-react'
 import { cobranzaAPI } from '../lib/api.js'
 
 const VARIABLES = ['{nombre}', '{alumno}', '{monto}', '{liga_pago}', '{concept}', '{nombre_org}']
+const DRAFT_KEY = 'cobranza_draft_v1'
 
 const fmtMoney = (n) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n) || 0)
 
+function saveDraft(result, groups) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ result, groups })) } catch {}
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch {}
+}
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null }
+}
+
 export default function CobranzaPage() {
   const navigate = useNavigate()
-  const [stage, setStage] = useState('upload')   // upload | analyzing | preview | committing | done
+  const draft = loadDraft()
+  const [stage, setStage] = useState(draft ? 'preview' : 'upload')
   const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)     // { mapping, summary, groups }
-  const [groups, setGroups] = useState([])        // editable copy
+  const [result, setResult] = useState(draft?.result || null)
+  const [groups, setGroups] = useState(draft?.groups || [])
   const [createdResult, setCreatedResult] = useState(null)
   const fileRef = useRef(null)
+
+  // Persist edits to draft whenever groups change
+  useEffect(() => {
+    if (stage === 'preview' && result) saveDraft(result, groups)
+  }, [groups, stage, result])
 
   const handleFile = async (file) => {
     if (!file) return
@@ -27,20 +44,26 @@ export default function CobranzaPage() {
       const fd = new FormData()
       fd.append('file', file)
       const res = await cobranzaAPI.analyze(fd)
+      const newGroups = (res.data.groups || []).map((g) => ({
+        ...g,
+        include: g.count_familias_resueltas > 0,
+        name: `${g.label} — ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`,
+        expanded: false
+      }))
       setResult(res.data)
-      setGroups(
-        (res.data.groups || []).map((g) => ({
-          ...g,
-          include: g.count_familias_resueltas > 0,
-          name: `${g.label} — ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`,
-          expanded: false
-        }))
-      )
+      setGroups(newGroups)
+      saveDraft(res.data, newGroups)
       setStage('preview')
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo analizar el reporte')
       setStage('upload')
     }
+  }
+
+  const handleNewFile = () => {
+    clearDraft()
+    setResult(null); setGroups([]); setCreatedResult(null); setError(null)
+    setStage('upload')
   }
 
   const patchGroup = (color, patch) =>
@@ -63,6 +86,7 @@ export default function CobranzaPage() {
             .flatMap((f) => f.recipients.map((r) => ({ contact_id: r.contact_id, monto: f.monto })))
         }))
       const res = await cobranzaAPI.commit(payload)
+      clearDraft()
       setCreatedResult(res.data)
       setStage('done')
     } catch (err) {
@@ -158,16 +182,24 @@ export default function CobranzaPage() {
 
           {/* Acciones */}
           <div className="flex items-center justify-between pt-2">
-            <p className="text-xs text-md-on-surface-variant">
-              Se crearán <strong>{includedCount}</strong> campaña(s) en borrador. Podrás editarlas y enviarlas desde Campañas.
-            </p>
             <button
-              onClick={handleCommit}
-              disabled={includedCount === 0}
-              className="px-5 py-2.5 rounded-full bg-md-primary text-md-on-primary text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              onClick={handleNewFile}
+              className="flex items-center gap-1.5 text-xs text-md-on-surface-variant hover:text-md-on-surface transition-colors"
             >
-              Crear {includedCount} campaña(s)
+              <RotateCcw size={13} /> Subir nuevo archivo
             </button>
+            <div className="flex items-center gap-3">
+              <p className="text-xs text-md-on-surface-variant">
+                <strong>{includedCount}</strong> campaña(s) en borrador
+              </p>
+              <button
+                onClick={handleCommit}
+                disabled={includedCount === 0}
+                className="px-5 py-2.5 rounded-full bg-md-primary text-md-on-primary text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+              >
+                Crear {includedCount} campaña(s)
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -200,12 +232,20 @@ export default function CobranzaPage() {
               </div>
             ))}
           </div>
-          <button
-            onClick={() => navigate('/campaigns')}
-            className="px-5 py-2.5 rounded-full bg-md-primary text-md-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            Ir a Campañas
-          </button>
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={handleNewFile}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-md-outline-variant text-sm text-md-on-surface-variant hover:bg-md-surface-container transition-colors"
+            >
+              <RotateCcw size={14} /> Nuevo archivo
+            </button>
+            <button
+              onClick={() => navigate('/campaigns')}
+              className="px-5 py-2.5 rounded-full bg-md-primary text-md-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              Ir a Campañas
+            </button>
+          </div>
         </div>
       )}
     </div>
