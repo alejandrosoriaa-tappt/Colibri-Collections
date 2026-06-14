@@ -7,15 +7,16 @@ import {
 import { crmAPI } from '../lib/api.js'
 
 const STATUS_CONFIG = {
-  prospecto:   { label: 'Prospecto',    color: 'bg-slate-100 text-slate-700',       dot: 'bg-slate-400' },
-  contactado:  { label: 'Contactado',   color: 'bg-amber-100 text-amber-800',        dot: 'bg-amber-500' },
-  negociacion: { label: 'Negociación',  color: 'bg-orange-100 text-orange-800',      dot: 'bg-orange-500' },
-  cliente:     { label: 'Cliente',      color: 'bg-green-100 text-green-800',        dot: 'bg-green-600' },
-  perdido:     { label: 'Perdido',      color: 'bg-red-100 text-red-700',            dot: 'bg-red-500' },
-  inactivo:    { label: 'Inactivo',     color: 'bg-crm-surface-container text-crm-on-surface-variant', dot: 'bg-crm-outline' },
+  nuevo_registro: { label: 'Nuevo',       color: 'bg-blue-50 text-blue-700',         dot: 'bg-blue-400' },
+  prospecto:      { label: 'Prospecto',   color: 'bg-slate-100 text-slate-700',      dot: 'bg-slate-400' },
+  contactado:     { label: 'Contactado',  color: 'bg-amber-100 text-amber-800',      dot: 'bg-amber-500' },
+  negociacion:    { label: 'Negociación', color: 'bg-orange-100 text-orange-800',    dot: 'bg-orange-500' },
+  cliente:        { label: 'Cliente',     color: 'bg-green-100 text-green-800',      dot: 'bg-green-600' },
+  perdido:        { label: 'Perdido',     color: 'bg-red-100 text-red-700',          dot: 'bg-red-500' },
+  inactivo:       { label: 'Inactivo',    color: 'bg-crm-surface-container text-crm-on-surface-variant', dot: 'bg-crm-outline' },
 }
 
-const PIPELINE_STAGES = ['prospecto', 'contactado', 'negociacion', 'cliente']
+const PIPELINE_STAGES = ['nuevo_registro', 'prospecto', 'contactado', 'negociacion', 'cliente']
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -59,7 +60,7 @@ export default function CrmDashboardPage() {
   const porStatus = stats?.por_status || {}
   const total = stats?.total || 0
   const clientes = porStatus.cliente || 0
-  const prospectos = porStatus.prospecto || 0
+  const nuevos = (porStatus.nuevo_registro || 0) + (porStatus.prospecto || 0)
   const followupsPendientes = stats?.followups_pendientes || 0
 
   return (
@@ -100,10 +101,10 @@ export default function CrmDashboardPage() {
           bg="bg-green-50"
         />
         <StatCard
-          icon={<Building2 size={20} className="text-amber-700" />}
-          label="Prospectos"
-          value={prospectos}
-          bg="bg-amber-50"
+          icon={<Building2 size={20} className="text-blue-700" />}
+          label="Por contactar"
+          value={nuevos}
+          bg="bg-blue-50"
         />
         <StatCard
           icon={<Calendar size={20} className="text-crm-tertiary" />}
@@ -129,7 +130,7 @@ export default function CrmDashboardPage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {PIPELINE_STAGES.map(stage => {
               const cfg = STATUS_CONFIG[stage]
               const count = porStatus[stage] || 0
@@ -224,10 +225,10 @@ export default function CrmDashboardPage() {
           <Users size={14} /> Ver todos los clientes
         </Link>
         <Link
-          to="/crm/clients?status=prospecto"
+          to="/crm/clients?status=nuevo_registro"
           className="flex items-center gap-2 px-4 py-2 rounded-full border border-crm-outline-variant text-sm text-crm-on-surface-variant hover:bg-crm-surface-container transition-colors"
         >
-          <Phone size={14} /> Prospectos por contactar
+          <Phone size={14} /> Nuevos por contactar
         </Link>
         <Link
           to="/crm/clients?prioridad=alta"
