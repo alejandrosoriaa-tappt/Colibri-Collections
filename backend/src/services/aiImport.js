@@ -91,44 +91,57 @@ function buildSheetPreviews(buffer) {
 }
 
 // ── Claude mapea columnas y asigna salon/seccion por hoja ────────────────────
+// Asigna seccion a partir del nombre de la hoja (sin gastar tokens)
+function inferSeccion(sheetName) {
+  const n = sheetName.toUpperCase()
+  if (/CASA|^CN\b|INGRESO CASA/i.test(n)) return 'Casa de Niños'
+  if (/TRANSIT/i.test(n)) return 'Transitorio'
+  if (/TALLER\s*II/i.test(n) || /T\s*II/i.test(n)) return 'Taller II'
+  if (/TALLER\s*I\b/i.test(n) || /T\s*I\b/i.test(n)) return 'Taller I'
+  if (/PRIMARIA|PRIM\b/i.test(n)) return 'Primaria'
+  if (/SECUNDARIA|SEC\b/i.test(n)) return 'Secundaria'
+  if (/PREESCOLAR|PREESC\b|KINDER|KG?\b/i.test(n)) return 'Preescolar'
+  return null
+}
+
 async function askClaudeForMapping(sheets) {
   const client = new Anthropic()
 
-  const system = `Eres un asistente que normaliza listas de contactos de colegios, condominios, gimnasios y clubes al esquema de Kollybry. Respondes SOLO con JSON válido, sin texto adicional ni markdown.`
+  const system = `Eres un asistente que normaliza listas de contactos de colegios al esquema de Kollybry. Respondes SOLO con JSON válido, sin texto adicional ni markdown.`
 
-  const sheetsForModel = sheets.map((s) => ({
+  // Solo mandamos hasta 3 hojas de muestra para detectar columnas (todas tienen la misma estructura)
+  const SAMPLE_COUNT = 3
+  const sampleSheets = sheets.slice(0, SAMPLE_COUNT).map((s) => ({
     name: s.name,
     total_rows: s.total_rows,
-    first_rows: s.preview
+    first_rows: s.preview.slice(0, 8) // máximo 8 filas
   }))
 
-  const prompt = `Analiza estas hojas de Excel de un directorio escolar. Cada hoja puede ser un salón distinto.
+  // header_row por hoja — solo para las muestras; el resto hereda el default
+  const sheetNames = sheets.map((s) => s.name)
+
+  const prompt = `Analiza estas hojas de muestra de un directorio escolar (${sheets.length} hojas en total, misma estructura).
 
 Nuestro esquema: nombre, apellido, telefono, email, seccion, grado, salon, nombre_familia, relationship_type ("student"|"mama"|"papa"|"member"), nombre_alumno, id_externo.
 
-REGLAS IMPORTANTES:
-1. Si cada fila tiene alumno + datos de mamá y papá → estructura de familia (has_family_structure=true). Por cada fila generar: 1 alumno (student, sin tel) + mamá + papá.
-2. El NOMBRE DE LA PESTAÑA suele ser el salón. Asigna salon y seccion a cada hoja según su nombre:
-   - "INGRESO CASA", "CN A ROSY", "CN B SOFIA", "CN C BETY" → seccion="Casa de Niños"
-   - "TRANSITORIO A/B", "INGRESOS A TRANSITORIO*" → seccion="Transitorio"
-   - "TALLER IA/IB/IC/ID", "INGRESOS A TALLER 1*" → seccion="Taller I"
-   - "TALLER IIA/IIB/IIC", "INGRESOS A TALLER 2*" → seccion="Taller II"
-   - Si no reconoces, déjalo en null y usa el nombre de la hoja como salon.
-3. nombre_familia = primeros 2 apellidos del alumno (extrae de nombre_alumno en código, no en columna).
-4. Indica header_row (base 0) por hoja — puede variar entre hojas.
-5. Si hay columnas de email para mamá y papá, indícalas.
+REGLAS:
+1. Si cada fila tiene alumno + mamá + papá → has_family_structure=true.
+2. Detecta qué columna es cada campo y el header_row (base 0) de las hojas de muestra.
+3. Si el header_row varía entre hojas indicalo; si es igual para todas usa "default".
 
-Hojas:
-${JSON.stringify(sheetsForModel, null, 1)}
+Hojas de muestra:
+${JSON.stringify(sampleSheets, null, 1)}
 
-Devuelve EXACTAMENTE este JSON:
+Todos los nombres de hoja (para referencia):
+${JSON.stringify(sheetNames)}
+
+Devuelve EXACTAMENTE este JSON (sin texto extra):
 {
   "org_type": "colegio|colegio-montessori|condominio|gimnasio|general",
   "has_family_structure": true,
   "sheet_is_salon": true,
   "confidence": 0.95,
-  "needs_admin_review": false,
-  "notes": "explicación breve en español",
+  "notes": "explicación breve",
   "columns": {
     "nombre_alumno": "C",
     "grado": "D",
@@ -142,13 +155,13 @@ Devuelve EXACTAMENTE este JSON:
     "email": "null",
     "id_externo": "B"
   },
-  "header_row_by_sheet": { "NombreHoja": 2 },
-  "seccion_by_sheet": { "NombreHoja": "Casa de Niños" }
+  "default_header_row": 1,
+  "header_row_by_sheet": { "NombreHoja": 2 }
 }`
 
   const resp = await client.messages.create({
     model: MODEL,
-    max_tokens: 10000,
+    max_tokens: 4000,
     thinking: { type: 'adaptive' },
     system,
     messages: [{ role: 'user', content: prompt }]
@@ -193,9 +206,9 @@ function applyMapping(sheets, mapping) {
   let alumnos = 0
 
   for (const s of sheets) {
-    const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? 1
+    const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? (mapping.default_header_row ?? 1)
     const salon = mapping.sheet_is_salon ? tidy(s.name) : null
-    const seccion = (mapping.seccion_by_sheet || {})[s.name] || null
+    const seccion = inferSeccion(s.name) || null
 
     for (let r = headerRow + 1; r < s._grid.length; r++) {
       const row = s._grid[r]
