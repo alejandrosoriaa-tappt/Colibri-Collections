@@ -1566,6 +1566,36 @@ export default function ContactsPage() {
                 </tbody>
               </table>
             </div>
+
+            {(totalPages > 1 || total > 25) && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-md-outline-variant">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-md-on-surface-variant">
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
+                  </p>
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(0) }}
+                    className="text-xs border border-md-outline-variant rounded-lg px-2 py-1 bg-white text-md-on-surface-variant focus:border-md-primary outline-none"
+                  >
+                    {PAGE_SIZE_OPTIONS.map(n => (
+                      <option key={n} value={n}>{n} por página</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                    className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-sm text-md-on-surface-variant px-2">{page + 1} / {totalPages}</span>
+                  <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+                    className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           // ═══════════════════════════════════════════════════════════════
