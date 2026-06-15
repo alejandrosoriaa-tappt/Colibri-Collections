@@ -3,10 +3,10 @@
 // propio formato y lo normaliza a nuestra tabla `contacts`.
 //
 // Arquitectura (barata y escalable):
-//   1. Leemos el Excel/CSV y sacamos un PREVIEW de cada hoja (encabezados +
-//      primeras filas) — NO mandamos las 600 filas al modelo.
-//   2. Una sola llamada a la API de Claude mapea las columnas → nuestro
-//      esquema, detecta org_type y estructura de familia.
+//   1. Leemos el Excel/CSV y sacamos un PREVIEW de cada hoja relevante
+//      (encabezados + primeras filas) — NO mandamos todas las filas al modelo.
+//   2. Una sola llamada a Claude mapea columnas, detecta org_type, y asigna
+//      salon/seccion por hoja.
 //   3. Aplicamos ese mapeo en código a TODAS las filas (rápido, sin tokens).
 // ============================================================================
 import Anthropic from '@anthropic-ai/sdk'
@@ -15,7 +15,17 @@ import { normalizePhone } from '../utils/phone.js'
 
 const MODEL = 'claude-opus-4-8'
 
-// ── Limpieza de texto (ortografía ligera: espacios, mayúsculas) ──────────────
+// ── Hojas que nunca son listas de contactos ──────────────────────────────────
+const SKIP_SHEET_PATTERNS = [
+  /baja/i, /acuerdo/i, /graduad/i, /egresad/i, /firmar/i,
+  /pagos?/i, /estado\s*de\s*cuenta/i, /resumen/i, /^hoja\d/i
+]
+function isContactSheet(name, rowCount) {
+  if (rowCount < 4) return false
+  return !SKIP_SHEET_PATTERNS.some((re) => re.test(name))
+}
+
+// ── Texto limpio ──────────────────────────────────────────────────────────────
 function tidy(str) {
   if (str == null) return ''
   return String(str).replace(/\s+/g, ' ').trim()
@@ -26,11 +36,10 @@ function titleCase(str) {
     .replace(/\b([a-záéíóúñü])/g, (m) => m.toUpperCase())
 }
 
-// ── Teléfonos: soporta varios separados por / , ; y formatea a E.164 ─────────
+// ── Teléfonos: soporta varios separados por / , ; ────────────────────────────
 function parsePhones(value) {
   if (value == null) return []
-  let s = String(value).replace(/ /g, ' ')
-  return s
+  return String(value)
     .split(/[/,;]+/)
     .map((p) => {
       const digits = p.replace(/\D/g, '')
@@ -43,19 +52,16 @@ function parsePhones(value) {
     .filter(Boolean)
 }
 
-// ── Apellidos compuestos (Mexican naming): "Álvarez de la Cuadra Romero Pablo"
+// ── Apellidos compuestos mexicanos: "Álvarez de la Cuadra Romero Pablo" ──────
 const PARTICLES = new Set(['de', 'del', 'la', 'las', 'los', 'y'])
 function splitSurnameName(full) {
   const toks = tidy(full).split(' ')
   if (toks.length <= 2) return { apellidos: toks[0] || '', nombres: toks.slice(1).join(' ') }
-  // Tomamos 2 apellidos, pegando partículas (de/del/la...) al apellido
-  let i = 0, surnameTokens = []
-  let surnamesTaken = 0
+  let i = 0, surnameTokens = [], surnamesTaken = 0
   while (i < toks.length && surnamesTaken < 2) {
     surnameTokens.push(toks[i])
     if (!PARTICLES.has(toks[i].toLowerCase())) surnamesTaken++
     i++
-    // si lo que sigue es partícula, pégala también
     while (i < toks.length && PARTICLES.has(toks[i].toLowerCase())) {
       surnameTokens.push(toks[i]); i++
     }
@@ -63,30 +69,32 @@ function splitSurnameName(full) {
   return { apellidos: surnameTokens.join(' '), nombres: toks.slice(i).join(' ') }
 }
 
-// ── Construye un preview compacto de cada hoja para mandárselo al modelo ─────
+// ── Lee todas las hojas relevantes con preview ────────────────────────────────
 function buildSheetPreviews(buffer) {
   const wb = XLSX.read(buffer, { type: 'buffer', cellDates: true })
   const sheets = []
   for (const name of wb.SheetNames) {
     const ws = wb.Sheets[name]
     const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' })
-    // primeras 12 filas con letra de columna
-    const preview = grid.slice(0, 12).map((row) => {
+    if (!isContactSheet(name, grid.length)) continue
+    const preview = grid.slice(0, 14).map((row) => {
       const obj = {}
       row.forEach((val, c) => {
         const v = tidy(val)
-        if (v) obj[XLSX.utils.encode_col(c)] = v.slice(0, 40)
+        if (v) obj[XLSX.utils.encode_col(c)] = v.slice(0, 50)
       })
       return obj
     })
     sheets.push({ name, total_rows: grid.length, preview, _grid: grid })
   }
-  return { wb, sheets }
+  return sheets
 }
 
-// ── Llama a Claude para obtener el mapeo de columnas ─────────────────────────
+// ── Claude mapea columnas y asigna salon/seccion por hoja ────────────────────
 async function askClaudeForMapping(sheets) {
-  const client = new Anthropic() // lee ANTHROPIC_API_KEY del entorno
+  const client = new Anthropic()
+
+  const system = `Eres un asistente que normaliza listas de contactos de colegios, condominios, gimnasios y clubes al esquema de Kollybry. Respondes SOLO con JSON válido, sin texto adicional ni markdown.`
 
   const sheetsForModel = sheets.map((s) => ({
     name: s.name,
@@ -94,17 +102,21 @@ async function askClaudeForMapping(sheets) {
     first_rows: s.preview
   }))
 
-  const system = `Eres un asistente que normaliza listas de contactos de colegios, condominios, gimnasios y clubes a un esquema único. Respondes SOLO con JSON válido, sin texto adicional.`
+  const prompt = `Analiza estas hojas de Excel de un directorio escolar. Cada hoja puede ser un salón distinto.
 
-  const prompt = `Analiza estas hojas de Excel (cada celda viene con su letra de columna) y devuelve cómo mapear las columnas a nuestro esquema.
+Nuestro esquema: nombre, apellido, telefono, email, seccion, grado, salon, nombre_familia, relationship_type ("student"|"mama"|"papa"|"member"), nombre_alumno, id_externo.
 
-Nuestro esquema de contacto: nombre, apellido, telefono, email, seccion, grado, salon, nombre_familia, relationship_type ("student"|"mama"|"papa"|"member"), nombre_alumno, id_externo.
-
-Reglas:
-- Si cada FILA representa un alumno con sus papás (columnas de mamá/celular y papá/celular), es un colegio con estructura de familia: por cada fila generamos 1 alumno (student, sin teléfono) + mamá + papá.
-- El nombre de la PESTAÑA suele ser el salón.
-- Detecta el org_type: "colegio", "colegio-montessori" (si los niveles son Casa de Niños/Taller), "condominio", "gimnasio" o "general".
-- Indica en qué fila están los encabezados (header_row, base 0) por hoja.
+REGLAS IMPORTANTES:
+1. Si cada fila tiene alumno + datos de mamá y papá → estructura de familia (has_family_structure=true). Por cada fila generar: 1 alumno (student, sin tel) + mamá + papá.
+2. El NOMBRE DE LA PESTAÑA suele ser el salón. Asigna salon y seccion a cada hoja según su nombre:
+   - "INGRESO CASA", "CN A ROSY", "CN B SOFIA", "CN C BETY" → seccion="Casa de Niños"
+   - "TRANSITORIO A/B", "INGRESOS A TRANSITORIO*" → seccion="Transitorio"
+   - "TALLER IA/IB/IC/ID", "INGRESOS A TALLER 1*" → seccion="Taller I"
+   - "TALLER IIA/IIB/IIC", "INGRESOS A TALLER 2*" → seccion="Taller II"
+   - Si no reconoces, déjalo en null y usa el nombre de la hoja como salon.
+3. nombre_familia = primeros 2 apellidos del alumno (extrae de nombre_alumno en código, no en columna).
+4. Indica header_row (base 0) por hoja — puede variar entre hojas.
+5. Si hay columnas de email para mamá y papá, indícalas.
 
 Hojas:
 ${JSON.stringify(sheetsForModel, null, 1)}
@@ -112,33 +124,34 @@ ${JSON.stringify(sheetsForModel, null, 1)}
 Devuelve EXACTAMENTE este JSON:
 {
   "org_type": "colegio|colegio-montessori|condominio|gimnasio|general",
-  "has_family_structure": true|false,
-  "sheet_is_salon": true|false,
-  "confidence": 0.0-1.0,
-  "needs_admin_review": true|false,
-  "notes": "explicación breve en español de qué detectaste y por qué",
+  "has_family_structure": true,
+  "sheet_is_salon": true,
+  "confidence": 0.95,
+  "needs_admin_review": false,
+  "notes": "explicación breve en español",
   "columns": {
-    "nombre_alumno": "C|null",
-    "grado": "D|null",
-    "mama_nombre": "F|null",
-    "mama_telefono": "G|null",
-    "papa_nombre": "I|null",
-    "papa_telefono": "J|null",
+    "nombre_alumno": "C",
+    "grado": "D",
+    "mama_nombre": "F",
+    "mama_telefono": "G",
+    "mama_email": "H",
+    "papa_nombre": "I",
+    "papa_telefono": "J",
+    "papa_email": "K",
     "telefono": "null",
     "email": "null",
-    "id_externo": "B|null"
+    "id_externo": "B"
   },
-  "header_row_by_sheet": { "NombreHoja": 1 }
+  "header_row_by_sheet": { "NombreHoja": 2 },
+  "seccion_by_sheet": { "NombreHoja": "Casa de Niños" }
 }`
 
   const resp = await client.messages.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 3000,
     thinking: { type: 'adaptive' },
     system,
-    messages: [
-      { role: 'user', content: prompt }
-    ]
+    messages: [{ role: 'user', content: prompt }]
   })
 
   const text = resp.content.find((b) => b.type === 'text')?.text || ''
@@ -146,29 +159,32 @@ Devuelve EXACTAMENTE este JSON:
   return JSON.parse(jsonStr)
 }
 
-// ── Aplica el mapeo a TODAS las filas y produce contactos normalizados ───────
+// ── Aplica el mapeo a TODAS las filas ────────────────────────────────────────
 function applyMapping(sheets, mapping) {
   const colIdx = (letter) => (letter && letter !== 'null' ? XLSX.utils.decode_col(letter) : null)
   const C = mapping.columns || {}
   const cols = {
-    alumno: colIdx(C.nombre_alumno),
-    grado: colIdx(C.grado),
-    mamaNom: colIdx(C.mama_nombre),
-    mamaTel: colIdx(C.mama_telefono),
-    papaNom: colIdx(C.papa_nombre),
-    papaTel: colIdx(C.papa_telefono),
-    tel: colIdx(C.telefono),
-    email: colIdx(C.email),
-    mat: colIdx(C.id_externo)
+    alumno:   colIdx(C.nombre_alumno),
+    grado:    colIdx(C.grado),
+    mamaNom:  colIdx(C.mama_nombre),
+    mamaTel:  colIdx(C.mama_telefono),
+    mamaEmail:colIdx(C.mama_email),
+    papaNom:  colIdx(C.papa_nombre),
+    papaTel:  colIdx(C.papa_telefono),
+    papaEmail:colIdx(C.papa_email),
+    tel:      colIdx(C.telefono),
+    email:    colIdx(C.email),
+    mat:      colIdx(C.id_externo)
   }
 
   const contacts = []
-  const byPhone = new Set()          // dedup global de teléfonos
+  const byPhone = new Set()
   let alumnos = 0
 
   for (const s of sheets) {
-    const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? 0
+    const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? 1
     const salon = mapping.sheet_is_salon ? tidy(s.name) : null
+    const seccion = (mapping.seccion_by_sheet || {})[s.name] || null
 
     for (let r = headerRow + 1; r < s._grid.length; r++) {
       const row = s._grid[r]
@@ -177,41 +193,50 @@ function applyMapping(sheets, mapping) {
 
       if (mapping.has_family_structure) {
         const alumnoFull = get(cols.alumno)
-        if (!alumnoFull) continue
+        if (!alumnoFull || alumnoFull.length < 2) continue
+        // Skip residual header/title rows
+        if (/^(nombre|alumno|#)/i.test(alumnoFull)) continue
+
         const { apellidos, nombres } = splitSurnameName(alumnoFull)
-        const familia = apellidos
+        const familia = titleCase(apellidos)
         const grado = get(cols.grado) || null
-        const grupo = salon || grado || null
         alumnos++
-        // alumno
+
         contacts.push({
           relationship_type: 'student',
           nombre: titleCase(nombres),
-          apellido: titleCase(apellidos),
+          apellido: familia,
           nombre_alumno: titleCase(alumnoFull),
-          nombre_familia: titleCase(familia),
-          salon, grado, grupo,
+          nombre_familia: familia,
+          salon, seccion, grado,
+          grupo: salon || grado || null,
           id_externo: get(cols.mat) || null,
-          telefono: null
+          telefono: null,
+          email: null
         })
-        // mamá / papá (con dedup por teléfono)
-        for (const [tipo, nomI, telI] of [['mama', cols.mamaNom, cols.mamaTel], ['papa', cols.papaNom, cols.papaTel]]) {
+
+        for (const [tipo, nomI, telI, emailI] of [
+          ['mama', cols.mamaNom, cols.mamaTel, cols.mamaEmail],
+          ['papa', cols.papaNom, cols.papaTel, cols.papaEmail]
+        ]) {
           const nom = get(nomI)
+          const emailVal = get(emailI) || null
           for (const tel of parsePhones(telI == null ? '' : row[telI])) {
             if (byPhone.has(tel)) continue
             byPhone.add(tel)
             contacts.push({
               relationship_type: tipo,
               nombre: titleCase(nom) || (tipo === 'mama' ? 'Mamá' : 'Papá'),
-              apellido: titleCase(apellidos),
-              nombre_familia: titleCase(familia),
-              salon: null, grado: null, grupo: null,
-              telefono: tel
+              apellido: familia,
+              nombre_familia: familia,
+              salon: null, seccion: null, grado: null, grupo: null,
+              telefono: tel,
+              email: emailVal
             })
           }
         }
       } else {
-        // estructura simple: una fila = un contacto
+        // Estructura simple: una fila = un contacto
         const nomFull = get(cols.alumno)
         if (!nomFull) continue
         const phones = parsePhones(cols.tel == null ? '' : row[cols.tel])
@@ -225,6 +250,7 @@ function applyMapping(sheets, mapping) {
           apellido: titleCase(apellidos),
           nombre_familia: titleCase(apellidos),
           grupo: get(cols.grado) || (mapping.sheet_is_salon ? tidy(s.name) : null),
+          salon, seccion,
           telefono: tel,
           email: get(cols.email) || null
         })
@@ -237,23 +263,27 @@ function applyMapping(sheets, mapping) {
 
 // ── API pública ──────────────────────────────────────────────────────────────
 export async function analyzeContactsFile(buffer) {
-  const { sheets } = buildSheetPreviews(buffer)
+  const sheets = buildSheetPreviews(buffer)
+  if (sheets.length === 0) throw new Error('No se encontraron hojas con datos de contactos')
+
   const mapping = await askClaudeForMapping(sheets)
   const { contacts, alumnos } = applyMapping(sheets, mapping)
 
-  // resumen para el preview
   const conTel = contacts.filter((c) => c.telefono).length
-  const grupos = [...new Set(contacts.map((c) => c.grupo).filter(Boolean))].sort()
+  const salones = [...new Set(contacts.map((c) => c.salon).filter(Boolean))].sort()
+  const secciones = [...new Set(contacts.map((c) => c.seccion).filter(Boolean))].sort()
 
   return {
-    mapping,                        // qué detectó la IA (org_type, notas, confianza)
+    mapping,
     summary: {
       total_contactos: contacts.length,
       alumnos,
       con_telefono: conTel,
-      grupos: grupos.length,
-      grupos_lista: grupos.slice(0, 30)
+      hojas_procesadas: sheets.length,
+      salones: salones.length,
+      salones_lista: salones.slice(0, 40),
+      secciones_lista: secciones
     },
-    contacts                        // normalizados, listos para insertar al confirmar
+    contacts
   }
 }
