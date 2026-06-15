@@ -18,7 +18,8 @@ const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6'
 // ── Hojas que nunca son listas de contactos ──────────────────────────────────
 const SKIP_SHEET_PATTERNS = [
   /baja/i, /acuerdo/i, /graduad/i, /egresad/i, /firmar/i,
-  /pagos?/i, /estado\s*de\s*cuenta/i, /resumen/i, /^hoja\d/i
+  /pagos?/i, /estado\s*de\s*cuenta/i, /resumen/i, /^hoja\d/i,
+  /^ingreso/i  // hojas de nuevos ingresos: layout distinto y se solapan con salones
 ]
 function isContactSheet(name, rowCount) {
   if (rowCount < 4) return false
