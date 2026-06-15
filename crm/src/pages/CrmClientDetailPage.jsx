@@ -18,13 +18,13 @@ const STATUS_OPTIONS = [
 ]
 
 const STATUS_CONFIG = {
-  nuevo_registro: { color: 'bg-blue-50 text-blue-700',       dot: 'bg-blue-400',   ring: 'ring-blue-300' },
-  prospecto:      { color: 'bg-slate-100 text-slate-700',    dot: 'bg-slate-400',  ring: 'ring-slate-300' },
-  contactado:     { color: 'bg-amber-100 text-amber-800',    dot: 'bg-amber-500',  ring: 'ring-amber-300' },
-  negociacion:    { color: 'bg-orange-100 text-orange-800',  dot: 'bg-orange-500', ring: 'ring-orange-300' },
-  cliente:        { color: 'bg-green-100 text-green-800',    dot: 'bg-green-600',  ring: 'ring-green-300' },
-  perdido:        { color: 'bg-red-100 text-red-700',        dot: 'bg-red-500',    ring: 'ring-red-300' },
-  inactivo:       { color: 'bg-gray-100 text-gray-500',      dot: 'bg-gray-400',   ring: 'ring-gray-300' },
+  nuevo_registro: { chipOn: 'bg-blue-500 text-white',    chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-700' },
+  prospecto:      { chipOn: 'bg-slate-600 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-700' },
+  contactado:     { chipOn: 'bg-amber-500 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800' },
+  negociacion:    { chipOn: 'bg-orange-500 text-white',  chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-orange-500', badge: 'bg-orange-100 text-orange-800' },
+  cliente:        { chipOn: 'bg-green-600 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-green-600',  badge: 'bg-green-100 text-green-800' },
+  perdido:        { chipOn: 'bg-red-500 text-white',     chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-red-500',    badge: 'bg-red-100 text-red-700' },
+  inactivo:       { chipOn: 'bg-gray-500 text-white',    chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
 }
 
 const ACTIVITY_TYPES = [
@@ -81,6 +81,8 @@ export default function CrmClientDetailPage() {
   const [activityType, setActivityType] = useState('llamada')
   const [activityDesc, setActivityDesc] = useState('')
   const [loggingActivity, setLoggingActivity] = useState(false)
+
+  const [changingStatus, setChangingStatus] = useState(false)
 
   // Follow-up state
   const [followups, setFollowups] = useState([])
@@ -196,13 +198,16 @@ export default function CrmClientDetailPage() {
   }
 
   async function handleStatusChange(newStatus) {
-    if (isNew || !client) return
+    if (isNew || !client || changingStatus) return
+    setChangingStatus(newStatus)
     try {
       const r = await crmAPI.updateClient(id, { ...form, status: newStatus })
       setClient(r.data)
       setForm(r.data)
     } catch (err) {
       alert('Error: ' + err.message)
+    } finally {
+      setChangingStatus(false)
     }
   }
 
@@ -361,19 +366,24 @@ export default function CrmClientDetailPage() {
               {!isNew && (
                 <div className="flex flex-wrap gap-2 mt-4">
                   {STATUS_OPTIONS.map(opt => {
-                    const cfg = STATUS_CONFIG[opt.value]
+                    const cfg    = STATUS_CONFIG[opt.value]
                     const active = form.status === opt.value
+                    const loading = changingStatus === opt.value
                     return (
                       <button
                         key={opt.value}
                         onClick={() => handleStatusChange(opt.value)}
-                        className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-all ${
-                          active
-                            ? `${cfg.color} ring-2 ${cfg.ring} border-transparent`
-                            : 'border-crm-on-primary-container/20 text-crm-on-primary-container/70 hover:bg-white/30'
+                        disabled={!!changingStatus}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border-0 transition-all shadow-sm disabled:cursor-wait ${
+                          active ? cfg.chipOn : cfg.chipOff
                         }`}
                       >
-                        <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        {loading
+                          ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          : active
+                          ? <Check size={11} strokeWidth={3} />
+                          : <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        }
                         {opt.label}
                       </button>
                     )
