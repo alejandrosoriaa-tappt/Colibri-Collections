@@ -13,7 +13,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import * as XLSX from 'xlsx'
 import { normalizePhone } from '../utils/phone.js'
 
-const MODEL = 'claude-opus-4-8'
+const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6'
 
 // ── Hojas que nunca son listas de contactos ──────────────────────────────────
 const SKIP_SHEET_PATTERNS = [

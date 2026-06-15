@@ -18,7 +18,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import ExcelJS from 'exceljs'
 import supabase from './supabase.js'
 
-const MODEL = 'claude-opus-4-8'
+const MODEL = process.env.AI_MODEL || 'claude-sonnet-4-6'
 
 // ── Texto ────────────────────────────────────────────────────────────────────
 function tidy(str) {
