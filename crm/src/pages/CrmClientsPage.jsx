@@ -2,18 +2,18 @@ import { useEffect, useState, useMemo } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, Search, ChevronRight, Building2, Phone,
-  MapPin, X, Briefcase, Clock, GitCommitHorizontal
+  MapPin, X, Briefcase, Clock, GitCommitHorizontal, Check
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
 const STATUS_CONFIG = {
-  nuevo_registro: { label: 'Nuevo registro', color: 'bg-blue-50 text-blue-700',     dot: 'bg-blue-400' },
-  prospecto:      { label: 'Prospecto',      color: 'bg-slate-100 text-slate-700',   dot: 'bg-slate-400' },
-  contactado:     { label: 'Contactado',     color: 'bg-amber-100 text-amber-800',   dot: 'bg-amber-500' },
-  negociacion:    { label: 'Negociación',    color: 'bg-orange-100 text-orange-800', dot: 'bg-orange-500' },
-  cliente:        { label: 'Cliente',        color: 'bg-green-100 text-green-800',   dot: 'bg-green-600' },
-  perdido:        { label: 'Perdido',        color: 'bg-red-100 text-red-700',       dot: 'bg-red-500' },
-  inactivo:       { label: 'Inactivo',       color: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
+  nuevo_registro: { label: 'Nuevo registro', chipOn: 'bg-blue-500 text-white border-blue-500',    chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-blue-50 text-blue-700',     dot: 'bg-blue-400' },
+  prospecto:      { label: 'Prospecto',      chipOn: 'bg-slate-600 text-white border-slate-600',  chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-slate-100 text-slate-700',   dot: 'bg-slate-400' },
+  contactado:     { label: 'Contactado',     chipOn: 'bg-amber-500 text-white border-amber-500',  chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-amber-100 text-amber-800',   dot: 'bg-amber-500' },
+  negociacion:    { label: 'Negociación',    chipOn: 'bg-orange-500 text-white border-orange-500',chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-orange-100 text-orange-800', dot: 'bg-orange-500' },
+  cliente:        { label: 'Cliente',        chipOn: 'bg-green-600 text-white border-green-600',  chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-green-100 text-green-800',   dot: 'bg-green-600' },
+  perdido:        { label: 'Perdido',        chipOn: 'bg-red-500 text-white border-red-500',      chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-red-100 text-red-700',       dot: 'bg-red-500' },
+  inactivo:       { label: 'Inactivo',       chipOn: 'bg-gray-500 text-white border-gray-500',    chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', badge: 'bg-gray-100 text-gray-500',     dot: 'bg-gray-400' },
 }
 
 const STATUS_ORDER = ['nuevo_registro', 'prospecto', 'contactado', 'negociacion', 'cliente', 'perdido', 'inactivo']
@@ -21,9 +21,9 @@ const PRIO_ORDER   = ['alta', 'media', 'baja']
 const GIRO_TABS    = ['Todos', 'Colegio', 'Condominio', 'Gimnasio', 'Academia', 'Estudio', 'Otro']
 
 const PRIORIDAD_CONFIG = {
-  alta:  { label: 'Alta',  color: 'text-red-600',   icon: '●●●' },
-  media: { label: 'Media', color: 'text-amber-600',  icon: '●●○' },
-  baja:  { label: 'Baja',  color: 'text-slate-400',  icon: '●○○' },
+  alta:  { label: 'Alta',  chipOn: 'bg-red-500 text-white border-red-500',     chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', iconOn: '●●●', iconOff: <span className="text-red-500">●●●</span> },
+  media: { label: 'Media', chipOn: 'bg-amber-500 text-white border-amber-500', chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', iconOn: '●●●', iconOff: <span className="text-amber-500">●●○</span> },
+  baja:  { label: 'Baja',  chipOn: 'bg-slate-500 text-white border-slate-500', chipOff: 'bg-crm-surface-container-low text-crm-on-surface-variant border-crm-outline-variant', iconOn: '●●●', iconOff: <span className="text-slate-400">●○○</span> },
 }
 
 function relativeTime(iso) {
@@ -194,15 +194,16 @@ export default function CrmClientsPage() {
             <button
               key={s}
               onClick={() => setFilter({ status: active ? '' : s, prioridad: '' })}
-              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                active
-                  ? `${cfg.color} border-transparent shadow-sm`
-                  : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all shadow-sm ${
+                active ? cfg.chipOn : cfg.chipOff + ' hover:bg-crm-surface-container'
               }`}
             >
-              <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              {active
+                ? <Check size={11} strokeWidth={3} />
+                : <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+              }
               {cfg.label}
-              <span className={`px-1.5 py-0.5 rounded-full text-xs ${active ? 'bg-black/10' : 'bg-crm-surface-container'}`}>
+              <span className={`px-1.5 py-0.5 rounded-full text-xs ${active ? 'bg-white/20' : 'bg-crm-surface-container'}`}>
                 {count}
               </span>
             </button>
@@ -240,14 +241,12 @@ export default function CrmClientsPage() {
               <button
                 key={p}
                 onClick={() => setFilter({ prioridad: active ? '' : p, status: '' })}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  active
-                    ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent shadow-sm'
-                    : 'border-crm-outline-variant text-crm-on-surface-variant hover:bg-crm-surface-container'
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all shadow-sm ${
+                  active ? cfg.chipOn : cfg.chipOff + ' hover:bg-crm-surface-container'
                 }`}
               >
-                <span className={active ? '' : cfg.color}>{cfg.icon}</span>
-                {' '}{cfg.label}
+                {active ? <Check size={11} strokeWidth={3} /> : cfg.iconOff}
+                {cfg.label}
               </button>
             )
           })}
@@ -384,10 +383,10 @@ function ClientRow({ client, onDelete, deleting }) {
       </div>
 
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span className={`text-xs font-bold ${prioridadCfg.color}`} title={`Prioridad ${prioridadCfg.label}`}>
-          {prioridadCfg.icon}
+        <span className="text-xs font-bold" title={`Prioridad ${prioridadCfg.label}`}>
+          {prioridadCfg.iconOff}
         </span>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 ${statusCfg.color}`}>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 ${statusCfg.badge}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
           {statusCfg.label}
         </span>
