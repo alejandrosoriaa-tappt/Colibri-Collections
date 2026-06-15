@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import multer from 'multer'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import {
@@ -18,6 +19,42 @@ import {
 } from '../templates/whatsappTemplates.js'
 
 const router = Router()
+
+const mediaUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10 MB
+})
+
+// POST /api/broadcasts/media — upload an attachment to Supabase Storage,
+// returns a public URL the broadcast can reference (media_url)
+router.post('/media', authMiddleware, inferTenantGuard, mediaUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Archivo requerido' })
+
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: 'Solo PDF o imágenes (JPG, PNG, WEBP)' })
+    }
+
+    const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `${req.tenantId}/${Date.now()}-${safeName}`
+
+    const { error: upErr } = await supabase.storage
+      .from('broadcast-media')
+      .upload(path, req.file.buffer, { contentType: req.file.mimetype })
+    if (upErr) throw upErr
+
+    const { data: pub } = supabase.storage.from('broadcast-media').getPublicUrl(path)
+    return res.json({
+      url: pub.publicUrl,
+      type: req.file.mimetype,
+      filename: req.file.originalname
+    })
+  } catch (err) {
+    console.error('POST /broadcasts/media error:', err)
+    return res.status(500).json({ error: 'Error al subir el archivo' })
+  }
+})
 
 // GET /api/broadcasts
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
@@ -215,6 +252,12 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       // Meta rejects template body params containing newlines, tabs, or 4+
       // consecutive spaces (error 132018). Collapse all whitespace to single spaces.
       personalizedMessage = personalizedMessage.replace(/\s+/g, ' ').trim()
+
+      // Non-image attachments (e.g. PDF) ride inside the body as a link —
+      // only images get their own template header (comunicado_imagen)
+      if (media_url && !useImage) {
+        personalizedMessage = `${personalizedMessage} 📎 Documento: ${media_url}`
+      }
 
       const components = useImage
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
