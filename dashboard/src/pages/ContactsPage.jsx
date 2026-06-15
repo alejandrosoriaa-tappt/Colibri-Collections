@@ -20,7 +20,7 @@ const GRADOS = {
 }
 const SALONES = ['A', 'B', 'C', 'D', 'E']
 
-const PAGE_SIZE = 50
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200]
 
 function formatDate(dateStr) {
   if (!dateStr) return '—'
@@ -1087,13 +1087,15 @@ export default function ContactsPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
+  const [pageSize, setPageSize] = useState(50)
+
+  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon, pageSize])
 
   const load = useCallback(() => {
     setIsLoading(true)
     setSelected(new Set())
     contactsAPI.list({
-      limit: PAGE_SIZE,
+      limit: pageSize,
       page: page + 1,
       status: statusTab,
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
@@ -1107,11 +1109,11 @@ export default function ContactsPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [page, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
+  }, [page, pageSize, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
 
   useEffect(() => { load() }, [load])
 
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / pageSize)
   const allSelected = contacts.length > 0 && selected.size === contacts.length
   const someSelected = selected.size > 0 && !allSelected
 
@@ -1708,11 +1710,22 @@ export default function ContactsPage() {
               </table>
             </div>
 
-            {totalPages > 1 && (
+            {(totalPages > 1 || total > 25) && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-md-outline-variant">
-                <p className="text-sm text-md-on-surface-variant">
-                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-md-on-surface-variant">
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
+                  </p>
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(0) }}
+                    className="text-xs border border-md-outline-variant rounded-lg px-2 py-1 bg-white text-md-on-surface-variant focus:border-md-primary outline-none"
+                  >
+                    {PAGE_SIZE_OPTIONS.map(n => (
+                      <option key={n} value={n}>{n} por página</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex gap-2 items-center">
                   <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
                     className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">

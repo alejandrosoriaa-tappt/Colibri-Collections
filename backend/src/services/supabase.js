@@ -329,6 +329,28 @@ export async function getCampaign(campaignId) {
 }
 
 export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0, seccion, grado, salon } = {}) {
+  const hasSchoolFilter = seccion || grado || salon
+
+  // School filters live on the student contact. We resolve the matching
+  // nombre_familia values first, then fetch ALL family members so the
+  // frontend can show complete family rows (mamá + papá + alumno).
+  let familyNames = null
+  if (hasSchoolFilter) {
+    let sq = supabase
+      .from('contacts')
+      .select('nombre_familia')
+      .eq('tenant_id', tenantId)
+      .eq('relationship_type', 'student')
+      .not('nombre_familia', 'is', null)
+    if (seccion) sq = sq.eq('seccion', seccion)
+    if (grado)   sq = sq.eq('grado', grado)
+    if (salon)   sq = sq.eq('salon', salon)
+    const { data: students, error: sErr } = await sq
+    if (sErr) throw sErr
+    familyNames = [...new Set((students || []).map(s => s.nombre_familia).filter(Boolean))]
+    if (familyNames.length === 0) return { data: [], count: 0 }
+  }
+
   let query = supabase
     .from('contacts')
     .select('*', { count: 'exact' })
@@ -336,7 +358,6 @@ export async function getContactsByTenant(tenantId, { search, status = 'active',
     .order('nombre', { ascending: true })
     .range(offset, offset + limit - 1)
 
-  // Status filter: 'active' | 'inactive' | 'all'
   if (status !== 'all') {
     query = query.eq('status', status)
   }
@@ -345,9 +366,9 @@ export async function getContactsByTenant(tenantId, { search, status = 'active',
     query = query.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%,nombre_alumno.ilike.%${search}%`)
   }
 
-  if (seccion) query = query.eq('seccion', seccion)
-  if (grado)   query = query.eq('grado', grado)
-  if (salon)   query = query.eq('salon', salon)
+  if (familyNames) {
+    query = query.in('nombre_familia', familyNames)
+  }
 
   const { data, error, count } = await query
   if (error) throw error
