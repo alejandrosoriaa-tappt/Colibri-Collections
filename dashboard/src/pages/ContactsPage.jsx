@@ -1087,7 +1087,7 @@ export default function ContactsPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab])
+  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
 
   const load = useCallback(() => {
     setIsLoading(true)
@@ -1096,7 +1096,10 @@ export default function ContactsPage() {
       limit: PAGE_SIZE,
       page: page + 1,
       status: statusTab,
-      ...(debouncedSearch ? { search: debouncedSearch } : {})
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(filtroSeccion ? { seccion: filtroSeccion } : {}),
+      ...(filtroGrado   ? { grado:   filtroGrado   } : {}),
+      ...(filtroSalon   ? { salon:   filtroSalon   } : {})
     })
       .then(res => {
         setContacts(res.data.contacts || [])
@@ -1104,7 +1107,7 @@ export default function ContactsPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [page, debouncedSearch, statusTab])
+  }, [page, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
 
   useEffect(() => { load() }, [load])
 

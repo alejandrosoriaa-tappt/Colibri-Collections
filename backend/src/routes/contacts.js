@@ -233,14 +233,17 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
 // ============================================================
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
-    const { search, page = 1, limit = 50, status = 'active' } = req.query
+    const { search, page = 1, limit = 50, status = 'active', seccion, grado, salon } = req.query
     const offset = (Number(page) - 1) * Number(limit)
 
     const { data: contacts, count } = await getContactsByTenant(req.tenantId, {
       search,
       status,
       limit: Number(limit),
-      offset
+      offset,
+      seccion: seccion || undefined,
+      grado:   grado   || undefined,
+      salon:   salon   || undefined
     })
 
     return res.json({

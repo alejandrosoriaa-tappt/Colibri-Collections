@@ -328,7 +328,7 @@ export async function getCampaign(campaignId) {
   return data
 }
 
-export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0 } = {}) {
+export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0, seccion, grado, salon } = {}) {
   let query = supabase
     .from('contacts')
     .select('*', { count: 'exact' })
@@ -344,6 +344,10 @@ export async function getContactsByTenant(tenantId, { search, status = 'active',
   if (search) {
     query = query.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%,nombre_alumno.ilike.%${search}%`)
   }
+
+  if (seccion) query = query.eq('seccion', seccion)
+  if (grado)   query = query.eq('grado', grado)
+  if (salon)   query = query.eq('salon', salon)
 
   const { data, error, count } = await query
   if (error) throw error
