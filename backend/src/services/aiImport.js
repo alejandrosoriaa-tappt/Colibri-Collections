@@ -148,15 +148,26 @@ Devuelve EXACTAMENTE este JSON:
 
   const resp = await client.messages.create({
     model: MODEL,
-    max_tokens: 6000,
+    max_tokens: 10000,
     thinking: { type: 'adaptive' },
     system,
     messages: [{ role: 'user', content: prompt }]
   })
 
   const text = resp.content.find((b) => b.type === 'text')?.text || ''
-  const jsonStr = text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)
-  return JSON.parse(jsonStr)
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1) {
+    console.error('aiImport: Claude no devolvió JSON. stop_reason:', resp.stop_reason, 'text snippet:', text.slice(0, 200))
+    throw new Error(`Claude no devolvió JSON válido (stop_reason: ${resp.stop_reason})`)
+  }
+  const jsonStr = text.slice(start, end + 1)
+  try {
+    return JSON.parse(jsonStr)
+  } catch (e) {
+    console.error('aiImport: JSON parse error. jsonStr snippet:', jsonStr.slice(0, 300))
+    throw new Error('No se pudo parsear la respuesta de Claude: ' + e.message)
+  }
 }
 
 // ── Aplica el mapeo a TODAS las filas ────────────────────────────────────────
