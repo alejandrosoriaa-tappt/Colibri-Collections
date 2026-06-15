@@ -555,6 +555,22 @@ router.post('/bulk-reactivate', authMiddleware, inferTenantGuard, async (req, re
 })
 
 // ============================================================
+// DELETE /api/contacts/all  — borra TODOS los contactos del tenant (sin IDs)
+router.delete('/all', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('contacts')
+      .delete()
+      .eq('tenant_id', req.tenantId)
+      .select('id')
+    if (error) return res.status(500).json({ error: error.message })
+    return res.json({ deleted: data?.length ?? 0 })
+  } catch (err) {
+    console.error('DELETE /contacts/all error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // DELETE /api/contacts/bulk-delete  — { ids: [...] }  (permanent)
 // ============================================================
 router.delete('/bulk-delete', authMiddleware, inferTenantGuard, async (req, res) => {

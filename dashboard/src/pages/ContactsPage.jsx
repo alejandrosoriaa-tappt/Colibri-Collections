@@ -1168,20 +1168,14 @@ export default function ContactsPage() {
   const handleDelete = async (ids) => {
     setActionLoading(true)
     try {
-      let finalIds = ids
       if (selectAllPages) {
-        // Fetch ALL contact IDs matching current filters, then delete
-        const res = await contactsAPI.list({
-          limit: 5000, page: 1, status: statusTab,
-          ...(debouncedSearch ? { search: debouncedSearch } : {}),
-          ...(filtroSeccion ? { seccion: filtroSeccion } : {}),
-          ...(filtroGrado   ? { grado:   filtroGrado   } : {}),
-          ...(filtroSalon   ? { salon:   filtroSalon   } : {})
-        })
-        finalIds = (res.data.contacts || []).map(c => c.id)
+        const res = await contactsAPI.deleteAll()
+        const n = res.data.deleted ?? total
+        showToast(`${n} contacto${n !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
+      } else {
+        await contactsAPI.bulkDelete(ids)
+        showToast(`${ids.length} contacto${ids.length !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
       }
-      await contactsAPI.bulkDelete(finalIds)
-      showToast(`${finalIds.length} contacto${finalIds.length !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
       setConfirmDelete(null)
       setSelected(new Set())
       setSelectAllPages(false)

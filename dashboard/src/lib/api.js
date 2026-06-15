@@ -85,6 +85,7 @@ export const contactsAPI = {
   bulkDeactivate: (ids) => api.post('/api/contacts/bulk-deactivate', { ids }),
   bulkReactivate: (ids) => api.post('/api/contacts/bulk-reactivate', { ids }),
   bulkDelete: (ids) => api.delete('/api/contacts/bulk-delete', { data: { ids } }),
+  deleteAll: () => api.delete('/api/contacts/all'),
   sync: (formData) => api.post('/api/contacts/sync', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 60000
