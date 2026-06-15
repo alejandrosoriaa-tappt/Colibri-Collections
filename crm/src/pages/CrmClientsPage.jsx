@@ -193,7 +193,7 @@ export default function CrmClientsPage() {
           return (
             <button
               key={s}
-              onClick={() => setFilter({ status: active ? '' : s })}
+              onClick={() => setFilter({ status: active ? '' : s, prioridad: '' })}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                 active
                   ? `${cfg.color} border-transparent shadow-sm`
@@ -239,7 +239,7 @@ export default function CrmClientsPage() {
             return (
               <button
                 key={p}
-                onClick={() => setFilter({ prioridad: active ? '' : p })}
+                onClick={() => setFilter({ prioridad: active ? '' : p, status: '' })}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   active
                     ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent shadow-sm'
