@@ -18,13 +18,13 @@ const STATUS_OPTIONS = [
 ]
 
 const STATUS_CONFIG = {
-  nuevo_registro: { chipOn: 'bg-blue-500 text-white',    chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-700' },
-  prospecto:      { chipOn: 'bg-slate-600 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-700' },
-  contactado:     { chipOn: 'bg-amber-500 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800' },
-  negociacion:    { chipOn: 'bg-orange-500 text-white',  chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-orange-500', badge: 'bg-orange-100 text-orange-800' },
-  cliente:        { chipOn: 'bg-green-600 text-white',   chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-green-600',  badge: 'bg-green-100 text-green-800' },
-  perdido:        { chipOn: 'bg-red-500 text-white',     chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-red-500',    badge: 'bg-red-100 text-red-700' },
-  inactivo:       { chipOn: 'bg-gray-500 text-white',    chipOff: 'bg-white/20 text-white/80 hover:bg-white/30', dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
+  nuevo_registro: { chipOn: 'bg-blue-500 text-white',    chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-700' },
+  prospecto:      { chipOn: 'bg-slate-600 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-700' },
+  contactado:     { chipOn: 'bg-amber-500 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800' },
+  negociacion:    { chipOn: 'bg-orange-500 text-white',  chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-orange-500', badge: 'bg-orange-100 text-orange-800' },
+  cliente:        { chipOn: 'bg-green-600 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-green-600',  badge: 'bg-green-100 text-green-800' },
+  perdido:        { chipOn: 'bg-red-500 text-white',     chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-red-500',    badge: 'bg-red-100 text-red-700' },
+  inactivo:       { chipOn: 'bg-gray-500 text-white',    chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
 }
 
 const ACTIVITY_TYPES = [
