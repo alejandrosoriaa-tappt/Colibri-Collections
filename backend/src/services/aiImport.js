@@ -148,7 +148,7 @@ Devuelve EXACTAMENTE este JSON:
 
   const resp = await client.messages.create({
     model: MODEL,
-    max_tokens: 3000,
+    max_tokens: 6000,
     thinking: { type: 'adaptive' },
     system,
     messages: [{ role: 'user', content: prompt }]
