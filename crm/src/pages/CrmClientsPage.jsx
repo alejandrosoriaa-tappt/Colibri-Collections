@@ -69,10 +69,12 @@ export default function CrmClientsPage() {
       .finally(() => setLoading(false))
   }, [])
 
-  function setFilter(key, value) {
+  function setFilter(updates) {
     const next = new URLSearchParams(searchParams)
-    if (value) next.set(key, value)
-    else next.delete(key)
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value)
+      else next.delete(key)
+    })
     setSearchParams(next)
   }
 
@@ -189,7 +191,7 @@ export default function CrmClientsPage() {
           return (
             <button
               key={g}
-              onClick={() => setFilter('giro', g === 'Todos' ? '' : g)}
+              onClick={() => setFilter({ giro: g === 'Todos' ? '' : g })}
               className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all ${
                 active
                   ? 'bg-crm-primary text-crm-on-primary border-transparent shadow-md3-1'
@@ -219,7 +221,7 @@ export default function CrmClientsPage() {
           return (
             <button
               key={s}
-              onClick={() => { setFilter('status', active ? '' : s); setFilter('quick', '') }}
+              onClick={() => setFilter({ status: active ? '' : s, quick: '' })}
               className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                 active
                   ? `${cfg.color} border-transparent shadow-sm`
@@ -283,7 +285,7 @@ export default function CrmClientsPage() {
             return (
               <button
                 key={p}
-                onClick={() => { setFilter('prioridad', active ? '' : p); setFilter('quick', '') }}
+                onClick={() => setFilter({ prioridad: active ? '' : p, quick: '' })}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
                   active
                     ? 'bg-crm-primary-container text-crm-on-primary-container border-transparent'
@@ -299,7 +301,7 @@ export default function CrmClientsPage() {
           {/* Sort toggle */}
           <div className="ml-auto flex items-center gap-1 bg-crm-surface-container rounded-full p-0.5">
             <button
-              onClick={() => setFilter('sort', 'pipeline')}
+              onClick={() => setFilter({ sort: 'pipeline' })}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
                 sortBy !== 'reciente'
                   ? 'bg-crm-surface shadow-sm text-crm-on-surface'
@@ -309,7 +311,7 @@ export default function CrmClientsPage() {
               <GitCommitHorizontal size={12} /> Pipeline
             </button>
             <button
-              onClick={() => setFilter('sort', 'reciente')}
+              onClick={() => setFilter({ sort: 'reciente' })}
               className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
                 sortBy === 'reciente'
                   ? 'bg-crm-surface shadow-sm text-crm-on-surface'
