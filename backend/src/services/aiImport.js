@@ -97,8 +97,8 @@ function inferSeccion(sheetName) {
   const n = sheetName.toUpperCase()
   if (/CASA|^CN\b|INGRESO CASA/i.test(n)) return 'Casa de Niños'
   if (/TRANSIT/i.test(n)) return 'Transitorio'
-  if (/TALLER\s*II/i.test(n) || /T\s*II/i.test(n)) return 'Taller II'
-  if (/TALLER\s*I\b/i.test(n) || /T\s*I\b/i.test(n)) return 'Taller I'
+  if (/TALLER\s*II/i.test(n)) return 'Taller II'   // check II before I
+  if (/TALLER\s*I/i.test(n)) return 'Taller I'     // catches IA, IB, IC, ID
   if (/PRIMARIA|PRIM\b/i.test(n)) return 'Primaria'
   if (/SECUNDARIA|SEC\b/i.test(n)) return 'Secundaria'
   if (/PREESCOLAR|PREESC\b|KINDER|KG?\b/i.test(n)) return 'Preescolar'

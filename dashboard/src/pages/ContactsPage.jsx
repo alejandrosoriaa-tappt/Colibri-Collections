@@ -1213,6 +1213,7 @@ export default function ContactsPage() {
             setShowAiImport(false)
             showToast(`Importados ${r.inserted} contactos${r.skipped ? ` (${r.skipped} duplicados omitidos)` : ''}`)
             load()
+            contactsAPI.catalog().then(res => setCatalog(res.data.combos || [])).catch(() => {})
           }}
         />
       )}
