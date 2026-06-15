@@ -1388,7 +1388,7 @@ export default function ContactsPage() {
         <div className="flex items-center gap-3 p-3 bg-md-primary-container rounded-2xl">
           <span className="text-sm font-medium text-md-on-primary-container flex-1">
             {selectAllPages ? total : selected.size} seleccionado{(selectAllPages ? total : selected.size) !== 1 ? 's' : ''}
-            {allSelected && !selectAllPages && total > contacts.length && (
+            {allSelected && !selectAllPages && (
               <button
                 onClick={() => setSelectAllPages(true)}
                 className="ml-2 underline text-md-primary font-semibold text-xs"
