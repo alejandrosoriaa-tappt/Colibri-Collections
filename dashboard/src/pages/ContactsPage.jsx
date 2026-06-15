@@ -681,7 +681,7 @@ function ConfirmDeactivateModal({ count, onConfirm, onClose, loading }) {
 }
 
 // ── Confirm Delete Modal ──────────────────────────────────────────────────────
-function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
+function ConfirmDeleteModal({ count, allPages, onConfirm, onClose, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
@@ -690,9 +690,12 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
             <Trash2 size={18} className="text-md-error" />
           </div>
           <div>
-            <h2 className="font-semibold text-md-on-surface">¿Eliminar definitivamente {count > 1 ? `${count} contactos` : 'este contacto'}?</h2>
+            <h2 className="font-semibold text-md-on-surface">
+              {allPages ? `¿Eliminar definitivamente los ${count} contactos?` : `¿Eliminar definitivamente ${count > 1 ? `${count} contactos` : 'este contacto'}?`}
+            </h2>
             <p className="text-sm text-md-on-surface-variant mt-1">
               Esta acción no se puede deshacer. Se eliminarán junto con su historial.
+              {allPages && <strong className="block mt-1 text-md-error">⚠️ Se borrarán TODOS los contactos del tenant.</strong>}
             </p>
           </div>
         </div>
@@ -1029,6 +1032,7 @@ export default function ContactsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusTab, setStatusTab] = useState('active') // 'active' | 'inactive' | 'all'
   const [selected, setSelected] = useState(new Set())
+  const [selectAllPages, setSelectAllPages] = useState(false)
 
   // Modals
   const [showAdd, setShowAdd] = useState(false)
@@ -1118,7 +1122,7 @@ export default function ContactsPage() {
   const someSelected = selected.size > 0 && !allSelected
 
   const toggleAll = () => {
-    if (allSelected) setSelected(new Set())
+    if (allSelected) { setSelected(new Set()); setSelectAllPages(false) }
     else setSelected(new Set(contacts.map(c => c.id)))
   }
 
@@ -1164,9 +1168,23 @@ export default function ContactsPage() {
   const handleDelete = async (ids) => {
     setActionLoading(true)
     try {
-      await contactsAPI.bulkDelete(ids)
-      showToast(`${ids.length > 1 ? `${ids.length} contactos eliminados` : 'Contacto eliminado'} definitivamente`)
+      let finalIds = ids
+      if (selectAllPages) {
+        // Fetch ALL contact IDs matching current filters, then delete
+        const res = await contactsAPI.list({
+          limit: 5000, page: 1, status: statusTab,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+          ...(filtroSeccion ? { seccion: filtroSeccion } : {}),
+          ...(filtroGrado   ? { grado:   filtroGrado   } : {}),
+          ...(filtroSalon   ? { salon:   filtroSalon   } : {})
+        })
+        finalIds = (res.data.contacts || []).map(c => c.id)
+      }
+      await contactsAPI.bulkDelete(finalIds)
+      showToast(`${finalIds.length} contacto${finalIds.length !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
       setConfirmDelete(null)
+      setSelected(new Set())
+      setSelectAllPages(false)
       load()
     } catch (err) {
       showToast(err.response?.data?.error || err.message, true)
@@ -1214,7 +1232,8 @@ export default function ContactsPage() {
       )}
       {confirmDelete && (
         <ConfirmDeleteModal
-          count={confirmDelete.ids.length}
+          count={confirmDelete.allPages ? confirmDelete.total : confirmDelete.ids.length}
+          allPages={confirmDelete.allPages}
           loading={actionLoading}
           onClose={() => setConfirmDelete(null)}
           onConfirm={() => handleDelete(confirmDelete.ids)}
@@ -1374,7 +1393,23 @@ export default function ContactsPage() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-md-primary-container rounded-2xl">
           <span className="text-sm font-medium text-md-on-primary-container flex-1">
-            {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
+            {selectAllPages ? total : selected.size} seleccionado{(selectAllPages ? total : selected.size) !== 1 ? 's' : ''}
+            {allSelected && !selectAllPages && total > contacts.length && (
+              <button
+                onClick={() => setSelectAllPages(true)}
+                className="ml-2 underline text-md-primary font-semibold text-xs"
+              >
+                Seleccionar los {total} contactos
+              </button>
+            )}
+            {selectAllPages && (
+              <button
+                onClick={() => { setSelectAllPages(false); setSelected(new Set()) }}
+                className="ml-2 underline text-md-primary font-semibold text-xs"
+              >
+                Cancelar selección global
+              </button>
+            )}
           </span>
           {isColegio && statusTab !== 'inactive' && (
             <button
@@ -1411,12 +1446,12 @@ export default function ContactsPage() {
               {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <UserCheck size={13} />} Reactivar
             </button>
           )}
-          {statusTab === 'inactive' && (
+          {(statusTab === 'inactive' || selectAllPages) && (
             <button
-              onClick={() => setConfirmDelete({ ids: selectedIds })}
+              onClick={() => setConfirmDelete({ ids: selectedIds, allPages: selectAllPages, total: selectAllPages ? total : selectedIds.length })}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-md-error text-white rounded-full hover:opacity-90 transition-opacity"
             >
-              <Trash2 size={13} /> Eliminar
+              <Trash2 size={13} /> Eliminar {selectAllPages ? `los ${total}` : ''}
             </button>
           )}
           <button
