@@ -252,27 +252,30 @@ export default function CrmClientsPage() {
           })}
 
           {/* Sort toggle */}
-          <div className="ml-auto flex items-center gap-1 bg-crm-surface-container rounded-full p-0.5">
-            <button
-              onClick={() => setFilter({ sort: 'pipeline' })}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                sortBy !== 'reciente'
-                  ? 'bg-crm-surface shadow-sm text-crm-on-surface'
-                  : 'text-crm-on-surface-variant hover:text-crm-on-surface'
-              }`}
-            >
-              <GitCommitHorizontal size={12} /> Pipeline
-            </button>
-            <button
-              onClick={() => setFilter({ sort: 'reciente' })}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                sortBy === 'reciente'
-                  ? 'bg-crm-surface shadow-sm text-crm-on-surface'
-                  : 'text-crm-on-surface-variant hover:text-crm-on-surface'
-              }`}
-            >
-              <Clock size={12} /> Reciente
-            </button>
+          <div className="ml-auto flex items-center gap-1.5">
+            <span className="text-xs text-crm-on-surface-variant">Ordenar:</span>
+            <div className="flex items-center gap-1 bg-crm-surface-container rounded-full p-1">
+              <button
+                onClick={() => setFilter({ sort: 'pipeline' })}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  sortBy !== 'reciente'
+                    ? 'bg-crm-primary text-crm-on-primary shadow-md3-1'
+                    : 'text-crm-on-surface-variant hover:text-crm-on-surface'
+                }`}
+              >
+                <GitCommitHorizontal size={12} /> Pipeline
+              </button>
+              <button
+                onClick={() => setFilter({ sort: 'reciente' })}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                  sortBy === 'reciente'
+                    ? 'bg-crm-primary text-crm-on-primary shadow-md3-1'
+                    : 'text-crm-on-surface-variant hover:text-crm-on-surface'
+                }`}
+              >
+                <Clock size={12} /> Reciente
+              </button>
+            </div>
           </div>
         </div>
       </div>
