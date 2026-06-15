@@ -17,12 +17,16 @@ Monorepo con tres proyectos independientes:
 
 ## NKUVO CRM — Estado actual (Jun 2026)
 
-### PRs mergeados a main
-- PR #4: CORS + tenant fix + Google OAuth login + CRM_ALLOWED_EMAILS
-- PR #5: Tappt integration (fire-and-forget webhooks para follow-ups)
-- PR #6: Mobile sticky save bar
-- PR #7: Giro/Industria dropdown (Colegio, Condominio, Gimnasio, Academia, Estudio, Otro)
-- PR #8: Industry tabs, pipeline ordering, `nuevo_registro` status, sort toggle, dashboard actualizado
+### Commits mergeados a main (esta sesión, Jun 15 2026)
+- PR #8 (sesión anterior): Industry tabs, pipeline ordering, `nuevo_registro` status, sort toggle, dashboard actualizado
+- Quick filters + relative time en tarjetas → luego refactorizado a sistema más simple
+- Fix race condition en `setFilter` (doble llamada pisaba la primera)
+- Simplificación total de filtros: 3 capas independientes + barra "Filtrando por:"
+- Filtros status y prioridad mutuamente excluyentes al hacer click
+- Chips de filtro con alto contraste: sólido+blanco cuando activo, ghost cuando inactivo
+- Botones Pipeline/Reciente con fondo `bg-crm-primary` cuando activo
+- Chips de status en detalle de cliente: mismo estilo alto contraste + spinner + sin requerir modo editar
+- Fix texto invisible en chips de detalle (era `text-white/80` sobre fondo claro)
 
 ### Base de datos (Railway Postgres — zestful-embrace)
 Tablas: `crm_clients`, `crm_activities`, `crm_followups`
@@ -39,6 +43,7 @@ ALTER TABLE crm_clients ALTER COLUMN status SET DEFAULT 'nuevo_registro';
 - 35 colegios particulares Querétaro (giro=Colegio, status=nuevo_registro)
 - 21 administradoras/asociaciones de condominios Querétaro (giro=Condominio, status=nuevo_registro)
 - Total: ~58 registros
+- Nota: clientes creados manualmente pueden tener giro no estándar (ej. "Educacion" en vez de "Colegio") — corregir desde la pantalla de edición
 
 ### Pipeline de status
 ```
@@ -46,17 +51,34 @@ Nuevo registro → Prospecto → Contactado → Negociación → Cliente
                                                         ↘ Perdido / Inactivo
 ```
 - Los imports masivos entran como `nuevo_registro`
-- Se avanza a `prospecto` manualmente al hacer primer contacto real
+- Se avanza manualmente haciendo click en el chip de status en la pantalla de detalle (sin necesidad de entrar a modo Editar)
+
+### Sistema de filtros en CrmClientsPage.jsx (estado final)
+Tres capas independientes que combinan con AND:
+1. **Tabs de industria** — Todos / Colegio / Condominio / Gimnasio / Academia / Estudio / Otro (con conteos)
+2. **Chips de status** — Nuevo registro / Prospecto / Contactado… (con conteos según tab activo). Al hacer click se limpia la prioridad.
+3. **Búsqueda + Prioridad + Sort** — dentro de una card. Al hacer click en prioridad se limpia el status.
+
+Barra "Filtrando por:" aparece solo cuando hay filtros activos. Cada tag tiene su propio ✕ para quitarlo individualmente.
+
+Chips activos: fondo sólido saturado + texto blanco + ✓
+Chips inactivos: ghost/outline + texto gris
 
 ### Features implementados en CRM
 - Login con Google OAuth + email/password
 - Lista de clientes con tabs por industria (Colegio, Condominio, etc.)
-- Pipeline status bar clickeable con conteos
+- Status bar clickeable con conteos (filtro limpia prioridad y viceversa)
 - Sort: Pipeline (por etapa + prioridad) / Reciente (updated_at DESC)
-- Detalle de cliente: cambio de status sin entrar a modo editar
+- Tiempo relativo en cada tarjeta ("Hace 2 días", "Ayer", etc.)
+- Barra "Filtrando por:" con tags individuales removibles
+- Detalle de cliente: cambio de status con un click (sin modo editar), spinner de carga
 - Actividades rápidas (llamada, correo, reunión, WhatsApp, visita)
 - Follow-ups con integración Tappt (WhatsApp reminders)
 - Dashboard: pipeline 5 etapas, stat "Por contactar", próximos follow-ups
+
+### Supabase service role key
+La key anterior fue rotada en esta sesión. La nueva está en Supabase → Settings → API → Secret keys.
+Actualizar `SUPABASE_SERVICE_ROLE_KEY` en Railway backend (zestful-embrace) con la nueva key.
 
 ### Integración Tappt (pendiente activar)
 Archivo: `backend/src/services/tappt.js`
@@ -74,14 +96,15 @@ Variables a configurar en Railway (CRM NKUVO backend) cuando Tappt esté listo:
 - `VITE_SUPABASE_ANON_KEY` — anon key del mismo proyecto
 
 ### Pendientes
-- Rotar Supabase service role key (fue compartida en chat en sesión anterior)
-- Agregar `CRM_ALLOWED_EMAILS=asoria@tappt.lat` en Railway CRM NKUVO backend (si no está)
+- Actualizar `SUPABASE_SERVICE_ROLE_KEY` en Railway backend con la nueva key rotada
+- Verificar `CRM_ALLOWED_EMAILS=asoria@tappt.lat` en Railway CRM NKUVO backend
 - Configurar vars Tappt cuando el equipo Tappt implemente su endpoint
-- Subir más archivos de prospectos (gimnasios, academias, etc.) con el mismo flujo
+- Subir más archivos de prospectos (gimnasios, academias, estudios) con el mismo flujo
+- Corregir giro de clientes creados manualmente que tengan valores no estándar (ej. "Educacion" → "Colegio")
 
 ## Flujo para importar nuevos prospectos
 1. Recibir Excel → extraer con Python (openpyxl)
-2. Generar SQL INSERT con `status='nuevo_registro'`, `giro=` el tipo correspondiente
+2. Generar SQL INSERT con `status='nuevo_registro'`, `giro=` el tipo correspondiente (debe ser exactamente: Colegio, Condominio, Gimnasio, Academia, Estudio u Otro)
 3. En Railway Console: `psql $DATABASE_URL` → pegar SQL
 4. Los registros aparecen en el tab correspondiente ordenados por prioridad
 
@@ -95,4 +118,7 @@ SELECT status, count(*) FROM crm_clients GROUP BY status;
 
 # Ver distribución por giro
 SELECT giro, status, count(*) FROM crm_clients GROUP BY giro, status ORDER BY giro, status;
+
+# Corregir giros no estándar
+UPDATE crm_clients SET giro = 'Colegio' WHERE giro = 'Educacion';
 ```
