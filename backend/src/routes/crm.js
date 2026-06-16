@@ -73,7 +73,6 @@ router.get('/followups/upcoming', async (req, res) => {
       JOIN crm_clients c ON c.id = f.client_id
       WHERE f.tenant_id = $1
         AND f.completado = false
-        AND f.fecha_recordatorio >= NOW()
       ORDER BY f.fecha_recordatorio ASC
       LIMIT 20
     `, [tenantId])
