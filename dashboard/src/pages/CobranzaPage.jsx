@@ -50,6 +50,14 @@ function loadDraft() {
 }
 
 // ── Preview de mensaje con chips ──────────────────────────────────────────────
+function Chip({ label, color }) {
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border mx-0.5 ${color}`}>
+      {label}
+    </span>
+  )
+}
+
 function MessageBubble({ text }) {
   if (!text) return <p className="text-sm text-md-on-surface-variant italic">Sin mensaje — escribe uno arriba</p>
   const parts = text.split(/(\{[^}]+\})/g)
@@ -340,8 +348,6 @@ export default function CobranzaPage() {
 
 // ── Tarjeta por grupo de color ────────────────────────────────────────────────
 function ColorGroupCard({ g, onPatch }) {
-  const [editingMsg, setEditingMsg] = useState(false)
-  const appendVar = (v) => onPatch(g.color, { message: `${g.message || ''} ${v}`.trim() })
   const colorLabel = groupLabel(g)
 
   return (
@@ -402,55 +408,36 @@ function ColorGroupCard({ g, onPatch }) {
             </div>
           </div>
 
-          {/* Mensaje */}
+          {/* Mensaje — template fijo aprobado por Meta */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">
                 Mensaje de WhatsApp
               </label>
-              <button
-                type="button"
-                onClick={() => setEditingMsg((v) => !v)}
-                className="text-[11px] text-md-primary underline"
-              >
-                {editingMsg ? 'Ver preview' : 'Editar texto'}
-              </button>
+              <span className="text-[11px] px-2 py-0.5 bg-green-100 text-green-700 border border-green-200 rounded-full font-medium">
+                ✓ Template aprobado por Meta
+              </span>
             </div>
 
-            {editingMsg ? (
-              <>
-                <textarea
-                  value={g.message}
-                  placeholder="Escribe tu mensaje aquí. Usa los botones de abajo para insertar variables."
-                  onChange={(e) => onPatch(g.color, { message: e.target.value })}
-                  rows={3}
-                  className="w-full px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none resize-none"
-                />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {VARIABLES.map((v) => {
-                    const key = v.slice(1, -1)
-                    const meta = VAR_LABELS[key]
-                    return (
-                      <button
-                        key={v}
-                        type="button"
-                        onClick={() => appendVar(v)}
-                        className={`text-[11px] px-2 py-1 rounded-full border font-semibold hover:opacity-80 transition-opacity ${meta ? meta.color : 'bg-gray-100 text-gray-600 border-gray-200'}`}
-                      >
-                        + {meta?.label || key}
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            ) : (
-              <div
-                onClick={() => setEditingMsg(true)}
-                className="w-full px-3 py-2.5 rounded-xl border border-md-outline-variant bg-md-surface-container-low/50 cursor-text min-h-[72px]"
-              >
-                <MessageBubble text={g.message} />
-              </div>
-            )}
+            {/* Preview del template con variables reales */}
+            <div className="w-full px-3 py-3 rounded-xl border border-green-200 bg-green-50/40 text-sm leading-relaxed text-md-on-surface space-y-1">
+              <p>
+                Hola{' '}
+                <Chip label="Nombre padre/madre" color="bg-blue-100 text-blue-700 border-blue-200" />,
+                te informamos que{' '}
+                <Chip label="Concepto" color="bg-teal-100 text-teal-700 border-teal-200" />{' '}
+                de{' '}
+                <Chip label="Colegio" color="bg-pink-100 text-pink-700 border-pink-200" />{' '}
+                tiene un saldo pendiente de{' '}
+                <Chip label="Monto" color="bg-green-100 text-green-700 border-green-200" />.
+                Puedes realizar tu pago aquí:{' '}
+                <Chip label="Liga de pago" color="bg-orange-100 text-orange-700 border-orange-200" />.
+                Para cualquier duda, comunícate con nosotros.
+              </p>
+            </div>
+            <p className="text-[11px] text-md-on-surface-variant mt-1.5">
+              El texto es fijo (aprobado por Meta). Solo personalizas el <strong>concepto</strong> y el <strong>nombre de campaña</strong> arriba.
+            </p>
           </div>
 
           <FamiliesPreview g={g} onPatch={onPatch} />

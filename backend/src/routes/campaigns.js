@@ -11,8 +11,9 @@ import supabase, {
   getInvoices,
   logMessage
 } from '../services/supabase.js'
-import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { buildMessage, calculateAmountWithLateFee } from '../templates/messages.js'
+import { TEMPLATE_NAMES, recordatorioPagoComponents } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -340,8 +341,30 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
         late_fee_pct: lateFee
       }
 
-      const text = buildMessage(msg.message_template, vars)
-      const result = await sendWhatsAppMessage(contact.telefono, text)
+      // Campañas de cobranza → usar template aprobado por Meta (funciona fuera de 24h)
+      const isCobranza = !!(campaign.concept)
+      let result
+      if (isCobranza) {
+        const components = recordatorioPagoComponents({
+          nombre:   vars.nombre,
+          orgName:  vars.nombre_org,
+          concepto: vars.concept,
+          monto:    vars.monto,
+          link:     vars.liga_pago
+        })
+        result = await sendWhatsAppTemplate(
+          contact.telefono,
+          TEMPLATE_NAMES.RECORDATORIO_PAGO.name,
+          TEMPLATE_NAMES.RECORDATORIO_PAGO.lang,
+          components
+        )
+      } else {
+        const text = buildMessage(msg.message_template, vars)
+        result = await sendWhatsAppMessage(contact.telefono, text)
+      }
+      const text = isCobranza
+        ? `[Template: ${TEMPLATE_NAMES.RECORDATORIO_PAGO.name}] ${vars.concept} $${vars.monto}`
+        : buildMessage(msg.message_template, vars)
 
       await logMessage({
         tenant_id: campaign.tenant_id,
