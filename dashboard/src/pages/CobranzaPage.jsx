@@ -169,8 +169,8 @@ export default function CobranzaPage() {
       {stage === 'analyzing' && (
         <div className="py-16 text-center">
           <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
-          <p className="text-sm font-medium text-md-on-surface">Leyendo el reporte y agrupando por color…</p>
-          <p className="text-xs text-md-on-surface-variant mt-1">Mapeando columnas y resolviendo familias (~10-20 seg)</p>
+          <p className="text-sm font-medium text-md-on-surface">La IA está leyendo tu archivo…</p>
+          <p className="text-xs text-md-on-surface-variant mt-1">Detectando columnas y agrupando familias por color (~10-20 seg)</p>
         </div>
       )}
 
