@@ -17,54 +17,39 @@
     body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;display:flex;flex-direction:column;}
     ::-webkit-scrollbar{width:4px;} ::-webkit-scrollbar-track{background:#0a0a0a;} ::-webkit-scrollbar-thumb{background:#252525;}
 
-    /* ── SCREENS ── */
     .screen{display:none;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:24px;position:relative;overflow:hidden;}
     .screen.active{display:flex;}
-
-    /* shared grid bg */
     .gbg{position:absolute;inset:0;opacity:.04;background-image:linear-gradient(var(--gold) 1px,transparent 1px),linear-gradient(90deg,var(--gold) 1px,transparent 1px);background-size:55px 55px;pointer-events:none;}
     .glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(240,180,41,.09) 0%,transparent 70%);pointer-events:none;}
 
-    /* ── API KEY SCREEN ── */
-    #screen-key .box{width:100%;max-width:440px;position:relative;z-index:1;}
-    .logo-txt{font-family:'Oswald',sans-serif;font-weight:700;color:var(--gold);letter-spacing:6px;font-size:1.4rem;text-shadow:0 0 20px rgba(240,180,41,.4);margin-bottom:4px;}
-    .logo-sub{color:var(--muted);font-size:.68rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;}
-    .field-label{color:var(--muted);font-size:.65rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;display:block;}
-    input[type=text],input[type=password]{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.85rem;padding:13px 16px;outline:none;transition:border-color .2s;}
-    input:focus{border-color:var(--gold);box-shadow:0 0 0 1px rgba(240,180,41,.3);}
-    .btn{display:block;width:100%;background:var(--gold);color:#000;font-family:'Oswald',sans-serif;font-weight:700;font-size:1rem;letter-spacing:4px;text-transform:uppercase;border:none;padding:15px;cursor:pointer;margin-top:14px;transition:background .2s;}
-    .btn:hover{background:#ffc84a;}
-    .btn:disabled{opacity:.4;cursor:not-allowed;}
-    .hint{color:var(--muted);font-size:.7rem;margin-top:14px;line-height:1.7;}
-    .hint a{color:var(--gold);text-decoration:none;}
-    .err{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--danger);font-size:.72rem;padding:10px 14px;margin-top:10px;display:none;}
-
-    /* ── START SCREEN ── */
+    /* START */
     #screen-start .box{width:100%;max-width:420px;position:relative;z-index:1;text-align:center;}
     .hero-title{font-family:'Oswald',sans-serif;font-weight:700;line-height:.88;margin-bottom:24px;}
     .hero-title .l1{display:block;color:var(--gold);font-size:clamp(4rem,14vw,7rem);text-shadow:0 0 60px rgba(240,180,41,.4);}
     .hero-title .l2{display:block;color:#fff;font-size:clamp(4rem,14vw,7rem);-webkit-text-stroke:2px rgba(240,180,41,.2);}
     .tagline{color:var(--muted);font-size:.8rem;line-height:1.8;margin-bottom:32px;}
-    .key-link{background:none;border:none;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.65rem;cursor:pointer;margin-top:14px;letter-spacing:1px;text-decoration:underline;}
-    .key-link:hover{color:var(--gold);}
+    .field-label{color:var(--muted);font-size:.65rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;display:block;text-align:left;}
+    input[type=text]{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:.9rem;padding:13px 16px;outline:none;transition:border-color .2s;}
+    input:focus{border-color:var(--gold);box-shadow:0 0 0 1px rgba(240,180,41,.3);}
+    .btn{display:block;width:100%;background:var(--gold);color:#000;font-family:'Oswald',sans-serif;font-weight:700;font-size:1rem;letter-spacing:4px;text-transform:uppercase;border:none;padding:15px;cursor:pointer;margin-top:14px;transition:background .2s;}
+    .btn:hover{background:#ffc84a;} .btn:disabled{opacity:.4;cursor:not-allowed;}
+    .err{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--danger);font-size:.72rem;padding:10px 14px;margin-top:10px;display:none;}
 
-    /* ── GAME SCREEN ── */
+    /* GAME SCREEN */
     #screen-game{display:none;flex-direction:column;height:100%;padding:0;overflow:hidden;}
     #screen-game.active{display:flex;}
-
-    /* Top bar */
     #topbar{background:var(--card);border-bottom:1px solid var(--border);padding:8px 18px;display:flex;align-items:center;gap:14px;flex-shrink:0;}
     #topbar .tlogo{font-family:'Oswald',sans-serif;font-weight:700;color:var(--gold);font-size:1rem;letter-spacing:4px;text-shadow:0 0 10px rgba(240,180,41,.3);}
     #topbar .ttime{color:var(--muted);font-size:.65rem;margin-left:auto;}
     #tloc{font-size:.65rem;letter-spacing:2px;padding:3px 10px;border:1px solid;background:rgba(0,0,0,.3);}
-    #tbtn-key{background:none;border:1px solid #252525;color:#333;font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:3px 8px;cursor:pointer;letter-spacing:1px;transition:all .2s;}
-    #tbtn-key:hover{border-color:var(--gold);color:var(--gold);}
-
-    /* Body */
+    #tbtn-restart{background:none;border:1px solid #252525;color:#444;font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:3px 10px;cursor:pointer;letter-spacing:1px;transition:all .2s;}
+    #tbtn-restart:hover{border-color:var(--gold);color:var(--gold);}
+    #mobile-stats{display:none;background:var(--card);border-bottom:1px solid var(--border);padding:8px 14px;gap:14px;font-size:.7rem;flex-shrink:0;}
+    .ms-item{display:flex;flex-direction:column;align-items:center;}
+    .ms-lbl{color:var(--muted);font-size:.55rem;letter-spacing:1px;text-transform:uppercase;}
+    .ms-val{font-family:'Oswald',sans-serif;font-weight:700;}
     #game-body{display:grid;grid-template-columns:190px 1fr;flex:1;overflow:hidden;}
-
-    /* Stats panel */
-    #stats-panel{background:#090909;border-right:1px solid var(--border);padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;gap:0;}
+    #stats-panel{background:#090909;border-right:1px solid var(--border);padding:14px 12px;overflow-y:auto;display:flex;flex-direction:column;}
     .s-name{font-family:'Oswald',sans-serif;font-weight:700;color:var(--gold);font-size:1.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .s-turn{color:var(--muted);font-size:.6rem;margin-bottom:14px;margin-top:2px;}
     .s-row{padding:9px 0;border-bottom:1px solid #121212;}
@@ -77,11 +62,7 @@
     .s-sub{font-size:.62rem;margin-top:2px;}
     .alert-pulse{animation:apulse 1.4s ease-in-out infinite;}
     @keyframes apulse{0%,100%{opacity:1}50%{opacity:.4}}
-
-    /* Main panel */
     #game-main{display:flex;flex-direction:column;overflow:hidden;padding:16px;}
-
-    /* Narrative box */
     #narrative-box{background:#080808;border:1px solid var(--border);padding:16px 18px;flex:1;overflow-y:auto;transition:border-color .4s,box-shadow .4s;min-height:0;}
     #nar-header{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #111;}
     #nar-label{font-size:.6rem;letter-spacing:3px;text-transform:uppercase;}
@@ -90,8 +71,6 @@
     #nar-text{font-size:.78rem;line-height:1.85;color:#c0c0c0;white-space:pre-wrap;}
     .cursor-blink::after{content:'█';color:var(--gold);animation:cblink 1s step-end infinite;}
     @keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}
-
-    /* Actions */
     #action-area{flex-shrink:0;margin-top:12px;}
     #action-label{color:var(--muted);font-size:.6rem;letter-spacing:3px;text-transform:uppercase;margin-bottom:8px;}
     #actions-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
@@ -100,18 +79,14 @@
     .action-btn:disabled{opacity:.35;cursor:not-allowed;}
     .action-btn .anum{color:#333;flex-shrink:0;}
     .action-btn:hover .anum{color:var(--gold);}
-
-    /* History */
     #history-area{margin-top:10px;border-top:1px solid #111;padding-top:8px;flex-shrink:0;}
     #history-list{display:flex;flex-direction:column;gap:3px;}
     .hist-row{font-size:.62rem;color:#3a3a3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
     .hist-arrow{color:var(--gold);margin-right:4px;opacity:.5;}
-
-    /* Error bar */
     #err-bar{background:rgba(230,57,70,.1);border:1px solid rgba(230,57,70,.3);color:var(--danger);font-size:.7rem;padding:8px 14px;margin-top:8px;display:none;flex-shrink:0;}
     #err-bar.active{display:block;}
 
-    /* ── GAME OVER SCREEN ── */
+    /* GAME OVER */
     #screen-over .box{width:100%;max-width:440px;position:relative;z-index:1;text-align:center;}
     .over-glow{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(230,57,70,.1) 0%,transparent 70%);pointer-events:none;}
     .over-title{font-family:'Oswald',sans-serif;font-weight:700;color:var(--danger);font-size:clamp(3rem,10vw,5rem);letter-spacing:4px;text-shadow:0 0 40px rgba(230,57,70,.5);margin:16px 0 8px;}
@@ -122,40 +97,18 @@
     .over-item .ol{color:var(--muted);font-size:.6rem;letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;}
     .over-item .ov{color:var(--text);font-size:.82rem;}
 
-    /* ── MOBILE ── */
     @media(max-width:640px){
       #game-body{grid-template-columns:1fr;}
       #stats-panel{display:none;}
       #actions-grid{grid-template-columns:1fr;}
       #screen-game.active #mobile-stats{display:flex;}
     }
-    #mobile-stats{display:none;background:var(--card);border-bottom:1px solid var(--border);padding:8px 14px;gap:14px;font-size:.7rem;flex-shrink:0;}
-    .ms-item{display:flex;flex-direction:column;align-items:center;}
-    .ms-lbl{color:var(--muted);font-size:.55rem;letter-spacing:1px;text-transform:uppercase;}
-    .ms-val{font-family:'Oswald',sans-serif;font-weight:700;}
   </style>
 </head>
 <body>
 
-<!-- ──────────────── API KEY ──────────────── -->
-<div id="screen-key" class="screen active">
-  <div class="gbg"></div><div class="glow"></div>
-  <div class="box">
-    <div class="logo-txt">CIUDAD LIBRE</div>
-    <div class="logo-sub">RPG · Narrado por IA</div>
-    <label class="field-label">🔑 Tu API Key de Anthropic</label>
-    <input id="key-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
-    <div id="key-err" class="err">API key inválida o sin conexión. Verifica e intenta de nuevo.</div>
-    <button class="btn" onclick="saveKey()">GUARDAR Y JUGAR</button>
-    <p class="hint">
-      Tu key se guarda solo en <strong>tu navegador</strong> (localStorage).<br/>
-      No se sube a ningún servidor. <a href="https://console.anthropic.com" target="_blank">Consigue una key gratis →</a>
-    </p>
-  </div>
-</div>
-
-<!-- ──────────────── START ──────────────── -->
-<div id="screen-start" class="screen">
+<!-- START -->
+<div id="screen-start" class="screen active">
   <div class="gbg"></div><div class="glow"></div>
   <div class="box">
     <h1 class="hero-title"><span class="l1">CIUDAD</span><span class="l2">LIBRE</span></h1>
@@ -164,64 +117,37 @@
     <input id="name-input" type="text" placeholder="Ej: El Patas, La Ramona..." maxlength="28" autocomplete="off"/>
     <div id="start-err" class="err"></div>
     <button class="btn" id="start-btn" onclick="startGame()">▶ &nbsp;COMENZAR</button>
-    <button class="key-link" onclick="forgetKey()">Cambiar API key</button>
+    <p style="color:var(--muted);font-size:.65rem;margin-top:20px;line-height:1.7;">
+      Ciudad Libre · RPG de texto · Narrado por Claude AI
+    </p>
   </div>
 </div>
 
-<!-- ──────────────── GAME ──────────────── -->
+<!-- GAME -->
 <div id="screen-game" class="screen">
-  <!-- Top bar -->
   <div id="topbar">
     <span class="tlogo">CIUDAD LIBRE</span>
     <span id="ttime" class="ttime"></span>
     <span id="tloc"></span>
-    <button id="tbtn-key" onclick="forgetKey()" title="Cambiar API key">🔑 key</button>
+    <button id="tbtn-restart" onclick="restart()">↩ Nueva partida</button>
   </div>
-
-  <!-- Mobile stats bar -->
   <div id="mobile-stats">
     <div class="ms-item"><span class="ms-lbl">💰</span><span class="ms-val" id="ms-money" style="color:var(--money)"></span></div>
     <div class="ms-item"><span class="ms-lbl">❤️</span><span class="ms-val" id="ms-health"></span></div>
     <div class="ms-item"><span class="ms-lbl">🔴</span><span class="ms-val" id="ms-wanted" style="color:var(--danger)"></span></div>
     <div class="ms-item"><span class="ms-lbl">⭐</span><span class="ms-val" id="ms-rep" style="color:var(--gold)"></span></div>
   </div>
-
   <div id="game-body">
-    <!-- Stats sidebar -->
     <div id="stats-panel">
       <div class="s-name" id="s-name"></div>
       <div class="s-turn" id="s-turn"></div>
-      <div class="s-row">
-        <div class="s-lbl">📍 Ubicación</div>
-        <div class="s-val" id="s-loc" style="font-size:.9rem;"></div>
-      </div>
-      <div class="s-row">
-        <div class="s-lbl">💰 Dinero</div>
-        <div class="s-val" id="s-money" style="color:var(--money);"></div>
-        <div style="color:var(--muted);font-size:.6rem;">MXN</div>
-      </div>
-      <div class="s-row">
-        <div class="s-lbl">❤️ Salud</div>
-        <div class="s-val" id="s-health"></div>
-        <div class="s-bar"><div class="s-fill" id="s-health-bar"></div></div>
-      </div>
-      <div class="s-row">
-        <div class="s-lbl">⭐ Reputación</div>
-        <div class="s-val" id="s-rep" style="color:var(--gold);"></div>
-        <div class="s-sub" id="s-rep-label" style="color:var(--gold);"></div>
-      </div>
-      <div class="s-row">
-        <div class="s-lbl">🔴 Búsqueda</div>
-        <div class="s-stars" id="s-stars" style="color:var(--danger);"></div>
-        <div class="s-sub" id="s-wanted-alert" style="color:var(--danger);display:none;" class="alert-pulse">¡ALERTA!</div>
-      </div>
-      <div class="s-row">
-        <div class="s-lbl">🚗 Vehículo</div>
-        <div style="color:#aaa;font-size:.76rem;margin-top:2px;" id="s-vehicle"></div>
-      </div>
+      <div class="s-row"><div class="s-lbl">📍 Ubicación</div><div class="s-val" id="s-loc" style="font-size:.9rem;"></div></div>
+      <div class="s-row"><div class="s-lbl">💰 Dinero</div><div class="s-val" id="s-money" style="color:var(--money);"></div><div style="color:var(--muted);font-size:.6rem;">MXN</div></div>
+      <div class="s-row"><div class="s-lbl">❤️ Salud</div><div class="s-val" id="s-health"></div><div class="s-bar"><div class="s-fill" id="s-health-bar"></div></div></div>
+      <div class="s-row"><div class="s-lbl">⭐ Reputación</div><div class="s-val" id="s-rep" style="color:var(--gold);"></div><div class="s-sub" id="s-rep-label" style="color:var(--gold);"></div></div>
+      <div class="s-row"><div class="s-lbl">🔴 Búsqueda</div><div class="s-stars" id="s-stars" style="color:var(--danger);"></div><div class="s-sub alert-pulse" id="s-wanted-alert" style="color:var(--danger);display:none;">¡ALERTA!</div></div>
+      <div class="s-row"><div class="s-lbl">🚗 Vehículo</div><div style="color:#aaa;font-size:.76rem;margin-top:2px;" id="s-vehicle"></div></div>
     </div>
-
-    <!-- Main -->
     <div id="game-main">
       <div id="narrative-box">
         <div id="nar-header">
@@ -244,220 +170,108 @@
   </div>
 </div>
 
-<!-- ──────────────── GAME OVER ──────────────── -->
+<!-- GAME OVER -->
 <div id="screen-over" class="screen">
   <div class="gbg"></div><div class="over-glow"></div>
   <div class="box">
     <div style="font-size:3.5rem;">💀</div>
     <div class="over-title">GAME OVER</div>
     <div class="over-reason" id="over-reason"></div>
-    <div class="over-stats">
-      <div class="over-stats-title" id="over-name"></div>
-      <div class="over-grid" id="over-grid"></div>
-    </div>
+    <div class="over-stats"><div class="over-stats-title" id="over-name"></div><div class="over-grid" id="over-grid"></div></div>
     <button class="btn" onclick="restart()">▶ &nbsp;NUEVA PARTIDA</button>
   </div>
 </div>
 
 <script>
-const SYSTEM_PROMPT = `Eres el Game Master de "CIUDAD LIBRE" — un juego RPG de texto estilo Grand Theft Auto ambientado en una ciudad mexicana ficticia.
-
-ZONAS: El Barrio | Centro Histórico | La Industrial | Los Álamos | El Bordo | Carretera Federal
-
-PERSONAJES: El Chivo (mecánico) | La Sra. Carmen (fonda/chismes) | El Güero (narco) | Teniente Rojas (policía corrupto) | Don Armando (empresario)
-
-TONO: Cinematográfico, 2ª persona, español mexicano informal. Jerga: carnal, chido, cabrón, feria, jale, ranfla, etc.
-
-ECONOMÍA: Trabajo legal $200-800 | Robo $500-2000 | Misión narco $5000-20000 | Soborno $500-2000/estrella
-
-REGLAS:
-- Dinero, Salud (0-100, 0=muerte=gameOver), Reputación (0-100), Nivel Búsqueda (0-5), Vehículo
-- Reputación: 0-20 Desconocido | 21-40 Conocido | 41-60 Respetado | 61-80 Temido | 81-100 Leyenda
-- Tiempo avanza cada 2-3 acciones: Mañana→Tarde→Noche→Madrugada→(nuevo día, baja búsqueda 1)
-- Con búsqueda 5 y no huir → arresto = gameOver
-
-Responde SOLO con JSON válido (sin markdown, sin backticks):
-{
-  "narrative": "2-4 párrafos dramáticos en español...",
-  "stateChanges": {
-    "money": <delta entero>,
-    "health": <delta entero>,
-    "reputation": <delta entero>,
-    "wantedLevel": <delta entre -5 y 5>,
-    "location": "<nueva zona o null>",
-    "vehicle": "<nuevo vehículo o null>",
-    "timeAdvance": <true/false>
-  },
-  "actions": ["Acción 1","Acción 2","Acción 3","Acción 4"],
-  "eventType": "neutral|positive|negative|danger|mission|gameOver",
-  "gameOverReason": "<razón o null>"
-}`;
+// ── CONFIGURACIÓN ──
+// Reemplaza esta URL con la de tu Cloudflare Worker después de desplegarlo
+const WORKER_URL = 'https://ciudad-libre.TU-USUARIO.workers.dev';
 
 const TIME_SEQ = ['Mañana','Tarde','Noche','Madrugada'];
 const ZONE_COLORS = {'El Barrio':'#f0b429','Centro Histórico':'#4fc3f7','La Industrial':'#9b59b6','Los Álamos':'#25c281','El Bordo':'#e63946','Carretera Federal':'#f39c12'};
 const EVENT_STYLES = {
-  positive:{border:'#25c281',glow:'rgba(37,194,129,.12)',icon:'✅',label:'POSITIVO',labelColor:'#25c281'},
-  negative:{border:'#e63946',glow:'rgba(230,57,70,.12)',icon:'⚠️',label:'NEGATIVO',labelColor:'#e63946'},
-  danger:  {border:'#e63946',glow:'rgba(230,57,70,.22)',icon:'🔫',label:'PELIGRO', labelColor:'#e63946'},
-  mission: {border:'#4fc3f7',glow:'rgba(79,195,247,.1)', icon:'🎯',label:'MISIÓN',  labelColor:'#4fc3f7'},
-  neutral: {border:'#1e1e1e',glow:'transparent',         icon:'📖',label:'NARRACIÓN',labelColor:'#555'},
+  positive:{border:'#25c281',glow:'rgba(37,194,129,.12)',icon:'✅',label:'POSITIVO',lc:'#25c281'},
+  negative:{border:'#e63946',glow:'rgba(230,57,70,.12)',icon:'⚠️',label:'NEGATIVO',lc:'#e63946'},
+  danger:  {border:'#e63946',glow:'rgba(230,57,70,.22)',icon:'🔫',label:'PELIGRO', lc:'#e63946'},
+  mission: {border:'#4fc3f7',glow:'rgba(79,195,247,.1)', icon:'🎯',label:'MISIÓN',  lc:'#4fc3f7'},
+  neutral: {border:'#1e1e1e',glow:'transparent',         icon:'📖',label:'NARRACIÓN',lc:'#555'},
 };
-const REP_LABELS = ['Desconocido','Conocido','Respetado','Temido','Leyenda'];
-function repLabel(r){ return r<=20?REP_LABELS[0]:r<=40?REP_LABELS[1]:r<=60?REP_LABELS[2]:r<=80?REP_LABELS[3]:REP_LABELS[4]; }
+function repLabel(r){return r<=20?'Desconocido':r<=40?'Conocido':r<=60?'Respetado':r<=80?'Temido':'Leyenda';}
 
-let apiKey = localStorage.getItem('cl_api_key')||'';
-let gs = null; // game state
-let actions = [];
-let loading = false;
-let typeTimer = null;
+let gs = null, curActions = [], loading = false, typeTimer = null;
 
-// ── SCREENS ──
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
-  if(id==='screen-game') document.getElementById('screen-game').classList.add('active');
 }
-function saveKey(){
-  const v = document.getElementById('key-input').value.trim();
-  if(!v.startsWith('sk-ant')){ document.getElementById('key-err').style.display='block'; return; }
-  apiKey = v;
-  localStorage.setItem('cl_api_key', v);
-  document.getElementById('key-err').style.display='none';
-  show('screen-start');
-}
-function forgetKey(){
-  localStorage.removeItem('cl_api_key');
-  apiKey = '';
-  gs = null;
-  show('screen-key');
-}
-document.getElementById('key-input').addEventListener('keydown', e=>{ if(e.key==='Enter') saveKey(); });
+
 document.getElementById('name-input').addEventListener('keydown', e=>{ if(e.key==='Enter') startGame(); });
 
-// ── AI CALL ──
-async function callAI(userMsg){
-  const res = await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body: JSON.stringify({
-      model:'claude-sonnet-4-6',
-      max_tokens:1024,
-      system: SYSTEM_PROMPT,
-      messages:[{role:'user',content:userMsg}]
-    })
+async function callWorker(action, gameState){
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action, gameState})
   });
-  if(!res.ok){ const e=await res.json(); throw new Error(e.error?.message||`HTTP ${res.status}`); }
   const data = await res.json();
-  const txt = data.content[0].text.trim().replace(/^```json?\n?/,'').replace(/\n?```$/,'');
-  return JSON.parse(txt);
-}
-
-function buildMsg(action){
-  const stars='★'.repeat(gs.wantedLevel)+'☆'.repeat(5-gs.wantedLevel);
-  const hist = gs.history.length
-    ? gs.history.slice(-3).map((h,i)=>`${i+1}. [${h.action}] → ${h.summary}`).join('\n')
-    : 'Ninguno — inicio del juego.';
-  return `ESTADO ACTUAL:
-Jugador: ${gs.playerName}
-Ubicación: ${gs.location}
-Dinero: $${gs.money.toLocaleString('es-MX')} MXN
-Salud: ${gs.health}/100
-Reputación: ${gs.reputation}/100 (${repLabel(gs.reputation)})
-Nivel de Búsqueda: ${stars} (${gs.wantedLevel}/5)
-Vehículo: ${gs.vehicle}
-Tiempo: Día ${gs.day}, ${gs.timeOfDay}
-
-HISTORIAL:
-${hist}
-
-ACCIÓN: ${action}
-
-Responde SOLO con JSON válido.`;
+  if(!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  return data;
 }
 
 function applyChanges(ch){
-  if(ch.money!==undefined) gs.money = Math.max(0,gs.money+ch.money);
-  if(ch.health!==undefined) gs.health = Math.min(100,Math.max(0,gs.health+ch.health));
-  if(ch.reputation!==undefined) gs.reputation = Math.min(100,Math.max(0,gs.reputation+ch.reputation));
-  if(ch.wantedLevel!==undefined) gs.wantedLevel = Math.min(5,Math.max(0,gs.wantedLevel+ch.wantedLevel));
+  if(ch.money!==undefined) gs.money=Math.max(0,gs.money+ch.money);
+  if(ch.health!==undefined) gs.health=Math.min(100,Math.max(0,gs.health+ch.health));
+  if(ch.reputation!==undefined) gs.reputation=Math.min(100,Math.max(0,gs.reputation+ch.reputation));
+  if(ch.wantedLevel!==undefined) gs.wantedLevel=Math.min(5,Math.max(0,gs.wantedLevel+ch.wantedLevel));
   if(ch.location) gs.location=ch.location;
   if(ch.vehicle) gs.vehicle=ch.vehicle;
   if(ch.timeAdvance){
-    const idx=TIME_SEQ.indexOf(gs.timeOfDay);
-    if(idx===TIME_SEQ.length-1){ gs.timeOfDay='Mañana'; gs.day++; if(gs.wantedLevel>0)gs.wantedLevel--; }
-    else gs.timeOfDay=TIME_SEQ[idx+1];
+    const i=TIME_SEQ.indexOf(gs.timeOfDay);
+    if(i===TIME_SEQ.length-1){gs.timeOfDay='Mañana';gs.day++;if(gs.wantedLevel>0)gs.wantedLevel--;}
+    else gs.timeOfDay=TIME_SEQ[i+1];
   }
 }
 
-// ── UI UPDATE ──
 function updateStats(){
-  document.getElementById('s-name').textContent = gs.playerName;
-  document.getElementById('s-turn').textContent = `Turno #${gs.turn}`;
-  const zc = ZONE_COLORS[gs.location]||'#f0b429';
-  const sloc=document.getElementById('s-loc');
-  sloc.textContent=gs.location; sloc.style.color=zc;
-  document.getElementById('s-money').textContent=`$${gs.money.toLocaleString('es-MX')}`;
+  const zc=ZONE_COLORS[gs.location]||'#f0b429';
   const hc=gs.health>50?'#25c281':gs.health>25?'#f0b429':'#e63946';
-  document.getElementById('s-health').textContent=`${gs.health}%`;
-  document.getElementById('s-health').style.color=hc;
-  document.getElementById('s-health-bar').style.width=`${gs.health}%`;
-  document.getElementById('s-health-bar').style.background=hc;
+  document.getElementById('s-name').textContent=gs.playerName;
+  document.getElementById('s-turn').textContent=`Turno #${gs.turn}`;
+  const sl=document.getElementById('s-loc'); sl.textContent=gs.location; sl.style.color=zc;
+  document.getElementById('s-money').textContent=`$${gs.money.toLocaleString('es-MX')}`;
+  const sh=document.getElementById('s-health'); sh.textContent=`${gs.health}%`; sh.style.color=hc;
+  document.getElementById('s-health-bar').style.cssText=`width:${gs.health}%;background:${hc};`;
   document.getElementById('s-rep').textContent=gs.reputation;
   document.getElementById('s-rep-label').textContent=repLabel(gs.reputation);
   document.getElementById('s-stars').textContent='★'.repeat(gs.wantedLevel)+'☆'.repeat(5-gs.wantedLevel);
-  const alert=document.getElementById('s-wanted-alert');
-  alert.style.display=gs.wantedLevel>=3?'block':'none';
-  if(gs.wantedLevel>=3) alert.classList.add('alert-pulse'); else alert.classList.remove('alert-pulse');
+  const al=document.getElementById('s-wanted-alert'); al.style.display=gs.wantedLevel>=3?'block':'none';
   document.getElementById('s-vehicle').textContent=gs.vehicle;
-  // topbar
   document.getElementById('ttime').textContent=`Día ${gs.day} — ${gs.timeOfDay}`;
-  const tloc=document.getElementById('tloc');
-  tloc.textContent=gs.location; tloc.style.color=zc; tloc.style.borderColor=zc+'55';
-  // mobile stats
+  const tl=document.getElementById('tloc'); tl.textContent=gs.location; tl.style.color=zc; tl.style.borderColor=zc+'55';
   document.getElementById('ms-money').textContent=`$${gs.money.toLocaleString('es-MX')}`;
-  const msh=document.getElementById('ms-health');
-  msh.textContent=`${gs.health}%`; msh.style.color=hc;
-  document.getElementById('ms-wanted').textContent='★'.repeat(gs.wantedLevel)||'☆☆☆☆☆';
+  const mh=document.getElementById('ms-health'); mh.textContent=`${gs.health}%`; mh.style.color=hc;
+  document.getElementById('ms-wanted').textContent='★'.repeat(gs.wantedLevel)||'—';
   document.getElementById('ms-rep').textContent=gs.reputation;
 }
 
-function setNarrativeStyle(eventType){
-  const st=EVENT_STYLES[eventType]||EVENT_STYLES.neutral;
+function setStyle(et){
+  const s=EVENT_STYLES[et]||EVENT_STYLES.neutral;
   const nb=document.getElementById('narrative-box');
-  nb.style.borderColor=st.border;
-  nb.style.boxShadow=st.glow!=='transparent'?`inset 0 0 30px ${st.glow}`:'none';
-  document.getElementById('nar-icon').textContent=st.icon;
-  document.getElementById('nar-label').textContent=st.label;
-  document.getElementById('nar-label').style.color=st.labelColor;
+  nb.style.borderColor=s.border;
+  nb.style.boxShadow=s.glow!=='transparent'?`inset 0 0 30px ${s.glow}`:'none';
+  document.getElementById('nar-icon').textContent=s.icon;
+  const nl=document.getElementById('nar-label'); nl.textContent=s.label; nl.style.color=s.lc;
 }
 
-function typewrite(text, el, onDone){
+function typewrite(text, el, cb){
   clearInterval(typeTimer);
   el.textContent='';
   let i=0;
   el.classList.add('cursor-blink');
   typeTimer=setInterval(()=>{
-    if(i<text.length){ el.textContent=text.slice(0,++i); el.parentElement.scrollTop=el.parentElement.scrollHeight; }
-    else{ clearInterval(typeTimer); el.classList.remove('cursor-blink'); if(onDone)onDone(); }
+    if(i<text.length){el.textContent=text.slice(0,++i);el.parentElement.scrollTop=el.parentElement.scrollHeight;}
+    else{clearInterval(typeTimer);el.classList.remove('cursor-blink');if(cb)cb();}
   },12);
-}
-
-function setActions(acts){
-  const grid=document.getElementById('actions-grid');
-  grid.innerHTML='';
-  acts.forEach((a,i)=>{
-    const btn=document.createElement('button');
-    btn.className='action-btn';
-    btn.disabled=loading;
-    btn.innerHTML=`<span class="anum">${i+1}.</span>${a}`;
-    btn.onclick=()=>doAction(a);
-    grid.appendChild(btn);
-  });
 }
 
 function setLoading(v){
@@ -466,63 +280,56 @@ function setLoading(v){
   document.querySelectorAll('.action-btn').forEach(b=>b.disabled=v);
 }
 
-function showErr(msg){
-  const e=document.getElementById('err-bar');
-  e.textContent='⚠️ '+msg; e.classList.add('active');
-}
-function clearErr(){ document.getElementById('err-bar').classList.remove('active'); }
+function showErr(msg){const e=document.getElementById('err-bar');e.textContent='⚠️ '+msg;e.classList.add('active');}
+function clearErr(){document.getElementById('err-bar').classList.remove('active');}
 
-function updateHistory(){
-  if(!gs.history.length){ document.getElementById('history-area').style.display='none'; return; }
-  document.getElementById('history-area').style.display='block';
-  const list=document.getElementById('history-list');
-  list.innerHTML='';
-  gs.history.slice().reverse().forEach(h=>{
-    const d=document.createElement('div');
-    d.className='hist-row';
-    d.innerHTML=`<span class="hist-arrow">›</span>${h.action}`;
-    list.appendChild(d);
+function setActions(acts){
+  curActions=acts;
+  const g=document.getElementById('actions-grid');
+  g.innerHTML='';
+  acts.forEach((a,i)=>{
+    const b=document.createElement('button');
+    b.className='action-btn';
+    b.disabled=loading;
+    b.innerHTML=`<span class="anum">${i+1}.</span>${a}`;
+    b.onclick=()=>doAction(a);
+    g.appendChild(b);
   });
 }
 
-// ── GAME FLOW ──
+function updateHistory(){
+  if(!gs.history.length){document.getElementById('history-area').style.display='none';return;}
+  document.getElementById('history-area').style.display='block';
+  const l=document.getElementById('history-list');
+  l.innerHTML=gs.history.slice().reverse().map(h=>`<div class="hist-row"><span class="hist-arrow">›</span>${h.action}</div>`).join('');
+}
+
 async function startGame(){
   const name=document.getElementById('name-input').value.trim();
-  if(!name){ document.getElementById('start-err').textContent='Ponle un nombre a tu personaje.'; document.getElementById('start-err').style.display='block'; return; }
+  if(!name){const e=document.getElementById('start-err');e.textContent='Ponle un nombre a tu personaje.';e.style.display='block';return;}
   document.getElementById('start-err').style.display='none';
   document.getElementById('start-btn').disabled=true;
   document.getElementById('start-btn').textContent='Cargando Ciudad Libre...';
 
-  gs={
-    playerName:name, location:'El Barrio', money:500, health:100,
-    reputation:0, wantedLevel:0, day:1, timeOfDay:'Mañana',
-    vehicle:'Tsuru oxidado', history:[], turn:0
-  };
+  gs={playerName:name,location:'El Barrio',money:500,health:100,reputation:0,wantedLevel:0,day:1,timeOfDay:'Mañana',vehicle:'Tsuru oxidado',history:[],turn:0};
 
   show('screen-game');
   updateStats();
   setLoading(true);
-  setNarrativeStyle('neutral');
+  setStyle('neutral');
   document.getElementById('nar-text').textContent='';
+  document.getElementById('actions-grid').innerHTML='';
 
   try{
-    const msg=`Inicia nueva partida para "${name}". Día 1, Mañana, El Barrio. $500. Tsuru oxidado. Narra el inicio con 2-4 párrafos y da 4 acciones variadas.
-
-ESTADO INICIAL: Jugador: ${name}, Ubicación: El Barrio, Dinero: $500, Salud: 100, Reputación: 0, Búsqueda: 0, Vehículo: Tsuru oxidado, Día 1 Mañana.
-
-ACCIÓN: INICIO DEL JUEGO
-
-Responde SOLO con JSON válido.`;
-    const r=await callAI(msg);
+    const r=await callWorker('INICIO', gs);
     applyChanges(r.stateChanges||{});
     gs.turn=1;
     updateStats();
-    setNarrativeStyle(r.eventType||'neutral');
-    actions=r.actions||[];
-    typewrite(r.narrative,document.getElementById('nar-text'),()=>setActions(actions));
+    setStyle(r.eventType||'neutral');
+    typewrite(r.narrative,document.getElementById('nar-text'),()=>setActions(r.actions||[]));
   }catch(e){
     showErr(e.message);
-    setActions(['Reintentar']);
+    setActions(['🔄 Reintentar conexión']);
   }finally{
     setLoading(false);
   }
@@ -533,27 +340,23 @@ async function doAction(action){
   clearErr();
   setLoading(true);
   document.getElementById('actions-grid').innerHTML='';
-
   try{
-    const r=await callAI(buildMsg(action));
+    const r=await callWorker(action,gs);
     applyChanges(r.stateChanges||{});
     gs.turn++;
-    const summary=r.narrative.substring(0,90)+'...';
-    gs.history.push({action,summary});
+    gs.history.push({action,summary:r.narrative.substring(0,90)+'...'});
     if(gs.history.length>5)gs.history.shift();
     updateStats();
     updateHistory();
-    setNarrativeStyle(r.eventType||'neutral');
-
+    setStyle(r.eventType||'neutral');
     if(r.eventType==='gameOver'||gs.health<=0){
       typewrite(r.narrative,document.getElementById('nar-text'),()=>setTimeout(()=>showGameOver(r.gameOverReason||'Quedaste sin salud.'),1500));
-    } else {
-      actions=r.actions||[];
-      typewrite(r.narrative,document.getElementById('nar-text'),()=>setActions(actions));
+    }else{
+      typewrite(r.narrative,document.getElementById('nar-text'),()=>setActions(r.actions||[]));
     }
   }catch(e){
     showErr(e.message);
-    setActions(actions); // restore previous actions
+    setActions(curActions);
   }finally{
     setLoading(false);
   }
@@ -562,30 +365,18 @@ async function doAction(action){
 function showGameOver(reason){
   document.getElementById('over-reason').textContent=reason;
   document.getElementById('over-name').textContent=`${gs.playerName} — Resumen`;
-  const items=[
-    ['Días sobrevividos',gs.day],
-    ['Turnos jugados',gs.turn],
-    ['Dinero final',`$${gs.money.toLocaleString('es-MX')} MXN`],
-    ['Reputación',`${gs.reputation} — ${repLabel(gs.reputation)}`],
-    ['Última ubicación',gs.location],
-    ['Vehículo',gs.vehicle],
-  ];
-  const grid=document.getElementById('over-grid');
-  grid.innerHTML=items.map(([l,v])=>`<div class="over-item"><div class="ol">${l}</div><div class="ov">${v}</div></div>`).join('');
+  const items=[['Días sobrevividos',gs.day],['Turnos jugados',gs.turn],['Dinero final',`$${gs.money.toLocaleString('es-MX')} MXN`],['Reputación',`${gs.reputation} — ${repLabel(gs.reputation)}`],['Última ubicación',gs.location],['Vehículo',gs.vehicle]];
+  document.getElementById('over-grid').innerHTML=items.map(([l,v])=>`<div class="over-item"><div class="ol">${l}</div><div class="ov">${v}</div></div>`).join('');
   show('screen-over');
 }
 
 function restart(){
-  gs=null; actions=[];
+  gs=null;curActions=[];
   document.getElementById('name-input').value='';
   document.getElementById('start-btn').disabled=false;
   document.getElementById('start-btn').textContent='▶  COMENZAR';
   show('screen-start');
 }
-
-// ── INIT ──
-if(apiKey) show('screen-start');
-else show('screen-key');
 </script>
 </body>
 </html>
