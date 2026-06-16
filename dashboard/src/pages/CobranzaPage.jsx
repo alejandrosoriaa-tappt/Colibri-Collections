@@ -427,16 +427,20 @@ function ColorGroupCard({ g, onPatch }) {
                   className="w-full px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none resize-none"
                 />
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {VARIABLES.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => appendVar(v)}
-                      className="text-[11px] px-2 py-1 bg-md-primary-container/40 text-md-on-primary-container rounded-lg hover:bg-md-primary-container/70 font-medium"
-                    >
-                      + {VAR_LABELS[v.slice(1,-1)]?.label || v}
-                    </button>
-                  ))}
+                  {VARIABLES.map((v) => {
+                    const key = v.slice(1, -1)
+                    const meta = VAR_LABELS[key]
+                    return (
+                      <button
+                        key={v}
+                        type="button"
+                        onClick={() => appendVar(v)}
+                        className={`text-[11px] px-2 py-1 rounded-full border font-semibold hover:opacity-80 transition-opacity ${meta ? meta.color : 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                      >
+                        + {meta?.label || key}
+                      </button>
+                    )
+                  })}
                 </div>
               </>
             ) : (
