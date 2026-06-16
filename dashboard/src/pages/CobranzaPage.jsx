@@ -46,7 +46,7 @@ export default function CobranzaPage() {
       const res = await cobranzaAPI.analyze(fd)
       const newGroups = (res.data.groups || []).map((g) => ({
         ...g,
-        include: g.count_familias_resueltas > 0,
+        include: true,
         name: `${g.label} — ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`,
         expanded: false
       }))
@@ -69,13 +69,13 @@ export default function CobranzaPage() {
   const patchGroup = (color, patch) =>
     setGroups((gs) => gs.map((g) => (g.color === color ? { ...g, ...patch } : g)))
 
-  const includedCount = groups.filter((g) => g.include && g.count_familias_resueltas > 0).length
+  const includedCount = groups.filter((g) => g.include).length
 
   const handleCommit = async () => {
     setStage('committing'); setError(null)
     try {
       const payload = groups
-        .filter((g) => g.include && g.count_familias_resueltas > 0)
+        .filter((g) => g.include)
         .map((g) => ({
           color: g.color,
           name: g.name,
@@ -253,11 +253,10 @@ export default function CobranzaPage() {
 }
 
 function ColorGroupCard({ g, onPatch }) {
-  const disabled = g.count_familias_resueltas === 0
   const appendVar = (v) => onPatch(g.color, { message: `${g.message} ${v}` })
 
   return (
-    <div className={`rounded-2xl border ${g.include && !disabled ? 'border-md-primary/40 bg-white' : 'border-md-outline-variant bg-md-surface-container-low/40'}`}>
+    <div className={`rounded-2xl border ${g.include ? 'border-md-primary/40 bg-white' : 'border-md-outline-variant bg-md-surface-container-low/40'}`}>
       {/* Encabezado del grupo */}
       <div className="flex items-center gap-3 p-4">
         <span className="text-2xl">{g.emoji}</span>
@@ -276,19 +275,18 @@ function ColorGroupCard({ g, onPatch }) {
           </p>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">
-          <span className="text-xs text-md-on-surface-variant">{disabled ? 'Sin familias' : 'Crear campaña'}</span>
+          <span className="text-xs text-md-on-surface-variant">Crear campaña</span>
           <input
             type="checkbox"
-            disabled={disabled}
-            checked={g.include && !disabled}
+            checked={g.include}
             onChange={(e) => onPatch(g.color, { include: e.target.checked })}
-            className="w-4 h-4 accent-md-primary disabled:opacity-40"
+            className="w-4 h-4 accent-md-primary"
           />
         </label>
       </div>
 
       {/* Editor de la campaña (si está incluida) */}
-      {g.include && !disabled && (
+      {g.include && (
         <div className="px-4 pb-4 space-y-3 border-t border-md-outline-variant pt-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
