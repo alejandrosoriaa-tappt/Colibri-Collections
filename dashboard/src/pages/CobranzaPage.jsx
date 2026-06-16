@@ -18,13 +18,19 @@ const VAR_LABELS = {
   nombre_org: { label: 'Nombre del colegio', color: 'bg-pink-100 text-pink-700 border-pink-200' },
 }
 
-// Nombre neutro de cada color (sin asumir significado)
+// Nombre neutro de cada color de celda (sin asumir significado)
 const COLOR_NAME = {
   verde:     'Color verde',
   naranja:   'Color naranja / amarillo',
   rojo:      'Color rojo',
   sin_color: 'Sin color (blanco)',
   otro:      'Otro color',
+}
+
+// Etiqueta de grupo: si viene de columna estatus, muestra el valor tal cual
+function groupLabel(g) {
+  if (g.group_type === 'estatus') return g.color  // el valor de texto es la clave
+  return COLOR_NAME[g.color] || g.color
 }
 
 const DRAFT_KEY = 'cobranza_draft_v2'
@@ -201,7 +207,7 @@ export default function CobranzaPage() {
           <FileSpreadsheet size={40} className="text-md-on-surface-variant mx-auto mb-3" />
           <p className="text-sm font-medium text-md-on-surface">Arrastra o haz clic para subir tu reporte (.xlsx)</p>
           <p className="text-xs text-md-on-surface-variant mt-1">
-            Detectamos el color de cada fila y tú defines el mensaje por color
+            Detectamos el color de celda o columna de estatus — tú defines el mensaje por grupo
           </p>
           {hasSavedTemplates && (
             <p className="text-xs text-md-primary mt-2 font-medium">
@@ -336,7 +342,7 @@ export default function CobranzaPage() {
 function ColorGroupCard({ g, onPatch }) {
   const [editingMsg, setEditingMsg] = useState(false)
   const appendVar = (v) => onPatch(g.color, { message: `${g.message || ''} ${v}`.trim() })
-  const colorLabel = COLOR_NAME[g.color] || g.color
+  const colorLabel = groupLabel(g)
 
   return (
     <div className={`rounded-2xl border ${g.include ? 'border-md-primary/40 bg-white' : 'border-md-outline-variant bg-md-surface-container-low/40'}`}>

@@ -87,12 +87,16 @@ function rowColor(row) {
 const COLOR_ORDER = { verde: 1, naranja: 2, rojo: 3, sin_color: 4, otro: 5 }
 const COLOR_EMOJI = { verde: '🟢', naranja: '🟠', rojo: '🔴', sin_color: '⚪', otro: '🎨' }
 
-// ── Claude mapea qué columna es el alumno y cuál el monto ─────────────────────
+// ── Claude mapea columnas: alumno, monto y opcionalmente estatus ──────────────
 async function askClaudeForColumns(headerRows) {
-  const client = new Anthropic() // lee ANTHROPIC_API_KEY del entorno
+  const client = new Anthropic()
   const system = 'Eres un asistente que interpreta reportes de cuentas por cobrar de colegios. Respondes SOLO con JSON válido, sin texto adicional.'
   const prompt = `Te paso las primeras filas de un reporte de cobranza (cada celda con su letra de columna).
-Identifica qué columna tiene el NOMBRE DEL ALUMNO y cuál el MONTO adeudado, y en qué fila están los encabezados.
+Identifica:
+1. Columna con NOMBRE DEL ALUMNO
+2. Columna con MONTO adeudado
+3. Columna con ESTATUS o ESTADO (valores como "Al corriente", "Vencido", "Pendiente", "Pagado", etc.) — si existe. Si no hay, pon null.
+4. Fila de encabezados (header_row, base 0)
 
 Filas:
 ${JSON.stringify(headerRows, null, 1)}
@@ -102,7 +106,7 @@ Devuelve EXACTAMENTE este JSON:
   "header_row": 0,
   "confidence": 0.0,
   "notes": "breve explicación en español de qué detectaste",
-  "columns": { "alumno": "A", "monto": "C", "concepto": "B|null" }
+  "columns": { "alumno": "A", "monto": "C", "estatus": "D|null", "concepto": "B|null" }
 }`
   const resp = await client.messages.create({
     model: MODEL,
@@ -176,18 +180,25 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
   const mapping = await askClaudeForColumns(headerRows)
 
   const colAlumno = letterToIndex(mapping.columns?.alumno)
-  const colMonto = letterToIndex(mapping.columns?.monto)
+  const colMonto  = letterToIndex(mapping.columns?.monto)
+  const colEstatus = letterToIndex(mapping.columns?.estatus)
   const headerRow = (mapping.header_row ?? 0) + 1 // exceljs es 1-based
 
-  // Recorremos las filas de datos, leyendo color + alumno + monto
+  // Recorremos las filas: color de celda + alumno + monto + estatus (texto)
   const rows = []
   for (let r = headerRow + 1; r <= ws.rowCount; r++) {
     const row = ws.getRow(r)
     const alumno = colAlumno ? tidy(row.getCell(colAlumno).text) : ''
     if (!alumno) continue
-    const monto = colMonto ? parseMonto(row.getCell(colMonto).value) : 0
-    rows.push({ alumno, monto, color: rowColor(row) })
+    const monto   = colMonto ? parseMonto(row.getCell(colMonto).value) : 0
+    const estatus = colEstatus ? tidy(row.getCell(colEstatus).text) : ''
+    rows.push({ alumno, monto, color: rowColor(row), estatus })
   }
+
+  // Detectar si el archivo no usa colores (todos sin_color) → usar columna estatus
+  const allSinColor = rows.length > 0 && rows.every((r) => r.color === 'sin_color')
+  const useEstatus  = allSinColor && colEstatus && rows.some((r) => r.estatus)
+  if (useEstatus) mapping._groupBy = 'estatus'
 
   // Resolvemos alumno -> familia -> papás
   const studentIndex = await loadStudentIndex(tenantId)
@@ -208,15 +219,29 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
     row.recipients = row.matched ? (parentsByFamily.get(row.nombre_familia) || []) : []
   }
 
-  // Agrupamos por color
+  // Agrupar por estatus (texto) o por color de celda
+  const groupKey = (row) => useEstatus ? (row.estatus || 'Sin estatus') : row.color
+
+  // Emoji heurístico para valores de estatus de texto
+  function estatusEmoji(val) {
+    const v = val.toLowerCase()
+    if (/corriente|pagad|ok|activ/.test(v)) return '🟢'
+    if (/venc|mora|atras|pend/.test(v)) return '🔴'
+    if (/próx|prox|por venc|parc/.test(v)) return '🟠'
+    if (/reinscr|inscr/.test(v)) return '⚪'
+    return '🏷️'
+  }
+
   const groupsMap = new Map()
   for (const row of rows) {
-    const g = groupsMap.get(row.color) || []
+    const key = groupKey(row)
+    const g = groupsMap.get(key) || []
     g.push(row)
-    groupsMap.set(row.color, g)
+    groupsMap.set(key, g)
   }
+
   const groups = [...groupsMap.entries()]
-    .map(([color, gRows]) => {
+    .map(([key, gRows]) => {
       const familias = gRows.map((row) => ({
         alumno: row.alumno,
         monto: row.monto,
@@ -226,10 +251,12 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
         recipients: row.recipients
       }))
       const resueltas = familias.filter((f) => f.matched && f.recipients.length > 0)
-      const sinMatch = familias.filter((f) => !f.matched || f.recipients.length === 0)
+      const sinMatch  = familias.filter((f) => !f.matched || f.recipients.length === 0)
+      const emoji = useEstatus ? estatusEmoji(key) : (COLOR_EMOJI[key] || '🎨')
       return {
-        color,
-        emoji: COLOR_EMOJI[color] || '🎨',
+        color: key,   // cuando es estatus, color = texto del estatus (sirve como clave de template)
+        emoji,
+        group_type: useEstatus ? 'estatus' : 'color',
         count_filas: familias.length,
         count_familias_resueltas: resueltas.length,
         count_sin_match: sinMatch.length,
@@ -238,7 +265,10 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
         familias
       }
     })
-    .sort((a, b) => (COLOR_ORDER[a.color] || 9) - (COLOR_ORDER[b.color] || 9))
+    .sort((a, b) => {
+      if (!useEstatus) return (COLOR_ORDER[a.color] || 9) - (COLOR_ORDER[b.color] || 9)
+      return a.color.localeCompare(b.color, 'es')
+    })
 
   const summary = {
     total_filas: rows.length,
