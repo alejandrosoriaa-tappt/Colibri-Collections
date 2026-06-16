@@ -353,7 +353,7 @@ function ClientRow({ client, onDelete, deleting }) {
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-crm-on-surface text-sm truncate">{client.razon_social}</span>
+          <span className="font-semibold text-crm-on-surface text-sm leading-tight line-clamp-2">{client.razon_social}</span>
           {client.giro && (
             <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2 py-0.5 rounded-full">
               {client.giro}
