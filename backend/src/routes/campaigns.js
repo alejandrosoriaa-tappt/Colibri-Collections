@@ -13,7 +13,7 @@ import supabase, {
 } from '../services/supabase.js'
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { buildMessage, calculateAmountWithLateFee } from '../templates/messages.js'
-import { TEMPLATE_NAMES, recordatorioPagoComponents } from '../templates/whatsappTemplates.js'
+import { TEMPLATE_NAMES, recordatorioPagoComponents, comunicadoComponents } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -341,10 +341,11 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
         late_fee_pct: lateFee
       }
 
-      // Campañas de cobranza → usar template aprobado por Meta (funciona fuera de 24h)
-      const isCobranza = !!(campaign.concept)
+      // Kollybry es outbound-only: nadie inicia conversación → siempre usar templates aprobados
       let result
-      if (isCobranza) {
+      let text
+      if (campaign.concept) {
+        // Cobranza → kollybry_recordatorio_pago
         const components = recordatorioPagoComponents({
           nombre:   vars.nombre,
           orgName:  vars.nombre_org,
@@ -358,13 +359,19 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
           TEMPLATE_NAMES.RECORDATORIO_PAGO.lang,
           components
         )
+        text = `[Template: ${TEMPLATE_NAMES.RECORDATORIO_PAGO.name}] ${vars.concept} $${vars.monto}`
       } else {
-        const text = buildMessage(msg.message_template, vars)
-        result = await sendWhatsAppMessage(contact.telefono, text)
+        // Comunicado general → kollybry_comunicado_util (UTILITY, sin límite de frecuencia)
+        const cuerpo = buildMessage(msg.message_template, vars)
+        const components = comunicadoComponents({ orgName: vars.nombre_org, cuerpo })
+        result = await sendWhatsAppTemplate(
+          contact.telefono,
+          TEMPLATE_NAMES.COMUNICADO_UTIL.name,
+          TEMPLATE_NAMES.COMUNICADO_UTIL.lang,
+          components
+        )
+        text = `[Template: ${TEMPLATE_NAMES.COMUNICADO_UTIL.name}] ${cuerpo}`
       }
-      const text = isCobranza
-        ? `[Template: ${TEMPLATE_NAMES.RECORDATORIO_PAGO.name}] ${vars.concept} $${vars.monto}`
-        : buildMessage(msg.message_template, vars)
 
       await logMessage({
         tenant_id: campaign.tenant_id,
