@@ -83,19 +83,9 @@ function rowColor(row) {
   return found || 'sin_color'
 }
 
-// ── Metadatos y mensaje por defecto de cada color (editable por el tenant) ────
-export const COLOR_META = {
-  verde:     { orden: 1, label: 'Al corriente',     emoji: '🟢', concept: 'colegiatura',
-    message: 'Hola {nombre} 👋, en {nombre_org} te agradecemos por mantener al corriente {concept} de {alumno}. ¡Gracias por tu puntualidad!' },
-  naranja:   { orden: 2, label: 'Próximo a vencer', emoji: '🟠', concept: 'colegiatura',
-    message: 'Hola {nombre}, te recordamos que {concept} de {alumno} por {monto} está por vencer. Puedes pagarla aquí sin recargo: {liga_pago}' },
-  rojo:      { orden: 3, label: 'Vencido',          emoji: '🔴', concept: 'colegiatura vencida',
-    message: 'Hola {nombre}, {concept} de {alumno} por {monto} sigue pendiente. Te pedimos regularizar tu pago a la brevedad: {liga_pago}' },
-  sin_color: { orden: 4, label: 'Reinscripción',    emoji: '⚪', concept: 'reinscripción',
-    message: 'Hola {nombre}, ya está abierta la {concept} de {alumno}. Aparta su lugar aquí: {liga_pago}' },
-  otro:      { orden: 5, label: 'Otro',             emoji: '🎨', concept: 'pago',
-    message: 'Hola {nombre}, sobre {concept} de {alumno} ({monto}). Más información: {liga_pago}' }
-}
+// Orden de presentación y emoji por color (solo UI, sin significado asumido)
+const COLOR_ORDER = { verde: 1, naranja: 2, rojo: 3, sin_color: 4, otro: 5 }
+const COLOR_EMOJI = { verde: '🟢', naranja: '🟠', rojo: '🔴', sin_color: '⚪', otro: '🎨' }
 
 // ── Claude mapea qué columna es el alumno y cuál el monto ─────────────────────
 async function askClaudeForColumns(headerRows) {
@@ -227,7 +217,6 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
   }
   const groups = [...groupsMap.entries()]
     .map(([color, gRows]) => {
-      const meta = COLOR_META[color] || COLOR_META.otro
       const familias = gRows.map((row) => ({
         alumno: row.alumno,
         monto: row.monto,
@@ -240,10 +229,7 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
       const sinMatch = familias.filter((f) => !f.matched || f.recipients.length === 0)
       return {
         color,
-        label: meta.label,
-        emoji: meta.emoji,
-        concept: meta.concept,
-        message: meta.message,
+        emoji: COLOR_EMOJI[color] || '🎨',
         count_filas: familias.length,
         count_familias_resueltas: resueltas.length,
         count_sin_match: sinMatch.length,
@@ -252,7 +238,7 @@ export async function analyzeCobranzaFile(buffer, tenantId) {
         familias
       }
     })
-    .sort((a, b) => (COLOR_META[a.color]?.orden || 9) - (COLOR_META[b.color]?.orden || 9))
+    .sort((a, b) => (COLOR_ORDER[a.color] || 9) - (COLOR_ORDER[b.color] || 9))
 
   const summary = {
     total_filas: rows.length,

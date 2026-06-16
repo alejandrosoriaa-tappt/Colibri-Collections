@@ -8,6 +8,7 @@ import multer from 'multer'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import { analyzeCobranzaFile, commitCobranzaCampaigns } from '../services/cobranzaImport.js'
+import supabase from '../services/supabase.js'
 
 const router = Router()
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } })
@@ -27,6 +28,24 @@ router.post('/analyze', authMiddleware, inferTenantGuard, upload.single('file'),
   }
 })
 
+// GET /api/cobranza/templates — plantillas guardadas del tenant por color
+router.get('/templates', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('cobranza_color_templates')
+      .select('color, name, concept, message')
+      .eq('tenant_id', req.tenantId)
+    if (error) throw error
+    // Devuelve un mapa color → { name, concept, message }
+    const map = {}
+    for (const t of data || []) map[t.color] = { name: t.name, concept: t.concept, message: t.message }
+    return res.json({ templates: map })
+  } catch (err) {
+    console.error('GET /cobranza/templates error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
 // POST /api/cobranza/commit — crea las campañas en borrador confirmadas
 router.post('/commit', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
@@ -35,6 +54,20 @@ router.post('/commit', authMiddleware, inferTenantGuard, async (req, res) => {
       return res.status(400).json({ error: 'No hay campañas para crear' })
     }
     const result = await commitCobranzaCampaigns(req.tenantId, campaigns)
+
+    // Guardar/actualizar plantillas para que se recuerden en el futuro
+    for (const c of campaigns) {
+      if (!c.color || !c.name) continue
+      await supabase.from('cobranza_color_templates').upsert({
+        tenant_id: req.tenantId,
+        color: c.color,
+        name: c.name,
+        concept: c.concept || '',
+        message: c.message || '',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'tenant_id,color' })
+    }
+
     return res.json(result)
   } catch (err) {
     console.error('POST /cobranza/commit error:', err)

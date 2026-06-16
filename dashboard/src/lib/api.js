@@ -107,7 +107,8 @@ export const cobranzaAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120000
   }),
-  commit: (campaigns) => api.post('/api/cobranza/commit', { campaigns }, { timeout: 120000 })
+  commit: (campaigns) => api.post('/api/cobranza/commit', { campaigns }, { timeout: 120000 }),
+  getTemplates: () => api.get('/api/cobranza/templates')
 }
 
 // ================================================================

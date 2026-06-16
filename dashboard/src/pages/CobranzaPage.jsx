@@ -2,22 +2,50 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Sparkles, FileSpreadsheet, Loader2, AlertCircle, AlertTriangle,
-  CircleDollarSign, Check, Users, ChevronDown, ChevronRight, RotateCcw
+  CircleDollarSign, Check, Users, ChevronDown, ChevronRight, RotateCcw, BookMarked
 } from 'lucide-react'
 import { cobranzaAPI } from '../lib/api.js'
 
+// ── Constantes UI ─────────────────────────────────────────────────────────────
 const VARIABLES = ['{nombre}', '{alumno}', '{monto}', '{liga_pago}', '{concept}', '{nombre_org}']
 
 const VAR_LABELS = {
-  nombre:     { label: 'Nombre',       color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  alumno:     { label: 'Alumno',       color: 'bg-purple-100 text-purple-700 border-purple-200' },
-  monto:      { label: 'Monto',        color: 'bg-green-100 text-green-700 border-green-200' },
-  liga_pago:  { label: 'Liga de pago', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  concept:    { label: 'Concepto',     color: 'bg-teal-100 text-teal-700 border-teal-200' },
-  nombre_org: { label: 'Colegio',      color: 'bg-pink-100 text-pink-700 border-pink-200' },
+  nombre:     { label: 'Nombre padre/madre', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  alumno:     { label: 'Alumno',             color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  monto:      { label: 'Monto',              color: 'bg-green-100 text-green-700 border-green-200' },
+  liga_pago:  { label: 'Liga de pago',       color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  concept:    { label: 'Concepto',           color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  nombre_org: { label: 'Nombre del colegio', color: 'bg-pink-100 text-pink-700 border-pink-200' },
 }
 
+// Nombre neutro de cada color (sin asumir significado)
+const COLOR_NAME = {
+  verde:     'Color verde',
+  naranja:   'Color naranja / amarillo',
+  rojo:      'Color rojo',
+  sin_color: 'Sin color (blanco)',
+  otro:      'Otro color',
+}
+
+const DRAFT_KEY = 'cobranza_draft_v2'
+const fmtMoney = (n) =>
+  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n) || 0)
+const currentMonth = () =>
+  new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })
+
+function saveDraft(result, groups) {
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ result, groups })) } catch {}
+}
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY) } catch {}
+}
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null }
+}
+
+// ── Preview de mensaje con chips ──────────────────────────────────────────────
 function MessageBubble({ text }) {
+  if (!text) return <p className="text-sm text-md-on-surface-variant italic">Sin mensaje — escribe uno arriba</p>
   const parts = text.split(/(\{[^}]+\})/g)
   return (
     <div className="text-sm leading-relaxed text-md-on-surface">
@@ -36,21 +64,8 @@ function MessageBubble({ text }) {
     </div>
   )
 }
-const DRAFT_KEY = 'cobranza_draft_v1'
 
-const fmtMoney = (n) =>
-  new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(Number(n) || 0)
-
-function saveDraft(result, groups) {
-  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ result, groups })) } catch {}
-}
-function clearDraft() {
-  try { localStorage.removeItem(DRAFT_KEY) } catch {}
-}
-function loadDraft() {
-  try { return JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') } catch { return null }
-}
-
+// ── Página principal ──────────────────────────────────────────────────────────
 export default function CobranzaPage() {
   const navigate = useNavigate()
   const draft = loadDraft()
@@ -59,9 +74,17 @@ export default function CobranzaPage() {
   const [result, setResult] = useState(draft?.result || null)
   const [groups, setGroups] = useState(draft?.groups || [])
   const [createdResult, setCreatedResult] = useState(null)
+  const [templates, setTemplates] = useState({}) // color → { name, concept, message }
   const fileRef = useRef(null)
 
-  // Persist edits to draft whenever groups change
+  // Cargar plantillas guardadas del tenant
+  useEffect(() => {
+    cobranzaAPI.getTemplates()
+      .then((res) => setTemplates(res.data.templates || {}))
+      .catch(() => {})
+  }, [])
+
+  // Persistir draft al editar
   useEffect(() => {
     if (stage === 'preview' && result) saveDraft(result, groups)
   }, [groups, stage, result])
@@ -73,12 +96,20 @@ export default function CobranzaPage() {
       const fd = new FormData()
       fd.append('file', file)
       const res = await cobranzaAPI.analyze(fd)
-      const newGroups = (res.data.groups || []).map((g) => ({
-        ...g,
-        include: true,
-        name: `${g.label} — ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`,
-        expanded: false
-      }))
+
+      // Mezclar grupos con plantillas guardadas del tenant
+      const newGroups = (res.data.groups || []).map((g) => {
+        const saved = templates[g.color]
+        return {
+          ...g,
+          include: true,
+          expanded: false,
+          // Si hay plantilla guardada: pre-cargar con el mes actual; si no: vacío
+          name: saved ? `${saved.name} — ${currentMonth()}` : '',
+          concept: saved?.concept || '',
+          message: saved?.message || '',
+        }
+      })
       setResult(res.data)
       setGroups(newGroups)
       saveDraft(res.data, newGroups)
@@ -107,7 +138,7 @@ export default function CobranzaPage() {
         .filter((g) => g.include)
         .map((g) => ({
           color: g.color,
-          name: g.name,
+          name: g.name || `${COLOR_NAME[g.color] || g.color} — ${currentMonth()}`,
           concept: g.concept,
           message: g.message,
           items: g.familias
@@ -115,6 +146,10 @@ export default function CobranzaPage() {
             .flatMap((f) => f.recipients.map((r) => ({ contact_id: r.contact_id, monto: f.monto })))
         }))
       const res = await cobranzaAPI.commit(payload)
+      // Actualizar templates locales con los recién guardados
+      const newTemplates = { ...templates }
+      for (const c of payload) newTemplates[c.color] = { name: c.name, concept: c.concept, message: c.message }
+      setTemplates(newTemplates)
       clearDraft()
       setCreatedResult(res.data)
       setStage('done')
@@ -126,6 +161,7 @@ export default function CobranzaPage() {
 
   const m = result?.mapping
   const s = result?.summary
+  const hasSavedTemplates = Object.keys(templates).length > 0
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -137,9 +173,14 @@ export default function CobranzaPage() {
         <div>
           <h1 className="text-xl font-bold text-md-on-surface">Cobranza por color</h1>
           <p className="text-sm text-md-on-surface-variant">
-            Sube tu reporte de cuentas por cobrar; la IA lo agrupa por color del semáforo y arma campañas en borrador.
+            Sube tu reporte de cuentas por cobrar; la IA agrupa por color del semáforo y tú defines qué significa cada uno.
           </p>
         </div>
+        {hasSavedTemplates && (
+          <span className="ml-auto flex items-center gap-1.5 text-xs text-md-primary bg-md-primary-container/40 px-3 py-1.5 rounded-full">
+            <BookMarked size={12} /> Mensajes guardados
+          </span>
+        )}
       </div>
 
       {error && (
@@ -152,14 +193,21 @@ export default function CobranzaPage() {
       {/* UPLOAD */}
       {stage === 'upload' && (
         <div
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files?.[0]) }}
           onClick={() => fileRef.current?.click()}
           className="border-2 border-dashed border-md-outline-variant rounded-2xl p-12 text-center cursor-pointer hover:border-md-primary hover:bg-md-primary-container/10 transition-colors"
         >
           <FileSpreadsheet size={40} className="text-md-on-surface-variant mx-auto mb-3" />
           <p className="text-sm font-medium text-md-on-surface">Arrastra o haz clic para subir tu reporte (.xlsx)</p>
           <p className="text-xs text-md-on-surface-variant mt-1">
-            Detectamos el color de cada fila: 🟢 al corriente · 🟠 por vencer · 🔴 vencido · ⚪ reinscripción
+            Detectamos el color de cada fila y tú defines el mensaje por color
           </p>
+          {hasSavedTemplates && (
+            <p className="text-xs text-md-primary mt-2 font-medium">
+              ✓ Tienes mensajes guardados — se cargarán automáticamente
+            </p>
+          )}
           <input ref={fileRef} type="file" accept=".xlsx,.xls" className="hidden"
             onChange={(e) => handleFile(e.target.files?.[0])} />
         </div>
@@ -237,7 +285,7 @@ export default function CobranzaPage() {
       {stage === 'committing' && (
         <div className="py-16 text-center">
           <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
-          <p className="text-sm font-medium text-md-on-surface">Creando campañas en borrador…</p>
+          <p className="text-sm font-medium text-md-on-surface">Creando campañas y guardando tus mensajes…</p>
         </div>
       )}
 
@@ -250,8 +298,11 @@ export default function CobranzaPage() {
           <h2 className="text-lg font-semibold text-md-on-surface mb-1">
             {createdResult.created?.length || 0} campaña(s) creada(s) en borrador
           </h2>
+          <p className="text-sm text-md-on-surface-variant mb-1">
+            Tus mensajes fueron guardados — el próximo mes se cargarán automáticamente.
+          </p>
           <p className="text-sm text-md-on-surface-variant mb-5">
-            Revísalas, ajusta el mensaje si quieres, y envíalas desde Campañas.
+            Revísalas y envíalas desde Campañas cuando estés listo.
           </p>
           <div className="max-w-sm mx-auto space-y-2 mb-6 text-left">
             {createdResult.created?.map((c) => (
@@ -281,18 +332,20 @@ export default function CobranzaPage() {
   )
 }
 
+// ── Tarjeta por grupo de color ────────────────────────────────────────────────
 function ColorGroupCard({ g, onPatch }) {
   const [editingMsg, setEditingMsg] = useState(false)
-  const appendVar = (v) => onPatch(g.color, { message: `${g.message} ${v}` })
+  const appendVar = (v) => onPatch(g.color, { message: `${g.message || ''} ${v}`.trim() })
+  const colorLabel = COLOR_NAME[g.color] || g.color
 
   return (
     <div className={`rounded-2xl border ${g.include ? 'border-md-primary/40 bg-white' : 'border-md-outline-variant bg-md-surface-container-low/40'}`}>
-      {/* Encabezado del grupo */}
+      {/* Encabezado */}
       <div className="flex items-center gap-3 p-4">
         <span className="text-2xl">{g.emoji}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-md-on-surface">{g.label}</span>
+            <span className="font-semibold text-md-on-surface">{colorLabel}</span>
             <span className="text-xs px-2 py-0.5 bg-md-surface-container rounded-full text-md-on-surface-variant">
               {g.count_familias_resueltas} familias · {g.count_destinatarios} destinatarios
             </span>
@@ -315,31 +368,40 @@ function ColorGroupCard({ g, onPatch }) {
         </label>
       </div>
 
-      {/* Editor de la campaña (si está incluida) */}
+      {/* Editor */}
       {g.include && (
         <div className="px-4 pb-4 space-y-3 border-t border-md-outline-variant pt-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">Nombre de campaña</label>
+              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">
+                Nombre de campaña
+              </label>
               <input
                 value={g.name}
+                placeholder={`${colorLabel} — ${new Date().toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`}
                 onChange={(e) => onPatch(g.color, { name: e.target.value })}
                 className="w-full mt-1 px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none"
               />
             </div>
             <div>
-              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">Concepto</label>
+              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">
+                Concepto (ej. colegiatura)
+              </label>
               <input
                 value={g.concept}
+                placeholder="colegiatura"
                 onChange={(e) => onPatch(g.color, { concept: e.target.value })}
                 className="w-full mt-1 px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none"
               />
             </div>
           </div>
 
+          {/* Mensaje */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">Mensaje</label>
+              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">
+                Mensaje de WhatsApp
+              </label>
               <button
                 type="button"
                 onClick={() => setEditingMsg((v) => !v)}
@@ -353,6 +415,7 @@ function ColorGroupCard({ g, onPatch }) {
               <>
                 <textarea
                   value={g.message}
+                  placeholder="Escribe tu mensaje aquí. Usa los botones de abajo para insertar variables."
                   onChange={(e) => onPatch(g.color, { message: e.target.value })}
                   rows={3}
                   className="w-full px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none resize-none"
@@ -363,9 +426,9 @@ function ColorGroupCard({ g, onPatch }) {
                       key={v}
                       type="button"
                       onClick={() => appendVar(v)}
-                      className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded hover:bg-md-primary-container/70"
+                      className="text-[11px] px-2 py-1 bg-md-primary-container/40 text-md-on-primary-container rounded-lg hover:bg-md-primary-container/70 font-medium"
                     >
-                      {v}
+                      + {VAR_LABELS[v.slice(1,-1)]?.label || v}
                     </button>
                   ))}
                 </div>
@@ -387,6 +450,7 @@ function ColorGroupCard({ g, onPatch }) {
   )
 }
 
+// ── Lista de familias resueltas ───────────────────────────────────────────────
 function FamiliesPreview({ g, onPatch }) {
   const resueltas = useMemo(
     () => g.familias.filter((f) => f.matched && f.recipients.length > 0),
