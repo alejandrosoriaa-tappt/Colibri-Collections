@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #080808;
+  color: #e0e0e0;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.gta-border {
+  border: 1px solid #252525;
+  box-shadow: inset 0 0 0 1px rgba(240, 180, 41, 0.05);
+}
+
+.gta-glow {
+  box-shadow: 0 0 20px rgba(240, 180, 41, 0.15), 0 0 40px rgba(240, 180, 41, 0.05);
+}
+
+.btn-action {
+  @apply relative bg-gta-card border border-gta-border text-gta-text font-mono text-sm px-4 py-3
+         text-left transition-all duration-200 hover:border-gta-primary hover:text-gta-primary
+         hover:bg-gta-surface cursor-pointer select-none;
+}
+
+.btn-action:hover::before {
+  content: '▶ ';
+  color: #f0b429;
+}
+
+.btn-action:active {
+  transform: scale(0.98);
+}
+
+.stat-label {
+  @apply text-gta-muted text-xs uppercase tracking-widest font-display;
+}
+
+.stat-value {
+  @apply text-gta-text font-mono font-bold text-lg;
+}
+
+.health-bar {
+  height: 6px;
+  background: #1a1a1a;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.narrative-enter {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.cursor-blink::after {
+  content: '█';
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  );
+  pointer-events: none;
+}
