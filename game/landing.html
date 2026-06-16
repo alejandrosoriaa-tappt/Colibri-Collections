@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CIUDAD LIBRE — RPG de Texto con IA</title>
+  <meta name="description" content="Un RPG de texto estilo GTA ambientado en México. La IA narra tu historia. Cada decisión tiene consecuencias." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold: #f0b429;
+      --danger: #e63946;
+      --money: #25c281;
+      --blue: #4fc3f7;
+      --bg: #060606;
+      --surface: #101010;
+      --card: #161616;
+      --border: #222;
+      --text: #e0e0e0;
+      --muted: #666;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      overflow-x: hidden;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 40px;
+      background: rgba(6,6,6,0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 1.4rem;
+      color: var(--gold);
+      letter-spacing: 4px;
+      text-shadow: 0 0 20px rgba(240,180,41,0.4);
+    }
+    .nav-links { display: flex; gap: 32px; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--gold); }
+    .nav-cta {
+      background: var(--gold);
+      color: #000;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 10px 24px;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .nav-cta:hover { background: #ffc84a; transform: translateY(-1px); }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-grid {
+      position: absolute; inset: 0;
+      background-image:
+        linear-gradient(rgba(240,180,41,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240,180,41,0.06) 1px, transparent 1px);
+      background-size: 50px 50px;
+    }
+
+    .hero-glow {
+      position: absolute;
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(240,180,41,0.12) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .hero-badge {
+      display: inline-block;
+      border: 1px solid rgba(240,180,41,0.4);
+      background: rgba(240,180,41,0.08);
+      color: var(--gold);
+      font-size: 0.7rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      padding: 6px 20px;
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .hero-title {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: clamp(5rem, 18vw, 11rem);
+      line-height: 0.9;
+      position: relative;
+    }
+    .hero-title .line1 { color: var(--gold); text-shadow: 0 0 60px rgba(240,180,41,0.5); display: block; }
+    .hero-title .line2 {
+      color: #fff;
+      display: block;
+      -webkit-text-stroke: 2px rgba(240,180,41,0.25);
+    }
+
+    .hero-sub {
+      margin-top: 32px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.8;
+      max-width: 480px;
+      position: relative;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      margin-top: 48px;
+      flex-wrap: wrap;
+      justify-content: center;
+      position: relative;
+    }
+
+    .btn-primary {
+      background: var(--gold);
+      color: #000;
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 18px 48px;
+      display: inline-block;
+      transition: all 0.2s;
+      box-shadow: 0 0 30px rgba(240,180,41,0.3);
+    }
+    .btn-primary:hover { background: #ffc84a; transform: translateY(-2px); box-shadow: 0 0 50px rgba(240,180,41,0.5); }
+
+    .btn-secondary {
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-family: 'Oswald', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      text-decoration: none;
+      padding: 18px 40px;
+      display: inline-block;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--gold); color: var(--gold); }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--muted);
+      font-size: 0.7rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(8px)} }
+
+    /* ─── PREVIEW ─── */
+    .preview {
+      padding: 100px 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 0.7rem;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+
+    .game-mockup {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      box-shadow: 0 0 80px rgba(0,0,0,0.8), 0 0 30px rgba(240,180,41,0.1);
+      margin-top: 60px;
+    }
+
+    .mockup-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .mockup-dots { display: flex; gap: 6px; }
+    .mockup-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+    .mockup-body {
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      min-height: 420px;
+    }
+
+    .mockup-sidebar {
+      background: #0e0e0e;
+      border-right: 1px solid var(--border);
+      padding: 20px 16px;
+    }
+
+    .mockup-player {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      color: var(--gold);
+      font-size: 1.2rem;
+      margin-bottom: 4px;
+    }
+    .mockup-sub { color: var(--muted); font-size: 0.7rem; margin-bottom: 20px; }
+
+    .stat-row {
+      padding: 12px 0;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-lbl { color: var(--muted); font-size: 0.65rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-val { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 1.3rem; }
+    .stat-bar { height: 4px; background: #1a1a1a; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .stat-fill { height: 100%; border-radius: 2px; }
+
+    .mockup-main {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .narrative-card {
+      background: #0c0c0c;
+      border: 1px solid #1e1e1e;
+      padding: 20px;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      color: #ccc;
+      flex: 1;
+    }
+
+    .narrative-cursor::after {
+      content: '█';
+      color: var(--gold);
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .action-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 12px 14px;
+      font-size: 0.72rem;
+      color: #bbb;
+      text-align: left;
+      cursor: default;
+    }
+    .action-btn:first-child { border-color: var(--gold); color: var(--gold); }
+
+    /* ─── FEATURES ─── */
+    .features {
+      padding: 100px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .features-inner { max-width: 1100px; margin: 0 auto; }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2px;
+      margin-top: 60px;
+      border: 1px solid var(--border);
+    }
+
+    .feature-card {
+      background: var(--bg);
+      padding: 40px 32px;
+      border: 1px solid transparent;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .feature-card:hover { border-color: var(--gold); background: rgba(240,180,41,0.03); }
+
+    .feature-icon { font-size: 2.5rem; margin-bottom: 20px; display: block; }
+    .feature-title {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .feature-desc { color: var(--muted); font-size: 0.8rem; line-height: 1.8; }
+
+    /* ─── ZONES ─── */
+    .zones { padding: 100px 24px; max-width: 1100px; margin: 0 auto; }
+
+    .zones-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 2px;
+      margin-top: 60px;
+    }
+
+    .zone-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      padding: 28px 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s;
+    }
+    .zone-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .zone-card:hover { transform: translateY(-3px); }
+
+    .zone-name {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 8px;
+    }
+    .zone-desc { color: var(--muted); font-size: 0.78rem; line-height: 1.7; margin-bottom: 16px; }
+    .zone-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .zone-tag {
+      font-size: 0.65rem;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border: 1px solid;
+      text-transform: uppercase;
+    }
+
+    /* ─── STATS ─── */
+    .stats-section {
+      padding: 80px 24px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 40px;
+      max-width: 800px;
+      margin: 60px auto 0;
+    }
+    .stat-number {
+      font-family: 'Oswald', sans-serif;
+      font-weight: 700;
+      font-size: 3.5rem;
+      color: var(--gold);
+      line-height: 1;
+      text-shadow: 0 0 30px rgba(240,180,41,0.3);
+    }
+    .stat-name { color: var(--muted); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; margin-top: 8px; }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      padding: 120px 24px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-glow {
+      position: absolute;
+      width: 800px; height: 400px;
+      background: radial-gradient(ellipse, rgba(240,180,41,0.08) 0%, transparent 70%);
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    .cta-section .section-title { position: relative; }
+    .cta-section .hero-actions { position: relative; }
+
+    .terminal-demo {
+      background: #000;
+      border: 1px solid #222;
+      border-radius: 4px;
+      padding: 20px 24px;
+      text-align: left;
+      max-width: 520px;
+      margin: 40px auto 0;
+      font-size: 0.8rem;
+      line-height: 1.8;
+      position: relative;
+    }
+    .terminal-demo::before {
+      content: '● ● ●';
+      display: block;
+      color: #444;
+      margin-bottom: 16px;
+      letter-spacing: 4px;
+    }
+    .t-prompt { color: var(--money); }
+    .t-cmd { color: var(--text); }
+    .t-comment { color: #444; }
+    .t-output { color: var(--muted); }
+    .t-gold { color: var(--gold); }
+
+    /* ─── FOOTER ─── */
+    footer {
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: gap;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    footer .nav-logo { font-size: 1rem; }
+    footer p { color: var(--muted); font-size: 0.72rem; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 700px) {
+      nav { padding: 14px 20px; }
+      .nav-links { display: none; }
+      .mockup-body { grid-template-columns: 1fr; }
+      .mockup-sidebar { display: none; }
+      footer { flex-direction: column; gap: 12px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">CIUDAD LIBRE</div>
+    <div class="nav-links">
+      <a href="#juego">El Juego</a>
+      <a href="#zonas">Zonas</a>
+      <a href="#instalar">Instalar</a>
+    </div>
+    <a href="#instalar" class="nav-cta">▶ Jugar</a>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+
+    <div class="hero-badge">RPG de texto · Narrado por IA · Estilo GTA</div>
+
+    <h1 class="hero-title">
+      <span class="line1">CIUDAD</span>
+      <span class="line2">LIBRE</span>
+    </h1>
+
+    <p class="hero-sub">
+      Un RPG de texto ambientado en una ciudad mexicana ficticia.<br />
+      La IA narra tu historia. Cada decisión tiene consecuencias reales.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#instalar" class="btn-primary">▶ &nbsp;Comenzar a jugar</a>
+      <a href="#juego" class="btn-secondary">Ver cómo funciona</a>
+    </div>
+
+    <div class="hero-scroll">↓ &nbsp;scroll</div>
+  </section>
+
+  <!-- PREVIEW -->
+  <section class="preview" id="juego">
+    <div class="section-label">// El Juego</div>
+    <h2 class="section-title">Haz tu historia<br />en Ciudad Libre.</h2>
+    <p style="color:var(--muted);font-size:0.85rem;line-height:1.9;max-width:560px;">
+      Empiezas con $500 MXN, un Tsuru oxidado y ninguna reputación.
+      Lo que hagas con eso depende completamente de ti. La IA genera
+      narración cinematográfica en cada turno y ofrece acciones
+      contextuales basadas en tu estado actual.
+    </p>
+
+    <!-- Game mockup -->
+    <div class="game-mockup">
+      <div class="mockup-bar">
+        <div class="mockup-dots">
+          <div class="mockup-dot" style="background:#e63946"></div>
+          <div class="mockup-dot" style="background:#f0b429"></div>
+          <div class="mockup-dot" style="background:#25c281"></div>
+        </div>
+        <span style="color:var(--muted);font-size:0.72rem;margin-left:8px;">CIUDAD LIBRE — RPG</span>
+        <span style="color:var(--gold);font-size:0.7rem;margin-left:auto;letter-spacing:2px;">El Bordo · Día 3, Noche</span>
+      </div>
+
+      <div class="mockup-body">
+        <!-- Sidebar stats -->
+        <div class="mockup-sidebar">
+          <div class="mockup-player">El Patas</div>
+          <div class="mockup-sub">Día 3 · Noche</div>
+
+          <div class="stat-row">
+            <div class="stat-lbl">📍 Ubicación</div>
+            <div class="stat-val" style="color:var(--danger);font-size:1rem;">El Bordo</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-lbl">💰 Dinero</div>
+            <div class="stat-val" style="color:var(--money);">$8,500</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-lbl">❤️ Salud</div>
+            <div class="stat-val" style="color:#f0b429;">62%</div>
+            <div class="stat-bar"><div class="stat-fill" style="width:62%;background:#f0b429;"></div></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-lbl">⭐ Reputación</div>
+            <div class="stat-val" style="color:var(--gold);">47</div>
+            <div style="color:var(--gold);font-size:0.7rem;">Respetado</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-lbl">🔴 Búsqueda</div>
+            <div style="color:var(--danger);font-size:1.1rem;letter-spacing:2px;">★★☆☆☆</div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-lbl">🚗 Vehículo</div>
+            <div style="color:#bbb;font-size:0.8rem;">Mustang clonado</div>
+          </div>
+        </div>
+
+        <!-- Main narrative -->
+        <div class="mockup-main">
+          <div class="narrative-card">
+            <p>El Bordo huele a aceite quemado y cerveza barata. Las calles están oscuras —
+            sólo los postes de la ferretería de El Guero iluminan el callejón donde
+            estacionaste el Mustang.</p>
+            <br />
+            <p>El Guero sale con los brazos cruzados y una sonrisa que no le llega a los ojos.
+            <em>"¿Y bien, carnal? ¿Tienes lo que te pedí?"</em> Traes la mercancía, pero
+            algo en su actitud te dice que el trato cambió<span class="narrative-cursor"></span></p>
+          </div>
+
+          <div class="action-grid">
+            <div class="action-btn">1. Entregar la mercancía y exigir el pago completo</div>
+            <div class="action-btn" style="color:#bbb;">2. Pedir más dinero antes de soltar el paquete</div>
+            <div class="action-btn" style="color:#bbb;">3. Echar reversa y largarte de ahí</div>
+            <div class="action-btn" style="color:#bbb;">4. Llamar al Chivo para pedir consejo</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="features-inner">
+      <div class="section-label">// Mecánicas</div>
+      <h2 class="section-title">Todo tiene consecuencias.</h2>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="feature-icon">🤖</span>
+          <div class="feature-title">Narración por IA</div>
+          <p class="feature-desc">
+            Claude actúa como Game Master, generando escenas cinematográficas únicas
+            en español mexicano. Cada partida es diferente.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">📊</span>
+          <div class="feature-title">5 Estadísticas</div>
+          <p class="feature-desc">
+            Dinero, Salud, Reputación, Nivel de Búsqueda y Vehículo. Todo interconectado.
+            Un error baja la salud; la salud en cero es game over.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🕐</span>
+          <div class="feature-title">Ciclo Día/Noche</div>
+          <p class="feature-desc">
+            El tiempo avanza con tus acciones. La noche trae más riesgo y mejor pago.
+            La madrugada baja el nivel de búsqueda policial.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🎭</span>
+          <div class="feature-title">Reputación dinámica</div>
+          <p class="feature-desc">
+            De Desconocido a Leyenda. Tu nivel de respeto abre —y cierra— puertas
+            con facciones: narcos, policías, empresarios y el barrio.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">💻</span>
+          <div class="feature-title">Web + Terminal</div>
+          <p class="feature-desc">
+            Juega en el navegador con interfaz GTA o directamente en tu terminal
+            con colores ANSI y efecto typewriter.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="feature-icon">🔓</span>
+          <div class="feature-title">Open Source</div>
+          <p class="feature-desc">
+            Código abierto en GitHub. Personaliza el mundo, agrega zonas,
+            cambia la narrativa, o usa tu propio modelo de IA.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ZONES -->
+  <section class="zones" id="zonas">
+    <div class="section-label">// El Mapa</div>
+    <h2 class="section-title">6 zonas.<br />Infinitas historias.</h2>
+
+    <div class="zones-grid">
+      <div class="zone-card" style="--c:#f0b429">
+        <div style="height:2px;background:var(--gold);position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">El Barrio</div>
+        <p class="zone-desc">Tu zona de origen. Calles conocidas, gente humilde, fondas y talleres. El punto de inicio de toda historia.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:var(--money);border-color:rgba(37,194,129,0.3);">Seguro</span>
+          <span class="zone-tag" style="color:var(--muted);border-color:#333;">Poco dinero</span>
+        </div>
+      </div>
+
+      <div class="zone-card">
+        <div style="height:2px;background:var(--blue);position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">Centro Histórico</div>
+        <p class="zone-desc">Turistas, comercios, mercados y patrullas. Oportunidades mixtas y mucho movimiento de gente.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:var(--blue);border-color:rgba(79,195,247,0.3);">Mixto</span>
+          <span class="zone-tag" style="color:var(--muted);border-color:#333;">Policías</span>
+        </div>
+      </div>
+
+      <div class="zone-card">
+        <div style="height:2px;background:#9b59b6;position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">La Industrial</div>
+        <p class="zone-desc">Fábricas, talleres mecánicos, bodegas. Trabajo duro o robos bien organizados. Poca vigilancia.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:#9b59b6;border-color:rgba(155,89,182,0.3);">Trabajo</span>
+          <span class="zone-tag" style="color:var(--muted);border-color:#333;">Autos</span>
+        </div>
+      </div>
+
+      <div class="zone-card">
+        <div style="height:2px;background:var(--money);position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">Los Álamos</div>
+        <p class="zone-desc">Fraccionamiento de ricos. Seguridad privada, casas blindadas. Alto riesgo, altísima recompensa.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:var(--money);border-color:rgba(37,194,129,0.3);">Dinero</span>
+          <span class="zone-tag" style="color:var(--danger);border-color:rgba(230,57,70,0.3);">Riesgo</span>
+        </div>
+      </div>
+
+      <div class="zone-card">
+        <div style="height:2px;background:var(--danger);position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">El Bordo</div>
+        <p class="zone-desc">Zona caliente. Narcos, garitos, mecánicos de confianza y armas sin preguntas. Para los valientes.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:var(--danger);border-color:rgba(230,57,70,0.3);">Peligroso</span>
+          <span class="zone-tag" style="color:var(--gold);border-color:rgba(240,180,41,0.3);">Misiones</span>
+        </div>
+      </div>
+
+      <div class="zone-card">
+        <div style="height:2px;background:#f39c12;position:absolute;top:0;left:0;right:0;"></div>
+        <div class="zone-name">Carretera Federal</div>
+        <p class="zone-desc">Velocidad pura. Carreras clandestinas, transporte de carga y persecuciones a 140 km/h.</p>
+        <div class="zone-tags">
+          <span class="zone-tag" style="color:#f39c12;border-color:rgba(243,156,18,0.3);">Velocidad</span>
+          <span class="zone-tag" style="color:var(--muted);border-color:#333;">Carreras</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUMBERS -->
+  <section class="stats-section">
+    <div class="section-label">// El Mundo</div>
+    <h2 class="section-title" style="font-family:'Oswald',sans-serif;font-weight:700;font-size:2.5rem;color:#fff;">
+      Ciudad Libre en números.
+    </h2>
+    <div class="stats-grid">
+      <div>
+        <div class="stat-number">6</div>
+        <div class="stat-name">Zonas únicas</div>
+      </div>
+      <div>
+        <div class="stat-number">5</div>
+        <div class="stat-name">Personajes clave</div>
+      </div>
+      <div>
+        <div class="stat-number">∞</div>
+        <div class="stat-name">Narrativas posibles</div>
+      </div>
+      <div>
+        <div class="stat-number">0</div>
+        <div class="stat-name">Límite de acciones</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALL CTA -->
+  <section class="cta-section" id="instalar">
+    <div class="cta-glow"></div>
+
+    <div class="section-label">// Instalación</div>
+    <h2 class="section-title">
+      Empieza en<br /><span style="color:var(--gold);">3 pasos.</span>
+    </h2>
+
+    <div class="terminal-demo">
+      <span class="t-comment"># 1. Clona el repo</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">git clone https://github.com/alejandrosoriaa-tappt/Colibri-Collections</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">cd Colibri-Collections/game</span><br />
+      <br />
+      <span class="t-comment"># 2. Configura tu API key de Anthropic</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">cp .env.example .env</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">nano .env</span> <span class="t-comment"># agrega ANTHROPIC_API_KEY</span><br />
+      <br />
+      <span class="t-comment"># 3. Juega</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">npm install && npm run dev</span> <span class="t-comment"># Web</span><br />
+      <span class="t-prompt">$</span> <span class="t-cmd">node cli.js</span> <span class="t-comment"># Terminal</span><br />
+      <br />
+      <span class="t-output">🌆 Ciudad Libre cargando...</span><br />
+      <span class="t-gold">▶ ¿Cómo te llamas, carnal?</span>
+    </div>
+
+    <div class="hero-actions" style="margin-top:48px;">
+      <a href="https://github.com/alejandrosoriaa-tappt/Colibri-Collections" class="btn-primary">
+        Ver en GitHub
+      </a>
+      <a href="https://console.anthropic.com" class="btn-secondary">
+        Obtener API Key
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="nav-logo">CIUDAD LIBRE</div>
+    <p>Hecho con Claude AI · Open Source · Ciudad Libre, México Ficticio</p>
+    <p style="color:var(--muted);font-size:0.7rem;">Colibri Collections © 2026</p>
+  </footer>
+
+  <script>
+    // Smooth reveal on scroll
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.style.opacity = '1';
+          e.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.feature-card, .zone-card').forEach(el => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateY(20px)';
+      el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+      observer.observe(el);
+    });
+  </script>
+</body>
+</html>
