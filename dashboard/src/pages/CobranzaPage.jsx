@@ -7,6 +7,35 @@ import {
 import { cobranzaAPI } from '../lib/api.js'
 
 const VARIABLES = ['{nombre}', '{alumno}', '{monto}', '{liga_pago}', '{concept}', '{nombre_org}']
+
+const VAR_LABELS = {
+  nombre:     { label: 'Nombre',       color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  alumno:     { label: 'Alumno',       color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  monto:      { label: 'Monto',        color: 'bg-green-100 text-green-700 border-green-200' },
+  liga_pago:  { label: 'Liga de pago', color: 'bg-orange-100 text-orange-700 border-orange-200' },
+  concept:    { label: 'Concepto',     color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  nombre_org: { label: 'Colegio',      color: 'bg-pink-100 text-pink-700 border-pink-200' },
+}
+
+function MessageBubble({ text }) {
+  const parts = text.split(/(\{[^}]+\})/g)
+  return (
+    <div className="text-sm leading-relaxed text-md-on-surface">
+      {parts.map((part, i) => {
+        const m = part.match(/^\{([^}]+)\}$/)
+        if (m) {
+          const meta = VAR_LABELS[m[1]]
+          return (
+            <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold border mx-0.5 ${meta ? meta.color : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+              {meta ? meta.label : m[1]}
+            </span>
+          )
+        }
+        return <span key={i}>{part}</span>
+      })}
+    </div>
+  )
+}
 const DRAFT_KEY = 'cobranza_draft_v1'
 
 const fmtMoney = (n) =>
@@ -253,6 +282,7 @@ export default function CobranzaPage() {
 }
 
 function ColorGroupCard({ g, onPatch }) {
+  const [editingMsg, setEditingMsg] = useState(false)
   const appendVar = (v) => onPatch(g.color, { message: `${g.message} ${v}` })
 
   return (
@@ -308,25 +338,46 @@ function ColorGroupCard({ g, onPatch }) {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">Mensaje</label>
-            <textarea
-              value={g.message}
-              onChange={(e) => onPatch(g.color, { message: e.target.value })}
-              rows={3}
-              className="w-full mt-1 px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none resize-none"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {VARIABLES.map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => appendVar(v)}
-                  className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded hover:bg-md-primary-container/70"
-                >
-                  {v}
-                </button>
-              ))}
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-semibold text-md-on-surface-variant uppercase tracking-wide">Mensaje</label>
+              <button
+                type="button"
+                onClick={() => setEditingMsg((v) => !v)}
+                className="text-[11px] text-md-primary underline"
+              >
+                {editingMsg ? 'Ver preview' : 'Editar texto'}
+              </button>
             </div>
+
+            {editingMsg ? (
+              <>
+                <textarea
+                  value={g.message}
+                  onChange={(e) => onPatch(g.color, { message: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-md-outline-variant bg-white focus:border-md-primary outline-none resize-none"
+                />
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {VARIABLES.map((v) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => appendVar(v)}
+                      className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded hover:bg-md-primary-container/70"
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div
+                onClick={() => setEditingMsg(true)}
+                className="w-full px-3 py-2.5 rounded-xl border border-md-outline-variant bg-md-surface-container-low/50 cursor-text min-h-[72px]"
+              >
+                <MessageBubble text={g.message} />
+              </div>
+            )}
           </div>
 
           <FamiliesPreview g={g} onPatch={onPatch} />
