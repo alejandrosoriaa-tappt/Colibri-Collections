@@ -88,31 +88,40 @@ export default function CrmDashboardPage() {
 
       {/* Stats cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
-          icon={<Users size={20} className="text-crm-primary" />}
-          label="Total clientes"
-          value={total}
-          bg="bg-crm-primary-container"
-        />
-        <StatCard
-          icon={<TrendingUp size={20} className="text-green-700" />}
-          label="Clientes activos"
-          value={clientes}
-          bg="bg-green-50"
-        />
-        <StatCard
-          icon={<Building2 size={20} className="text-blue-700" />}
-          label="Por contactar"
-          value={nuevos}
-          bg="bg-blue-50"
-        />
-        <StatCard
-          icon={<Calendar size={20} className="text-crm-tertiary" />}
-          label="Follow-ups"
-          value={followupsPendientes}
-          bg="bg-crm-tertiary-container"
-          alert={followupsPendientes > 0}
-        />
+        <div className="bg-crm-primary-container rounded-3xl p-4 shadow-md3-1">
+          <div className="flex items-center justify-between mb-3">
+            <Users size={20} className="text-crm-primary" />
+          </div>
+          <p className="text-2xl font-bold text-crm-on-surface">{total}</p>
+          <p className="text-xs text-crm-on-surface-variant mt-1">Total clientes</p>
+        </div>
+
+        <div className="bg-green-100 rounded-3xl p-4 shadow-md3-1">
+          <div className="flex items-center justify-between mb-3">
+            <TrendingUp size={20} className="text-green-700" />
+          </div>
+          <p className="text-2xl font-bold text-crm-on-surface">{clientes}</p>
+          <p className="text-xs text-crm-on-surface-variant mt-1">Clientes activos</p>
+        </div>
+
+        <div className="bg-blue-100 rounded-3xl p-4 shadow-md3-1">
+          <div className="flex items-center justify-between mb-3">
+            <Building2 size={20} className="text-blue-700" />
+          </div>
+          <p className="text-2xl font-bold text-crm-on-surface">{nuevos}</p>
+          <p className="text-xs text-crm-on-surface-variant mt-1">Por contactar</p>
+        </div>
+
+        <div className="bg-orange-100 rounded-3xl p-4 shadow-md3-1">
+          <div className="flex items-center justify-between mb-3">
+            <Calendar size={20} className="text-orange-600" />
+            {followupsPendientes > 0 && (
+              <span className="w-2 h-2 rounded-full bg-crm-error animate-pulse" />
+            )}
+          </div>
+          <p className="text-2xl font-bold text-crm-on-surface">{followupsPendientes}</p>
+          <p className="text-xs text-crm-on-surface-variant mt-1">Follow-ups</p>
+        </div>
       </div>
 
       {/* Pipeline + Follow-ups */}
@@ -241,17 +250,3 @@ export default function CrmDashboardPage() {
   )
 }
 
-function StatCard({ icon, label, value, bg, alert }) {
-  return (
-    <div className={`${bg} rounded-3xl p-4 shadow-md3-1`}>
-      <div className="flex items-center justify-between mb-3">
-        {icon}
-        {alert && (
-          <span className="w-2 h-2 rounded-full bg-crm-error animate-pulse" />
-        )}
-      </div>
-      <p className="text-2xl font-bold text-crm-on-surface">{value}</p>
-      <p className="text-xs text-crm-on-surface-variant mt-1">{label}</p>
-    </div>
-  )
-}
