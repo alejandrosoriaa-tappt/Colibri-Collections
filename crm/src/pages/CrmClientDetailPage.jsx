@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ChevronRight, Phone, Mail, Globe, MapPin, Building2, Briefcase,
   Save, Edit2, X, Plus, Check, Trash2, Calendar, Clock,
-  PhoneCall, AtSign, Users, MessageCircle, Car, FileText, AlertCircle
+  PhoneCall, AtSign, Users, MessageCircle, Car, FileText, AlertCircle, Send
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -90,6 +90,16 @@ export default function CrmClientDetailPage() {
   const [fuDate, setFuDate] = useState('')
   const [fuDesc, setFuDesc] = useState('')
   const [savingFollowup, setSavingFollowup] = useState(false)
+
+  // Email state
+  const [showEmailPanel, setShowEmailPanel] = useState(false)
+  const [emailTemplate, setEmailTemplate] = useState(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')   // plain-text for display
+  const [emailHtml, setEmailHtml] = useState('')   // actual HTML to send
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     if (isNew) return
@@ -194,6 +204,122 @@ export default function CrmClientDetailPage() {
       setFollowups(prev => prev.filter(f => f.id !== fuId))
     } catch (err) {
       alert('Error: ' + err.message)
+    }
+  }
+
+  // ── Email helpers ────────────────────────────────────────────────────────────
+
+  function htmlToPlain(html) {
+    // Strip tags, decode entities, collapse whitespace
+    return html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
+  // Template definitions (mirrored from backend for preview — actual render happens server-side)
+  const EMAIL_TEMPLATES = {
+    frio: {
+      label: 'Frío',
+      buildSubject: (c) => `NKUVO — Soluciones digitales para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const tipo = (c.giro === 'Colegio' || c.giro === 'Academia') ? 'colegios e instituciones educativas' : 'condominios y comunidades residenciales'
+        return `Buen día, ${nombre}.\n\nLe escribo de parte de NKUVO, una plataforma diseñada para modernizar la gestión de ${tipo}.\n\nCon NKUVO, su equipo puede administrar pagos, comunicados, seguimiento de incidencias y reportes — todo desde un solo lugar, sin papeleos ni hojas de cálculo.\n\nMe gustaría mostrarle cómo otras organizaciones similares a la suya ya están ahorrando tiempo y mejorando la experiencia de sus usuarios con nuestra plataforma.\n\n¿Tendría 20 minutos esta semana para una llamada rápida?\n\nQuedo a sus órdenes.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    followup: {
+      label: 'Follow-up',
+      buildSubject: () => 'Seguimiento — NKUVO',
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        return `Hola, ${nombre}.\n\nLe escribo para dar seguimiento a nuestra conversación anterior sobre NKUVO.\n\nEntiendo que el día a día de su organización está lleno de prioridades, por lo que quería retomar el contacto y ver si surge la oportunidad de platicar con más calma sobre cómo podríamos apoyarles.\n\nSi tiene alguna pregunta concreta o le gustaría ver una demostración de la plataforma, con gusto lo agendamos a la brevedad.\n\n¿Qué días y horarios le vendrían mejor?\n\nMuchas gracias por su tiempo.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    propuesta: {
+      label: 'Propuesta',
+      buildSubject: (c) => `Propuesta NKUVO para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const empresa = c.razon_social || 'su organización'
+        return `Hola, ${nombre}.\n\nConforme a lo conversado, me complace enviarle la propuesta de NKUVO para ${empresa}.\n\n[Adjunto encontrarás nuestra presentación — enlace por agregar]\n\nEn resumen, la propuesta incluye:\n• Acceso completo a la plataforma NKUVO\n• Onboarding y capacitación inicial para su equipo\n• Soporte técnico incluido durante el primer año\n• Configuración personalizada según sus procesos\n\nCon gusto resuelvo cualquier duda que tenga sobre los alcances o condiciones. ¿Le parece si agendamos una llamada de revisión esta semana?\n\nQuedo en espera de sus comentarios.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    cierre: {
+      label: 'Cierre',
+      buildSubject: (c) => `Próximos pasos — NKUVO para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const empresa = c.razon_social || 'su organización'
+        return `Hola, ${nombre}.\n\nHa sido un placer platicar con usted sobre las necesidades de ${empresa}. Creo que NKUVO puede ser una solución muy valiosa para su equipo.\n\nPara avanzar, el siguiente paso sería confirmar el plan seleccionado y firmar el acuerdo de servicio. El proceso de alta toma menos de 48 horas hábiles.\n\nEnvíeme su confirmación y de inmediato coordinamos los detalles con nuestro equipo de implementación.\n\nEstamos listos para comenzar cuando usted lo indique.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+  }
+
+  function selectEmailTemplate(key) {
+    const tmpl = EMAIL_TEMPLATES[key]
+    if (!tmpl || !client) return
+    setEmailTemplate(key)
+    setEmailSubject(tmpl.buildSubject(client))
+    const plain = tmpl.buildBody(client)
+    setEmailBody(plain)
+    // Store template key so backend renders proper HTML; body is plain-text preview only
+    setEmailHtml(key)
+  }
+
+  function openEmailPanel() {
+    setEmailTemplate(null)
+    setEmailTo(client?.email || '')
+    setEmailSubject('')
+    setEmailBody('')
+    setEmailHtml('')
+    setEmailSent(false)
+    setShowEmailPanel(true)
+  }
+
+  async function handleSendEmail() {
+    if (!emailTo.trim()) return alert('Ingresa el correo del destinatario')
+    if (!emailSubject.trim()) return alert('El asunto es requerido')
+    if (!emailBody.trim()) return alert('El mensaje no puede estar vacío')
+    setSendingEmail(true)
+    try {
+      // Send template name so backend renders proper HTML; subject may have been customized
+      const payload = emailTemplate
+        ? { template: emailTemplate, to: emailTo, subject: emailSubject }
+        : { to: emailTo, subject: emailSubject, html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>` }
+      const r = await crmAPI.sendEmail(id, payload)
+      if (r.data.ok === false && r.data.reason === 'not_configured') {
+        alert('El envío de correo no está configurado en el servidor. Contacta al administrador.')
+        return
+      }
+      // Optimistically add activity to list
+      setActivities(prev => [{
+        id: `tmp-${Date.now()}`,
+        tipo: 'email',
+        descripcion: emailSubject,
+        fecha: new Date().toISOString(),
+      }, ...prev])
+      setEmailSent(true)
+      setTimeout(() => {
+        setShowEmailPanel(false)
+        setEmailSent(false)
+      }, 2000)
+    } catch (err) {
+      alert('Error al enviar: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setSendingEmail(false)
     }
   }
 
