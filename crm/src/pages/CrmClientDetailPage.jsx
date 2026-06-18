@@ -650,6 +650,12 @@ export default function CrmClientDetailPage() {
                 >
                   <Plus size={14} /> Otra
                 </button>
+                <button
+                  onClick={openEmailPanel}
+                  className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium border border-crm-outline-variant text-crm-on-surface-variant hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-all"
+                >
+                  <Send size={14} /> Enviar correo
+                </button>
               </div>
 
               {showActivityForm && (
@@ -687,6 +693,115 @@ export default function CrmClientDetailPage() {
                     >
                       {loggingActivity ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
                       Registrar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Email compose panel */}
+              {showEmailPanel && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-widest">Nuevo correo</p>
+                    <button
+                      onClick={() => setShowEmailPanel(false)}
+                      className="text-amber-600 hover:text-amber-800 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  {/* Template chips */}
+                  <div>
+                    <p className="text-xs text-amber-700 mb-1.5 font-medium">Plantilla</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(EMAIL_TEMPLATES).map(([key, tmpl]) => (
+                        <button
+                          key={key}
+                          onClick={() => selectEmailTemplate(key)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                            emailTemplate === key
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-100'
+                          }`}
+                        >
+                          {emailTemplate === key && <Check size={10} className="inline mr-1" />}
+                          {tmpl.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* To field */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Para:</label>
+                    {!client?.email && (
+                      <p className="text-xs text-amber-700 bg-amber-100 rounded-lg px-2 py-1 mb-1">
+                        Este cliente no tiene email registrado — puedes ingresarlo manualmente
+                      </p>
+                    )}
+                    <input
+                      type="email"
+                      value={emailTo}
+                      onChange={e => setEmailTo(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white"
+                    />
+                  </div>
+
+                  {/* Subject field */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Asunto:</label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      placeholder="Asunto del correo"
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white"
+                    />
+                  </div>
+
+                  {/* Body textarea */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Mensaje:</label>
+                    <textarea
+                      value={emailBody}
+                      onChange={e => {
+                        setEmailBody(e.target.value)
+                        // If user edits body, detach from template so we send custom html
+                        if (emailTemplate) setEmailHtml(null)
+                      }}
+                      placeholder="Escribe el mensaje o selecciona una plantilla arriba…"
+                      rows={8}
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white resize-none font-mono"
+                    />
+                    {emailTemplate && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        El correo se enviará con formato HTML. Puedes editar el texto arriba para personalizar.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setShowEmailPanel(false)}
+                      className="px-3 py-1.5 rounded-full text-sm text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail || emailSent}
+                      className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-1.5 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-amber-700 transition-colors"
+                    >
+                      {emailSent ? (
+                        <><Check size={13} /> Correo enviado</>
+                      ) : sendingEmail ? (
+                        <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Enviando…</>
+                      ) : (
+                        <><Send size={13} /> Enviar</>
+                      )}
                     </button>
                   </div>
                 </div>
