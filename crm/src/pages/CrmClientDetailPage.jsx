@@ -317,7 +317,12 @@ export default function CrmClientDetailPage() {
         setEmailSent(false)
       }, 2000)
     } catch (err) {
-      alert('Error al enviar: ' + (err.response?.data?.error || err.message))
+      const serverMsg = err.response?.data?.error
+      if (!serverMsg && err.response?.status === 404) {
+        alert('No se pudo conectar con el servidor de correo. El servidor puede estar reiniciando — espera unos segundos e intenta de nuevo.')
+      } else {
+        alert('Error al enviar: ' + (serverMsg || err.message))
+      }
     } finally {
       setSendingEmail(false)
     }
@@ -768,8 +773,11 @@ export default function CrmClientDetailPage() {
                       value={emailBody}
                       onChange={e => {
                         setEmailBody(e.target.value)
-                        // If user edits body, detach from template so we send custom html
-                        if (emailTemplate) setEmailHtml(null)
+                        // Detach from template so edited body is sent as custom html
+                        if (emailTemplate) {
+                          setEmailHtml(null)
+                          setEmailTemplate(null)
+                        }
                       }}
                       placeholder="Escribe el mensaje o selecciona una plantilla arriba…"
                       rows={8}
