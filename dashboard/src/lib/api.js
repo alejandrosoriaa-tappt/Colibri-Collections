@@ -76,6 +76,7 @@ export const campaignsAPI = {
 export const contactsAPI = {
   list: (params) => api.get('/api/contacts', { params }),
   groups: () => api.get('/api/contacts/groups'),
+  catalog: () => api.get('/api/contacts/catalog'),
   get: (id) => api.get(`/api/contacts/${id}`),
   create: (data) => api.post('/api/contacts', data),
   update: (id, data) => api.patch(`/api/contacts/${id}`, data),
@@ -84,12 +85,30 @@ export const contactsAPI = {
   bulkDeactivate: (ids) => api.post('/api/contacts/bulk-deactivate', { ids }),
   bulkReactivate: (ids) => api.post('/api/contacts/bulk-reactivate', { ids }),
   bulkDelete: (ids) => api.delete('/api/contacts/bulk-delete', { data: { ids } }),
+  deleteAll: () => api.delete('/api/contacts/all'),
   sync: (formData) => api.post('/api/contacts/sync', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 60000
   }),
   cleanup: () => api.post('/api/contacts/cleanup'),
-  getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } })
+  getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } }),
+  aiAnalyze: (formData) => api.post('/api/contacts/ai-import/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  }),
+  aiCommit: (contacts) => api.post('/api/contacts/ai-import/commit', { contacts }, { timeout: 120000 })
+}
+
+// ================================================================
+// COBRANZA POR COLOR
+// ================================================================
+export const cobranzaAPI = {
+  analyze: (formData) => api.post('/api/cobranza/analyze', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120000
+  }),
+  commit: (campaigns) => api.post('/api/cobranza/commit', { campaigns }, { timeout: 120000 }),
+  getTemplates: () => api.get('/api/cobranza/templates')
 }
 
 // ================================================================
@@ -137,7 +156,11 @@ export const broadcastsAPI = {
   list: (params) => api.get('/api/broadcasts', { params }),
   groups: () => api.get('/api/broadcasts/groups'),
   preview: (group) => api.get('/api/broadcasts/preview', { params: { group } }),
-  send: (data) => api.post('/api/broadcasts', data)
+  send: (data) => api.post('/api/broadcasts', data),
+  uploadMedia: (formData) => api.post('/api/broadcasts/media', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 60000
+  })
 }
 
 // ================================================================

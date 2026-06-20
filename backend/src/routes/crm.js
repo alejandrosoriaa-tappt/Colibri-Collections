@@ -2,6 +2,10 @@ import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
 import pool from '../services/railwayPg.js'
 import { notifyFollowupCreated, notifyFollowupCancelled } from '../services/tappt.js'
+import {
+  sendCrmEmail, emailEnabled,
+  templateFrio, templateFollowup, templatePropuesta, templateCierre
+} from '../services/emailService.js'
 
 const router = Router()
 router.use(authMiddleware)
@@ -73,7 +77,6 @@ router.get('/followups/upcoming', async (req, res) => {
       JOIN crm_clients c ON c.id = f.client_id
       WHERE f.tenant_id = $1
         AND f.completado = false
-        AND f.fecha_recordatorio >= NOW()
       ORDER BY f.fecha_recordatorio ASC
       LIMIT 20
     `, [tenantId])
@@ -311,6 +314,71 @@ router.delete('/followups/:id', async (req, res) => {
     notifyFollowupCancelled(id)
     res.json({ ok: true })
   } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Send email ────────────────────────────────────────────────────────────────
+
+const TEMPLATE_FNS = {
+  frio:     templateFrio,
+  followup: templateFollowup,
+  propuesta: templatePropuesta,
+  cierre:   templateCierre,
+}
+
+router.post('/clients/:id/emails', async (req, res) => {
+  const { tenantId } = req
+  const userId = req.user?.id
+  const { id } = req.params
+  const { template, to, subject: customSubject, html: customHtml } = req.body
+
+  if (!emailEnabled()) {
+    return res.json({ ok: false, reason: 'not_configured' })
+  }
+
+  try {
+    // Fetch client to build template context
+    const clientRes = await pool.query(
+      'SELECT * FROM crm_clients WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    )
+    if (!clientRes.rows[0]) return res.status(404).json({ error: 'Cliente no encontrado' })
+    const client = clientRes.rows[0]
+
+    // Resolve subject + html — template takes priority, custom values are fallback
+    let subject, html
+    if (template && TEMPLATE_FNS[template]) {
+      const rendered = TEMPLATE_FNS[template](client)
+      subject = customSubject || rendered.subject
+      html    = customHtml    || rendered.html
+    } else {
+      subject = customSubject
+      html    = customHtml
+    }
+
+    if (!subject || !html) {
+      return res.status(400).json({ error: 'Se requiere asunto y cuerpo del correo' })
+    }
+
+    const recipient = to || client.email
+    if (!recipient) {
+      return res.status(400).json({ error: 'No hay destinatario — ingresa un correo' })
+    }
+
+    const info = await sendCrmEmail(recipient, subject, html)
+
+    // Log as activity
+    await pool.query(`
+      INSERT INTO crm_activities (client_id, tenant_id, tipo, descripcion, fecha, created_by)
+      VALUES ($1, $2, 'email', $3, NOW(), $4)
+    `, [id, tenantId, subject, userId])
+
+    await pool.query('UPDATE crm_clients SET updated_at = NOW() WHERE id = $1', [id])
+
+    res.json({ ok: true, messageId: info.messageId })
+  } catch (err) {
+    console.error('sendCrmEmail error:', err)
     res.status(500).json({ error: err.message })
   }
 })

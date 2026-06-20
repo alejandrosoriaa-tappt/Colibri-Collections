@@ -11,8 +11,9 @@ import supabase, {
   getInvoices,
   logMessage
 } from '../services/supabase.js'
-import { sendWhatsAppMessage } from '../services/whatsapp.js'
+import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { buildMessage, calculateAmountWithLateFee } from '../templates/messages.js'
+import { TEMPLATE_NAMES, recordatorioPagoComponents, comunicadoComponents } from '../templates/whatsappTemplates.js'
 
 const router = Router()
 
@@ -330,6 +331,7 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
       const lateFee = Number(campaign.late_fee_pct) || 0
       const vars = {
         nombre: contact.nombre,
+        alumno: contact.nombre_alumno || '',
         monto: invoice.monto,
         monto_con_recargo: calculateAmountWithLateFee(invoice.monto, lateFee),
         liga_pago: invoice.liga_pago || tenant?.payment_link_general || '',
@@ -339,8 +341,37 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
         late_fee_pct: lateFee
       }
 
-      const text = buildMessage(msg.message_template, vars)
-      const result = await sendWhatsAppMessage(contact.telefono, text)
+      // Kollybry es outbound-only: nadie inicia conversación → siempre usar templates aprobados
+      let result
+      let text
+      if (campaign.concept) {
+        // Cobranza → kollybry_recordatorio_pago
+        const components = recordatorioPagoComponents({
+          nombre:   vars.nombre,
+          orgName:  vars.nombre_org,
+          concepto: vars.concept,
+          monto:    vars.monto,
+          link:     vars.liga_pago
+        })
+        result = await sendWhatsAppTemplate(
+          contact.telefono,
+          TEMPLATE_NAMES.RECORDATORIO_PAGO.name,
+          TEMPLATE_NAMES.RECORDATORIO_PAGO.lang,
+          components
+        )
+        text = `[Template: ${TEMPLATE_NAMES.RECORDATORIO_PAGO.name}] ${vars.concept} $${vars.monto}`
+      } else {
+        // Comunicado general → kollybry_comunicado_util (UTILITY, sin límite de frecuencia)
+        const cuerpo = buildMessage(msg.message_template, vars)
+        const components = comunicadoComponents({ orgName: vars.nombre_org, cuerpo })
+        result = await sendWhatsAppTemplate(
+          contact.telefono,
+          TEMPLATE_NAMES.COMUNICADO_UTIL.name,
+          TEMPLATE_NAMES.COMUNICADO_UTIL.lang,
+          components
+        )
+        text = `[Template: ${TEMPLATE_NAMES.COMUNICADO_UTIL.name}] ${cuerpo}`
+      }
 
       await logMessage({
         tenant_id: campaign.tenant_id,

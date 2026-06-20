@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, Users, Loader2, ChevronLeft, ChevronRight, UserPlus,
   X, CheckCircle2, AlertCircle, UserMinus, UserCheck, Trash2,
-  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send
+  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send, Sparkles, FileSpreadsheet
 } from 'lucide-react'
 import { contactsAPI, uploadAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -20,7 +20,7 @@ const GRADOS = {
 }
 const SALONES = ['A', 'B', 'C', 'D', 'E']
 
-const PAGE_SIZE = 50
+const PAGE_SIZE_OPTIONS = [25, 50, 100, 200]
 
 function formatDate(dateStr) {
   if (!dateStr) return '—'
@@ -681,7 +681,7 @@ function ConfirmDeactivateModal({ count, onConfirm, onClose, loading }) {
 }
 
 // ── Confirm Delete Modal ──────────────────────────────────────────────────────
-function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
+function ConfirmDeleteModal({ count, allPages, onConfirm, onClose, loading }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-4">
@@ -690,9 +690,12 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
             <Trash2 size={18} className="text-md-error" />
           </div>
           <div>
-            <h2 className="font-semibold text-md-on-surface">¿Eliminar definitivamente {count > 1 ? `${count} contactos` : 'este contacto'}?</h2>
+            <h2 className="font-semibold text-md-on-surface">
+              {allPages ? `¿Eliminar definitivamente los ${count} contactos?` : `¿Eliminar definitivamente ${count > 1 ? `${count} contactos` : 'este contacto'}?`}
+            </h2>
             <p className="text-sm text-md-on-surface-variant mt-1">
               Esta acción no se puede deshacer. Se eliminarán junto con su historial.
+              {allPages && <strong className="block mt-1 text-md-error">⚠️ Se borrarán TODOS los contactos del tenant.</strong>}
             </p>
           </div>
         </div>
@@ -713,7 +716,7 @@ function ConfirmDeleteModal({ count, onConfirm, onClose, loading }) {
 }
 
 // ── Modal: Enviar mensaje directo a una familia ───────────────────────────────
-function FamilyMessageModal({ familia, members, onClose, onSent }) {
+function FamilyMessageModal({ label, groupLabel, members, onClose, onSent }) {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
@@ -722,6 +725,17 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
   // Only members with a phone actually receive the WhatsApp
   const recipients = members.filter(m => m.telefono)
 
+  // Group recipients by family for a clean summary (family names, not each person)
+  const familias = (() => {
+    const map = new Map()
+    for (const r of recipients) {
+      const fam = r.nombre_familia || `${r.nombre} ${r.apellido || ''}`.trim()
+      if (!map.has(fam)) map.set(fam, 0)
+      map.set(fam, map.get(fam) + 1)
+    }
+    return [...map.entries()] // [ [familia, #telefonos], ... ]
+  })()
+
   const handleSend = async (e) => {
     e.preventDefault()
     if (!title.trim() || !message.trim()) {
@@ -729,7 +743,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
       return
     }
     if (recipients.length === 0) {
-      setError('Esta familia no tiene ningún teléfono registrado')
+      setError('No hay ningún teléfono registrado en la selección')
       return
     }
     setSending(true)
@@ -739,7 +753,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
         title: title.trim(),
         message: message.trim(),
         contact_ids: recipients.map(r => r.id),
-        group_filter: `Familia ${familia}`
+        group_filter: groupLabel
       })
       onSent(recipients.length)
     } catch (err) {
@@ -753,7 +767,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
       <div className="bg-white rounded-3xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-md-outline-variant">
           <div>
-            <h2 className="font-semibold text-md-on-surface">Mensaje a familia {familia}</h2>
+            <h2 className="font-semibold text-md-on-surface">Mensaje a {label}</h2>
             <p className="text-xs text-md-on-surface-variant mt-0.5">Se enviará por WhatsApp</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container">
@@ -769,22 +783,22 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
             </div>
           )}
 
-          {/* Recipients */}
+          {/* Recipients — summarized by family, not by each person */}
           <div className="p-3 bg-md-surface-container-low rounded-xl">
             <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
-              Recibirán el mensaje ({recipients.length})
+              {familias.length} familia{familias.length !== 1 ? 's' : ''} · {recipients.length} {recipients.length === 1 ? 'teléfono' : 'teléfonos'}
             </p>
-            {recipients.length > 0 ? (
-              <ul className="space-y-0.5">
-                {recipients.map(r => (
-                  <li key={r.id} className="text-sm text-md-on-surface flex items-center gap-2">
-                    <span>{r.nombre} {r.apellido || ''}</span>
-                    <span className="text-xs font-mono text-md-on-surface-variant">{r.telefono}</span>
-                  </li>
+            {familias.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+                {familias.map(([fam, n]) => (
+                  <span key={fam} className="inline-flex items-center gap-1 text-sm px-2 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded-lg">
+                    {fam}
+                    {n > 1 && <span className="text-[10px] opacity-70">×{n}</span>}
+                  </span>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className="text-sm text-md-error">Sin teléfonos registrados en esta familia</p>
+              <p className="text-sm text-md-error">Sin teléfonos registrados en la selección</p>
             )}
           </div>
 
@@ -804,7 +818,7 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
             <textarea
               className="input resize-none"
               rows={4}
-              placeholder={`Escribe aquí el mensaje para la familia ${familia}...`}
+              placeholder={`Escribe aquí el mensaje para ${label}...`}
               value={message}
               onChange={e => setMessage(e.target.value)}
               required
@@ -825,6 +839,161 @@ function FamilyMessageModal({ familia, members, onClose, onSent }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  )
+}
+
+// ── Modal: Importar contactos con IA ──────────────────────────────────────────
+function AiImportModal({ onClose, onDone }) {
+  const [stage, setStage] = useState('upload')   // upload | analyzing | preview | committing
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)     // { mapping, summary, contacts }
+  const fileRef = useRef(null)
+
+  const handleFile = async (file) => {
+    if (!file) return
+    setError(null); setStage('analyzing')
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await contactsAPI.aiAnalyze(fd)
+      setResult(res.data)
+      setStage('preview')
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo analizar el archivo')
+      setStage('upload')
+    }
+  }
+
+  const handleCommit = async () => {
+    setStage('committing'); setError(null)
+    try {
+      const res = await contactsAPI.aiCommit(result.contacts)
+      onDone(res.data)
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo importar')
+      setStage('preview')
+    }
+  }
+
+  const m = result?.mapping
+  const s = result?.summary
+
+  return (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-md-outline-variant">
+          <div className="flex items-center gap-2">
+            <Sparkles size={18} className="text-md-primary" />
+            <div>
+              <h2 className="font-semibold text-md-on-surface">Importar contactos con IA</h2>
+              <p className="text-xs text-md-on-surface-variant mt-0.5">Sube tu lista en el formato que ya usas</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-full hover:bg-md-surface-container">
+            <X size={18} className="text-md-on-surface-variant" />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {error && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
+              <AlertCircle size={15} className="text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          )}
+
+          {stage === 'upload' && (
+            <div
+              onClick={() => fileRef.current?.click()}
+              className="border-2 border-dashed border-md-outline-variant rounded-2xl p-10 text-center cursor-pointer hover:border-md-primary hover:bg-md-primary-container/10 transition-colors"
+            >
+              <FileSpreadsheet size={36} className="text-md-on-surface-variant mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">Arrastra o haz clic para subir tu Excel/CSV</p>
+              <p className="text-xs text-md-on-surface-variant mt-1">
+                La IA detecta tus columnas, limpia teléfonos y acomoda los datos automáticamente
+              </p>
+              <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
+                onChange={(e) => handleFile(e.target.files?.[0])} />
+            </div>
+          )}
+
+          {stage === 'analyzing' && (
+            <div className="py-12 text-center">
+              <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">La IA está leyendo tu archivo…</p>
+              <p className="text-xs text-md-on-surface-variant mt-1">Detectando columnas y normalizando (puede tardar ~10-20 seg)</p>
+            </div>
+          )}
+
+          {stage === 'preview' && result && (
+            <div className="space-y-4">
+              <div className="p-3 bg-md-primary-container/20 rounded-xl">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles size={14} className="text-md-primary" />
+                  <span className="text-sm font-medium text-md-on-surface">Esto entendió la IA</span>
+                  <span className="ml-auto text-xs px-2 py-0.5 bg-md-primary-container text-md-on-primary-container rounded-full">
+                    {Math.round((m?.confidence || 0) * 100)}% confianza
+                  </span>
+                </div>
+                <p className="text-xs text-md-on-surface-variant leading-relaxed">{m?.notes}</p>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Tipo: {m?.org_type}</span>
+                  {m?.has_family_structure && <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Estructura de familia</span>}
+                  {m?.sheet_is_salon && <span className="text-[11px] px-1.5 py-0.5 bg-md-surface-container rounded">Pestaña = salón</span>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: 'Contactos', value: s?.total_contactos },
+                  { label: 'Alumnos', value: s?.alumnos },
+                  { label: 'Con teléfono', value: s?.con_telefono }
+                ].map((x) => (
+                  <div key={x.label} className="bg-md-surface-container-low rounded-xl p-3 text-center">
+                    <div className="text-xl font-semibold text-md-on-surface">{x.value ?? 0}</div>
+                    <div className="text-[11px] text-md-on-surface-variant">{x.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {s?.grupos_lista?.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
+                    Grupos/salones detectados ({s.grupos})
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {s.grupos_lista.map((g) => (
+                      <span key={g} className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{g}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {m?.needs_admin_review && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">La IA no está del todo segura de este formato. Revisa el preview antes de confirmar.</p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setStage('upload')} className="flex-1 btn-tonal text-sm">Otro archivo</button>
+                <button onClick={handleCommit} className="flex-1 btn-primary text-sm flex items-center justify-center gap-2">
+                  <CheckCircle2 size={14} /> Importar {s?.total_contactos} contactos
+                </button>
+              </div>
+            </div>
+          )}
+
+          {stage === 'committing' && (
+            <div className="py-12 text-center">
+              <Loader2 size={32} className="text-md-primary animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium text-md-on-surface">Importando a tu base…</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
@@ -863,10 +1032,12 @@ export default function ContactsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusTab, setStatusTab] = useState('active') // 'active' | 'inactive' | 'all'
   const [selected, setSelected] = useState(new Set())
+  const [selectAllPages, setSelectAllPages] = useState(false)
 
   // Modals
   const [showAdd, setShowAdd] = useState(false)
   const [showSync, setShowSync] = useState(false)
+  const [showAiImport, setShowAiImport] = useState(false)
   const [confirmDeactivate, setConfirmDeactivate] = useState(null) // { ids }
   const [confirmDelete, setConfirmDelete] = useState(null)         // { ids }
   const [familyMsg, setFamilyMsg] = useState(null)                 // { familia, members }
@@ -877,6 +1048,29 @@ export default function ContactsPage() {
   const [filtroGrado, setFiltroGrado] = useState('')
   const [filtroSalon, setFiltroSalon] = useState('')
   const hasSchoolFilter = !!(filtroSeccion || filtroGrado || filtroSalon)
+
+  // Catálogo real del tenant (combinaciones sección/grado/salón presentes).
+  // Los filtros se construyen a partir de esto → se adaptan por tenant
+  // (Primaria/Secundaria en un colegio, Casa de Niños/Taller en Montessori).
+  const [catalog, setCatalog] = useState([])
+  useEffect(() => {
+    if (!isColegio) return
+    contactsAPI.catalog()
+      .then(res => setCatalog(res.data.combos || []))
+      .catch(() => setCatalog([]))
+  }, [isColegio])
+
+  // Opciones en cascada: grado depende de sección, salón de ambos.
+  const uniq = (arr) => [...new Set(arr.filter(Boolean))]
+  const seccionOptions = uniq(catalog.map(c => c.seccion)).sort()
+  const gradoOptions = uniq(
+    catalog.filter(c => !filtroSeccion || c.seccion === filtroSeccion).map(c => c.grado)
+  ).sort()
+  const salonOptions = uniq(
+    catalog
+      .filter(c => (!filtroSeccion || c.seccion === filtroSeccion) && (!filtroGrado || c.grado === filtroGrado))
+      .map(c => c.salon)
+  ).sort()
 
   const alumnoMatchesFilter = (a) =>
     (!filtroSeccion || a.seccion === filtroSeccion) &&
@@ -897,16 +1091,21 @@ export default function ContactsPage() {
     return () => clearTimeout(t)
   }, [search])
 
-  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab])
+  const [pageSize, setPageSize] = useState(50)
+
+  useEffect(() => { setPage(0); setSelected(new Set()) }, [debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon, pageSize])
 
   const load = useCallback(() => {
     setIsLoading(true)
     setSelected(new Set())
     contactsAPI.list({
-      limit: PAGE_SIZE,
+      limit: pageSize,
       page: page + 1,
       status: statusTab,
-      ...(debouncedSearch ? { search: debouncedSearch } : {})
+      ...(debouncedSearch ? { search: debouncedSearch } : {}),
+      ...(filtroSeccion ? { seccion: filtroSeccion } : {}),
+      ...(filtroGrado   ? { grado:   filtroGrado   } : {}),
+      ...(filtroSalon   ? { salon:   filtroSalon   } : {})
     })
       .then(res => {
         setContacts(res.data.contacts || [])
@@ -914,16 +1113,16 @@ export default function ContactsPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [page, debouncedSearch, statusTab])
+  }, [page, pageSize, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
 
   useEffect(() => { load() }, [load])
 
-  const totalPages = Math.ceil(total / PAGE_SIZE)
+  const totalPages = Math.ceil(total / pageSize)
   const allSelected = contacts.length > 0 && selected.size === contacts.length
   const someSelected = selected.size > 0 && !allSelected
 
   const toggleAll = () => {
-    if (allSelected) setSelected(new Set())
+    if (allSelected) { setSelected(new Set()); setSelectAllPages(false) }
     else setSelected(new Set(contacts.map(c => c.id)))
   }
 
@@ -969,9 +1168,17 @@ export default function ContactsPage() {
   const handleDelete = async (ids) => {
     setActionLoading(true)
     try {
-      await contactsAPI.bulkDelete(ids)
-      showToast(`${ids.length > 1 ? `${ids.length} contactos eliminados` : 'Contacto eliminado'} definitivamente`)
+      if (selectAllPages) {
+        const res = await contactsAPI.deleteAll()
+        const n = res.data.deleted ?? total
+        showToast(`${n} contacto${n !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
+      } else {
+        await contactsAPI.bulkDelete(ids)
+        showToast(`${ids.length} contacto${ids.length !== 1 ? 's eliminados' : ' eliminado'} definitivamente`)
+      }
       setConfirmDelete(null)
+      setSelected(new Set())
+      setSelectAllPages(false)
       load()
     } catch (err) {
       showToast(err.response?.data?.error || err.message, true)
@@ -999,6 +1206,17 @@ export default function ContactsPage() {
           orgType={orgType}
         />
       )}
+      {showAiImport && (
+        <AiImportModal
+          onClose={() => setShowAiImport(false)}
+          onDone={(r) => {
+            setShowAiImport(false)
+            showToast(`Importados ${r.inserted} contactos${r.skipped ? ` (${r.skipped} duplicados omitidos)` : ''}`)
+            load()
+            contactsAPI.catalog().then(res => setCatalog(res.data.combos || [])).catch(() => {})
+          }}
+        />
+      )}
       {confirmDeactivate && (
         <ConfirmDeactivateModal
           count={confirmDeactivate.ids.length}
@@ -1009,7 +1227,8 @@ export default function ContactsPage() {
       )}
       {confirmDelete && (
         <ConfirmDeleteModal
-          count={confirmDelete.ids.length}
+          count={confirmDelete.allPages ? confirmDelete.total : confirmDelete.ids.length}
+          allPages={confirmDelete.allPages}
           loading={actionLoading}
           onClose={() => setConfirmDelete(null)}
           onConfirm={() => handleDelete(confirmDelete.ids)}
@@ -1017,12 +1236,14 @@ export default function ContactsPage() {
       )}
       {familyMsg && (
         <FamilyMessageModal
-          familia={familyMsg.familia}
+          label={familyMsg.label}
+          groupLabel={familyMsg.groupLabel}
           members={familyMsg.members}
           onClose={() => setFamilyMsg(null)}
           onSent={(n) => {
             setFamilyMsg(null)
-            showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''} de la familia`)
+            setSelected(new Set())
+            showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''}`)
           }}
         />
       )}
@@ -1046,6 +1267,12 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <button
+            onClick={() => setShowAiImport(true)}
+            className="btn-outline text-sm flex items-center gap-2 border-md-primary/40 text-md-primary"
+          >
+            <Sparkles size={14} /> Importar con IA
+          </button>
           <button
             onClick={() => setShowSync(true)}
             className="btn-outline text-sm flex items-center gap-2"
@@ -1102,20 +1329,18 @@ export default function ContactsPage() {
           <select
             className="input !w-auto text-sm"
             value={filtroSeccion}
-            onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado('') }}
+            onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado(''); setFiltroSalon('') }}
           >
             <option value="">Sección: todas</option>
-            {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
+            {seccionOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
             value={filtroGrado}
-            onChange={e => setFiltroGrado(e.target.value)}
+            onChange={e => { setFiltroGrado(e.target.value); setFiltroSalon('') }}
           >
             <option value="">Grado: todos</option>
-            {(filtroSeccion ? GRADOS[filtroSeccion] : ['1ro', '2do', '3ro', '4to', '5to', '6to']).map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
+            {gradoOptions.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
@@ -1123,7 +1348,7 @@ export default function ContactsPage() {
             onChange={e => setFiltroSalon(e.target.value)}
           >
             <option value="">Salón: todos</option>
-            {SALONES.map(s => <option key={s} value={s}>{s}</option>)}
+            {salonOptions.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
 
           {hasSchoolFilter && (
@@ -1136,13 +1361,18 @@ export default function ContactsPage() {
               </button>
               <button
                 onClick={() => {
-                  // Collect the distinct groups of the students matching the filter
-                  const grupos = new Set()
-                  contacts.forEach(c => {
-                    if (c.relationship_type === 'student' && c.grupo && alumnoMatchesFilter(c)) grupos.add(c.grupo)
-                  })
-                  if (grupos.size > 0) {
-                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent([...grupos].join(','))}`)
+                  // Salones (grupos) que cumplen el filtro — tomados del CATÁLOGO
+                  // completo del tenant, no solo de la página visible.
+                  const grupos = uniq(
+                    catalog
+                      .filter(c =>
+                        (!filtroSeccion || c.seccion === filtroSeccion) &&
+                        (!filtroGrado || c.grado === filtroGrado) &&
+                        (!filtroSalon || c.salon === filtroSalon))
+                      .map(c => c.salon)
+                  )
+                  if (grupos.length > 0) {
+                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent(grupos.join(','))}`)
                   }
                 }}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity ml-auto"
@@ -1158,8 +1388,42 @@ export default function ContactsPage() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 p-3 bg-md-primary-container rounded-2xl">
           <span className="text-sm font-medium text-md-on-primary-container flex-1">
-            {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
+            {selectAllPages ? total : selected.size} seleccionado{(selectAllPages ? total : selected.size) !== 1 ? 's' : ''}
+            {allSelected && !selectAllPages && (
+              <button
+                onClick={() => setSelectAllPages(true)}
+                className="ml-2 underline text-md-primary font-semibold text-xs"
+              >
+                Seleccionar los {total} contactos
+              </button>
+            )}
+            {selectAllPages && (
+              <button
+                onClick={() => { setSelectAllPages(false); setSelected(new Set()) }}
+                className="ml-2 underline text-md-primary font-semibold text-xs"
+              >
+                Cancelar selección global
+              </button>
+            )}
           </span>
+          {isColegio && statusTab !== 'inactive' && (
+            <button
+              onClick={() => {
+                const members = contacts.filter(c => selected.has(c.id))
+                const fams = [...new Set(members.map(c => c.nombre_familia).filter(Boolean))]
+                const label = fams.length === 1 ? `familia ${fams[0]}` : `${fams.length} familias`
+                const groupLabel = fams.length === 1
+                  ? `Familia ${fams[0]}`
+                  : fams.length <= 3
+                  ? `Familias: ${fams.join(', ')}`
+                  : `Familias: ${fams.slice(0, 3).join(', ')} y ${fams.length - 3} más`
+                setFamilyMsg({ label, groupLabel, members })
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity"
+            >
+              <Send size={13} /> Enviar mensaje
+            </button>
+          )}
           {statusTab !== 'inactive' && (
             <button
               onClick={() => setConfirmDeactivate({ ids: selectedIds })}
@@ -1177,12 +1441,12 @@ export default function ContactsPage() {
               {actionLoading ? <Loader2 size={13} className="animate-spin" /> : <UserCheck size={13} />} Reactivar
             </button>
           )}
-          {statusTab === 'inactive' && (
+          {(statusTab === 'inactive' || selectAllPages) && (
             <button
-              onClick={() => setConfirmDelete({ ids: selectedIds })}
+              onClick={() => setConfirmDelete({ ids: selectedIds, allPages: selectAllPages, total: selectAllPages ? total : selectedIds.length })}
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-md-error text-white rounded-full hover:opacity-90 transition-opacity"
             >
-              <Trash2 size={13} /> Eliminar
+              <Trash2 size={13} /> Eliminar {selectAllPages ? `los ${total}` : ''}
             </button>
           )}
           <button
@@ -1307,7 +1571,11 @@ export default function ContactsPage() {
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-1">
                             <button
-                              onClick={() => setFamilyMsg({ familia, members: [...papas, ...alumnos] })}
+                              onClick={() => setFamilyMsg({
+                                label: `familia ${familia}`,
+                                groupLabel: `Familia ${familia}`,
+                                members: [...papas, ...alumnos]
+                              })}
                               title="Enviar mensaje a esta familia"
                               className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
                             >
@@ -1328,6 +1596,36 @@ export default function ContactsPage() {
                 </tbody>
               </table>
             </div>
+
+            {(totalPages > 1 || total > 25) && (
+              <div className="flex items-center justify-between px-4 py-3 border-t border-md-outline-variant">
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-md-on-surface-variant">
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
+                  </p>
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(0) }}
+                    className="text-xs border border-md-outline-variant rounded-lg px-2 py-1 bg-white text-md-on-surface-variant focus:border-md-primary outline-none"
+                  >
+                    {PAGE_SIZE_OPTIONS.map(n => (
+                      <option key={n} value={n}>{n} por página</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
+                    className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-sm text-md-on-surface-variant px-2">{page + 1} / {totalPages}</span>
+                  <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1}
+                    className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         ) : (
           // ═══════════════════════════════════════════════════════════════
@@ -1472,11 +1770,22 @@ export default function ContactsPage() {
               </table>
             </div>
 
-            {totalPages > 1 && (
+            {(totalPages > 1 || total > 25) && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-md-outline-variant">
-                <p className="text-sm text-md-on-surface-variant">
-                  {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, total)} de {total}
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-sm text-md-on-surface-variant">
+                    {page * pageSize + 1}–{Math.min((page + 1) * pageSize, total)} de {total}
+                  </p>
+                  <select
+                    value={pageSize}
+                    onChange={e => { setPageSize(Number(e.target.value)); setPage(0) }}
+                    className="text-xs border border-md-outline-variant rounded-lg px-2 py-1 bg-white text-md-on-surface-variant focus:border-md-primary outline-none"
+                  >
+                    {PAGE_SIZE_OPTIONS.map(n => (
+                      <option key={n} value={n}>{n} por página</option>
+                    ))}
+                  </select>
+                </div>
                 <div className="flex gap-2 items-center">
                   <button onClick={() => setPage(p => p - 1)} disabled={page === 0}
                     className="p-1.5 rounded-full border border-md-outline text-md-on-surface-variant hover:border-md-primary hover:text-md-primary disabled:opacity-40 disabled:cursor-not-allowed transition-colors">

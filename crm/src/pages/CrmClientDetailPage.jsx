@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import {
   ChevronRight, Phone, Mail, Globe, MapPin, Building2, Briefcase,
   Save, Edit2, X, Plus, Check, Trash2, Calendar, Clock,
-  PhoneCall, AtSign, Users, MessageCircle, Car, FileText, AlertCircle
+  PhoneCall, AtSign, Users, MessageCircle, Car, FileText, AlertCircle, Send
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -18,13 +18,13 @@ const STATUS_OPTIONS = [
 ]
 
 const STATUS_CONFIG = {
-  nuevo_registro: { color: 'bg-blue-50 text-blue-700',       dot: 'bg-blue-400',   ring: 'ring-blue-300' },
-  prospecto:      { color: 'bg-slate-100 text-slate-700',    dot: 'bg-slate-400',  ring: 'ring-slate-300' },
-  contactado:     { color: 'bg-amber-100 text-amber-800',    dot: 'bg-amber-500',  ring: 'ring-amber-300' },
-  negociacion:    { color: 'bg-orange-100 text-orange-800',  dot: 'bg-orange-500', ring: 'ring-orange-300' },
-  cliente:        { color: 'bg-green-100 text-green-800',    dot: 'bg-green-600',  ring: 'ring-green-300' },
-  perdido:        { color: 'bg-red-100 text-red-700',        dot: 'bg-red-500',    ring: 'ring-red-300' },
-  inactivo:       { color: 'bg-gray-100 text-gray-500',      dot: 'bg-gray-400',   ring: 'ring-gray-300' },
+  nuevo_registro: { chipOn: 'bg-blue-500 text-white',    chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-blue-400',   badge: 'bg-blue-50 text-blue-700' },
+  prospecto:      { chipOn: 'bg-slate-600 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-slate-400',  badge: 'bg-slate-100 text-slate-700' },
+  contactado:     { chipOn: 'bg-amber-500 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-amber-500',  badge: 'bg-amber-100 text-amber-800' },
+  negociacion:    { chipOn: 'bg-orange-500 text-white',  chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-orange-500', badge: 'bg-orange-100 text-orange-800' },
+  cliente:        { chipOn: 'bg-green-600 text-white',   chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-green-600',  badge: 'bg-green-100 text-green-800' },
+  perdido:        { chipOn: 'bg-red-500 text-white',     chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-red-500',    badge: 'bg-red-100 text-red-700' },
+  inactivo:       { chipOn: 'bg-gray-500 text-white',    chipOff: 'bg-white/40 text-crm-on-primary-container hover:bg-white/60', dot: 'bg-gray-400',   badge: 'bg-gray-100 text-gray-500' },
 }
 
 const ACTIVITY_TYPES = [
@@ -82,12 +82,24 @@ export default function CrmClientDetailPage() {
   const [activityDesc, setActivityDesc] = useState('')
   const [loggingActivity, setLoggingActivity] = useState(false)
 
+  const [changingStatus, setChangingStatus] = useState(false)
+
   // Follow-up state
   const [followups, setFollowups] = useState([])
   const [showFollowupForm, setShowFollowupForm] = useState(false)
   const [fuDate, setFuDate] = useState('')
   const [fuDesc, setFuDesc] = useState('')
   const [savingFollowup, setSavingFollowup] = useState(false)
+
+  // Email state
+  const [showEmailPanel, setShowEmailPanel] = useState(false)
+  const [emailTemplate, setEmailTemplate] = useState(null)
+  const [emailTo, setEmailTo] = useState('')
+  const [emailSubject, setEmailSubject] = useState('')
+  const [emailBody, setEmailBody] = useState('')   // plain-text for display
+  const [emailHtml, setEmailHtml] = useState('')   // actual HTML to send
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     if (isNew) return
@@ -195,14 +207,133 @@ export default function CrmClientDetailPage() {
     }
   }
 
+  // ── Email helpers ────────────────────────────────────────────────────────────
+
+  function htmlToPlain(html) {
+    // Strip tags, decode entities, collapse whitespace
+    return html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  }
+
+  // Template definitions (mirrored from backend for preview — actual render happens server-side)
+  const EMAIL_TEMPLATES = {
+    frio: {
+      label: 'Frío',
+      buildSubject: (c) => `NKUVO — Soluciones digitales para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const tipo = (c.giro === 'Colegio' || c.giro === 'Academia') ? 'colegios e instituciones educativas' : 'condominios y comunidades residenciales'
+        return `Buen día, ${nombre}.\n\nLe escribo de parte de NKUVO, una plataforma diseñada para modernizar la gestión de ${tipo}.\n\nCon NKUVO, su equipo puede administrar pagos, comunicados, seguimiento de incidencias y reportes — todo desde un solo lugar, sin papeleos ni hojas de cálculo.\n\nMe gustaría mostrarle cómo otras organizaciones similares a la suya ya están ahorrando tiempo y mejorando la experiencia de sus usuarios con nuestra plataforma.\n\n¿Tendría 20 minutos esta semana para una llamada rápida?\n\nQuedo a sus órdenes.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    followup: {
+      label: 'Follow-up',
+      buildSubject: () => 'Seguimiento — NKUVO',
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        return `Hola, ${nombre}.\n\nLe escribo para dar seguimiento a nuestra conversación anterior sobre NKUVO.\n\nEntiendo que el día a día de su organización está lleno de prioridades, por lo que quería retomar el contacto y ver si surge la oportunidad de platicar con más calma sobre cómo podríamos apoyarles.\n\nSi tiene alguna pregunta concreta o le gustaría ver una demostración de la plataforma, con gusto lo agendamos a la brevedad.\n\n¿Qué días y horarios le vendrían mejor?\n\nMuchas gracias por su tiempo.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    propuesta: {
+      label: 'Propuesta',
+      buildSubject: (c) => `Propuesta NKUVO para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const empresa = c.razon_social || 'su organización'
+        return `Hola, ${nombre}.\n\nConforme a lo conversado, me complace enviarle la propuesta de NKUVO para ${empresa}.\n\n[Adjunto encontrarás nuestra presentación — enlace por agregar]\n\nEn resumen, la propuesta incluye:\n• Acceso completo a la plataforma NKUVO\n• Onboarding y capacitación inicial para su equipo\n• Soporte técnico incluido durante el primer año\n• Configuración personalizada según sus procesos\n\nCon gusto resuelvo cualquier duda que tenga sobre los alcances o condiciones. ¿Le parece si agendamos una llamada de revisión esta semana?\n\nQuedo en espera de sus comentarios.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+    cierre: {
+      label: 'Cierre',
+      buildSubject: (c) => `Próximos pasos — NKUVO para ${c.razon_social || 'su organización'}`,
+      buildBody: (c) => {
+        const nombre = c.nombre_contacto?.split(' ')[0] || c.razon_social || 'Estimado/a'
+        const empresa = c.razon_social || 'su organización'
+        return `Hola, ${nombre}.\n\nHa sido un placer platicar con usted sobre las necesidades de ${empresa}. Creo que NKUVO puede ser una solución muy valiosa para su equipo.\n\nPara avanzar, el siguiente paso sería confirmar el plan seleccionado y firmar el acuerdo de servicio. El proceso de alta toma menos de 48 horas hábiles.\n\nEnvíeme su confirmación y de inmediato coordinamos los detalles con nuestro equipo de implementación.\n\nEstamos listos para comenzar cuando usted lo indique.\n\nAlejandro Soria\nNKUVO`
+      },
+    },
+  }
+
+  function selectEmailTemplate(key) {
+    const tmpl = EMAIL_TEMPLATES[key]
+    if (!tmpl || !client) return
+    setEmailTemplate(key)
+    setEmailSubject(tmpl.buildSubject(client))
+    const plain = tmpl.buildBody(client)
+    setEmailBody(plain)
+    // Store template key so backend renders proper HTML; body is plain-text preview only
+    setEmailHtml(key)
+  }
+
+  function openEmailPanel() {
+    setEmailTemplate(null)
+    setEmailTo(client?.email || '')
+    setEmailSubject('')
+    setEmailBody('')
+    setEmailHtml('')
+    setEmailSent(false)
+    setShowEmailPanel(true)
+  }
+
+  async function handleSendEmail() {
+    if (!emailTo.trim()) return alert('Ingresa el correo del destinatario')
+    if (!emailSubject.trim()) return alert('El asunto es requerido')
+    if (!emailBody.trim()) return alert('El mensaje no puede estar vacío')
+    setSendingEmail(true)
+    try {
+      // Send template name so backend renders proper HTML; subject may have been customized
+      const payload = emailTemplate
+        ? { template: emailTemplate, to: emailTo, subject: emailSubject }
+        : { to: emailTo, subject: emailSubject, html: `<p>${emailBody.replace(/\n/g, '<br>')}</p>` }
+      const r = await crmAPI.sendEmail(id, payload)
+      if (r.data.ok === false && r.data.reason === 'not_configured') {
+        alert('El envío de correo no está configurado en el servidor. Contacta al administrador.')
+        return
+      }
+      // Optimistically add activity to list
+      setActivities(prev => [{
+        id: `tmp-${Date.now()}`,
+        tipo: 'email',
+        descripcion: emailSubject,
+        fecha: new Date().toISOString(),
+      }, ...prev])
+      setEmailSent(true)
+      setTimeout(() => {
+        setShowEmailPanel(false)
+        setEmailSent(false)
+      }, 2000)
+    } catch (err) {
+      alert('Error al enviar: ' + (err.response?.data?.error || err.message))
+    } finally {
+      setSendingEmail(false)
+    }
+  }
+
   async function handleStatusChange(newStatus) {
-    if (isNew || !client) return
+    if (isNew || !client || changingStatus) return
+    setChangingStatus(newStatus)
     try {
       const r = await crmAPI.updateClient(id, { ...form, status: newStatus })
       setClient(r.data)
       setForm(r.data)
     } catch (err) {
       alert('Error: ' + err.message)
+    } finally {
+      setChangingStatus(false)
     }
   }
 
@@ -361,19 +492,24 @@ export default function CrmClientDetailPage() {
               {!isNew && (
                 <div className="flex flex-wrap gap-2 mt-4">
                   {STATUS_OPTIONS.map(opt => {
-                    const cfg = STATUS_CONFIG[opt.value]
+                    const cfg    = STATUS_CONFIG[opt.value]
                     const active = form.status === opt.value
+                    const loading = changingStatus === opt.value
                     return (
                       <button
                         key={opt.value}
                         onClick={() => handleStatusChange(opt.value)}
-                        className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1 rounded-full border transition-all ${
-                          active
-                            ? `${cfg.color} ring-2 ${cfg.ring} border-transparent`
-                            : 'border-crm-on-primary-container/20 text-crm-on-primary-container/70 hover:bg-white/30'
+                        disabled={!!changingStatus}
+                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border-0 transition-all shadow-sm disabled:cursor-wait ${
+                          active ? cfg.chipOn : cfg.chipOff
                         }`}
                       >
-                        <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        {loading
+                          ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          : active
+                          ? <Check size={11} strokeWidth={3} />
+                          : <div className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`} />
+                        }
                         {opt.label}
                       </button>
                     )
@@ -514,6 +650,12 @@ export default function CrmClientDetailPage() {
                 >
                   <Plus size={14} /> Otra
                 </button>
+                <button
+                  onClick={openEmailPanel}
+                  className="flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium border border-crm-outline-variant text-crm-on-surface-variant hover:bg-amber-50 hover:border-amber-300 hover:text-amber-700 transition-all"
+                >
+                  <Send size={14} /> Enviar correo
+                </button>
               </div>
 
               {showActivityForm && (
@@ -551,6 +693,115 @@ export default function CrmClientDetailPage() {
                     >
                       {loggingActivity ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Check size={13} />}
                       Registrar
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Email compose panel */}
+              {showEmailPanel && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-amber-800 uppercase tracking-widest">Nuevo correo</p>
+                    <button
+                      onClick={() => setShowEmailPanel(false)}
+                      className="text-amber-600 hover:text-amber-800 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  {/* Template chips */}
+                  <div>
+                    <p className="text-xs text-amber-700 mb-1.5 font-medium">Plantilla</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {Object.entries(EMAIL_TEMPLATES).map(([key, tmpl]) => (
+                        <button
+                          key={key}
+                          onClick={() => selectEmailTemplate(key)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                            emailTemplate === key
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-white border border-amber-300 text-amber-700 hover:bg-amber-100'
+                          }`}
+                        >
+                          {emailTemplate === key && <Check size={10} className="inline mr-1" />}
+                          {tmpl.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* To field */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Para:</label>
+                    {!client?.email && (
+                      <p className="text-xs text-amber-700 bg-amber-100 rounded-lg px-2 py-1 mb-1">
+                        Este cliente no tiene email registrado — puedes ingresarlo manualmente
+                      </p>
+                    )}
+                    <input
+                      type="email"
+                      value={emailTo}
+                      onChange={e => setEmailTo(e.target.value)}
+                      placeholder="correo@ejemplo.com"
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white"
+                    />
+                  </div>
+
+                  {/* Subject field */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Asunto:</label>
+                    <input
+                      type="text"
+                      value={emailSubject}
+                      onChange={e => setEmailSubject(e.target.value)}
+                      placeholder="Asunto del correo"
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white"
+                    />
+                  </div>
+
+                  {/* Body textarea */}
+                  <div>
+                    <label className="text-xs font-medium text-amber-800 mb-1 block">Mensaje:</label>
+                    <textarea
+                      value={emailBody}
+                      onChange={e => {
+                        setEmailBody(e.target.value)
+                        // If user edits body, detach from template so we send custom html
+                        if (emailTemplate) setEmailHtml(null)
+                      }}
+                      placeholder="Escribe el mensaje o selecciona una plantilla arriba…"
+                      rows={8}
+                      className="w-full text-sm border border-amber-300 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-amber-400/40 bg-white resize-none font-mono"
+                    />
+                    {emailTemplate && (
+                      <p className="text-xs text-amber-600 mt-1">
+                        El correo se enviará con formato HTML. Puedes editar el texto arriba para personalizar.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 justify-end">
+                    <button
+                      onClick={() => setShowEmailPanel(false)}
+                      className="px-3 py-1.5 rounded-full text-sm text-amber-700 hover:bg-amber-100 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={sendingEmail || emailSent}
+                      className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-1.5 rounded-full text-sm font-medium disabled:opacity-60 hover:bg-amber-700 transition-colors"
+                    >
+                      {emailSent ? (
+                        <><Check size={13} /> Correo enviado</>
+                      ) : sendingEmail ? (
+                        <><div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> Enviando…</>
+                      ) : (
+                        <><Send size={13} /> Enviar</>
+                      )}
                     </button>
                   </div>
                 </div>

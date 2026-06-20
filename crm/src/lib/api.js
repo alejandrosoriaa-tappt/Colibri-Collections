@@ -51,6 +51,7 @@ export const crmAPI = {
   createFollowup:     (id, data)   => api.post(`/api/crm/clients/${id}/followups`, data),
   updateFollowup:     (id, data)   => api.put(`/api/crm/followups/${id}`, data),
   deleteFollowup:     (id)         => api.delete(`/api/crm/followups/${id}`),
+  sendEmail:          (id, data)   => api.post(`/api/crm/clients/${id}/emails`, data),
 }
 
 export default api
