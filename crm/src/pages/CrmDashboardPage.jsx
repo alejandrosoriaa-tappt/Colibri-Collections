@@ -238,7 +238,7 @@ export default function CrmDashboardPage() {
             </p>
           ) : (
             <div className="space-y-1.5">
-              {todayItems.slice(0, 6).map(item => (
+              {todayItems.map(item => (
                 <Link
                   key={item.id}
                   to={`/crm/clients/${item.client_id}`}
@@ -253,11 +253,6 @@ export default function CrmDashboardPage() {
                   <span className="text-xs text-crm-on-surface-variant flex-shrink-0">{relTime(item.fecha)}</span>
                 </Link>
               ))}
-              {todayItems.length > 6 && (
-                <p className="text-xs text-crm-on-surface-variant/60 text-center pt-1">
-                  +{todayItems.length - 6} más
-                </p>
-              )}
             </div>
           )}
         </div>
