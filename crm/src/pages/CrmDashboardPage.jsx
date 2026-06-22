@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Briefcase, Plus, TrendingUp, Users, Calendar, AlertCircle,
-  ChevronRight, Clock, Phone, Mail, Building2
+  ChevronRight, Clock, Phone, Building2, Target, CheckCircle2
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
+
+const DAILY_GOAL = 5
 
 const STATUS_CONFIG = {
   nuevo_registro: { label: 'Nuevo',       color: 'bg-blue-50 text-blue-700',         dot: 'bg-blue-400' },
@@ -17,6 +19,48 @@ const STATUS_CONFIG = {
 }
 
 const PIPELINE_STAGES = ['nuevo_registro', 'prospecto', 'contactado', 'negociacion', 'cliente']
+
+const TIPO_BADGE = {
+  llamada:  'bg-blue-100 text-blue-700',
+  email:    'bg-amber-100 text-amber-700',
+  reunion:  'bg-purple-100 text-purple-700',
+  whatsapp: 'bg-green-100 text-green-700',
+  visita:   'bg-crm-primary-container text-crm-primary',
+  otro:     'bg-gray-100 text-gray-600',
+}
+
+const TIPO_LABEL = {
+  llamada: 'Llamada', email: 'Correo', reunion: 'Reunión',
+  whatsapp: 'WhatsApp', visita: 'Visita', otro: 'Otro',
+}
+
+// Today's date string in Mexico City time (YYYY-MM-DD)
+function todayMx() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+}
+
+function yesterdayMx() {
+  return new Date(Date.now() - 864e5).toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' })
+}
+
+function formatDayHeader(dayStr) {
+  const today = todayMx()
+  const yesterday = yesterdayMx()
+  if (dayStr === today) return 'Hoy'
+  if (dayStr === yesterday) return 'Ayer'
+  // Parse as local noon to avoid timezone shifts
+  const d = new Date(dayStr + 'T12:00:00')
+  return d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function relTime(iso) {
+  const diff = Math.floor((Date.now() - new Date(iso)) / 1000)
+  if (diff < 60)    return 'ahora'
+  if (diff < 3600)  return `hace ${Math.floor(diff / 60)} min`
+  if (diff < 864e2) return `hace ${Math.floor(diff / 3600)}h`
+  if (diff < 864e2 * 2) return 'ayer'
+  return `hace ${Math.floor(diff / 864e2)} días`
+}
 
 function formatDate(iso) {
   if (!iso) return ''
@@ -37,13 +81,15 @@ export default function CrmDashboardPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [followups, setFollowups] = useState([])
+  const [dailyData, setDailyData] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([crmAPI.stats(), crmAPI.upcomingFollowups()])
-      .then(([statsRes, fuRes]) => {
+    Promise.all([crmAPI.stats(), crmAPI.upcomingFollowups(), crmAPI.dailyActivity(7)])
+      .then(([statsRes, fuRes, dailyRes]) => {
         setStats(statsRes.data)
         setFollowups(fuRes.data || [])
+        setDailyData(dailyRes.data || [])
       })
       .catch(console.error)
       .finally(() => setLoading(false))
@@ -62,6 +108,16 @@ export default function CrmDashboardPage() {
   const clientes = porStatus.cliente || 0
   const nuevos = (porStatus.nuevo_registro || 0) + (porStatus.prospecto || 0)
   const followupsPendientes = stats?.followups_pendientes || 0
+
+  // Split daily data into today vs history
+  const today = todayMx()
+  const todayRow = dailyData.find(d => d.day === today)
+  const todayCount = todayRow?.empresas || 0
+  const todayItems = todayRow?.items || []
+  const historyRows = dailyData.filter(d => d.day !== today)
+
+  const goalReached = todayCount >= DAILY_GOAL
+  const pct = Math.min(Math.round((todayCount / DAILY_GOAL) * 100), 100)
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -122,6 +178,113 @@ export default function CrmDashboardPage() {
           <p className="text-2xl font-bold text-crm-on-surface">{followupsPendientes}</p>
           <p className="text-xs text-crm-on-surface-variant mt-1">Follow-ups</p>
         </div>
+      </div>
+
+      {/* Daily Activity Tracker */}
+      <div className="bg-crm-surface rounded-3xl border border-crm-outline-variant p-5 shadow-md3-1">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Target size={16} className="text-crm-primary" />
+            <h2 className="font-semibold text-crm-on-surface">Actividad diaria</h2>
+          </div>
+          <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2.5 py-1 rounded-full">
+            Meta: {DAILY_GOAL} empresas/día
+          </span>
+        </div>
+
+        {/* Today's box */}
+        <div className={`rounded-2xl p-4 mb-4 ${goalReached ? 'bg-green-50 border border-green-200' : 'bg-crm-surface-container-low'}`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className="font-semibold text-crm-on-surface text-sm">
+              Hoy — {new Date().toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'America/Mexico_City' })}
+            </span>
+            <div className="flex items-center gap-1.5">
+              {goalReached && <CheckCircle2 size={14} className="text-green-600" />}
+              <span className={`text-sm font-bold ${goalReached ? 'text-green-600' : 'text-crm-on-surface'}`}>
+                {todayCount} / {DAILY_GOAL}
+              </span>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full bg-crm-outline-variant/30 rounded-full h-2 mb-3">
+            <div
+              className={`h-2 rounded-full transition-all duration-700 ${goalReached ? 'bg-green-500' : 'bg-crm-primary'}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+
+          {/* Today's activity list */}
+          {todayItems.length === 0 ? (
+            <p className="text-sm text-crm-on-surface-variant text-center py-2">
+              Sin actividad registrada hoy — ve a contactar tu primera empresa
+            </p>
+          ) : (
+            <div className="space-y-1.5">
+              {todayItems.slice(0, 6).map(item => (
+                <Link
+                  key={item.id}
+                  to={`/crm/clients/${item.client_id}`}
+                  className="flex items-center gap-2 py-1 hover:opacity-80 transition-opacity group"
+                >
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${TIPO_BADGE[item.tipo] || 'bg-gray-100 text-gray-600'}`}>
+                    {TIPO_LABEL[item.tipo] || item.tipo}
+                  </span>
+                  <span className="text-sm text-crm-on-surface truncate flex-1 group-hover:text-crm-primary transition-colors">
+                    {item.razon_social}
+                  </span>
+                  <span className="text-xs text-crm-on-surface-variant flex-shrink-0">{relTime(item.fecha)}</span>
+                </Link>
+              ))}
+              {todayItems.length > 6 && (
+                <p className="text-xs text-crm-on-surface-variant/60 text-center pt-1">
+                  +{todayItems.length - 6} más
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Previous days */}
+        {historyRows.length > 0 && (
+          <div className="space-y-0.5">
+            <p className="text-xs font-medium text-crm-on-surface-variant uppercase tracking-widest mb-2 px-1">Días anteriores</p>
+            {historyRows.map(day => {
+              const done = day.empresas >= DAILY_GOAL
+              const dayPct = Math.min(Math.round((day.empresas / DAILY_GOAL) * 100), 100)
+              return (
+                <div
+                  key={day.day}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-crm-surface-container-low transition-colors"
+                >
+                  <span className="text-sm text-crm-on-surface-variant w-32 flex-shrink-0 capitalize">
+                    {formatDayHeader(day.day)}
+                  </span>
+                  <div className="flex-1 bg-crm-outline-variant/20 rounded-full h-1.5">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${done ? 'bg-green-500' : 'bg-crm-primary/50'}`}
+                      style={{ width: `${dayPct}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0 w-16 justify-end">
+                    {done && <CheckCircle2 size={12} className="text-green-500" />}
+                    <span className={`text-sm font-semibold ${done ? 'text-green-600' : 'text-crm-on-surface-variant'}`}>
+                      {day.empresas}/{DAILY_GOAL}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {dailyData.length === 0 && (
+          <div className="text-center py-4">
+            <p className="text-sm text-crm-on-surface-variant">
+              Aún no hay actividades registradas — comienza a contactar empresas
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Pipeline + Follow-ups */}
@@ -249,4 +412,3 @@ export default function CrmDashboardPage() {
     </div>
   )
 }
-

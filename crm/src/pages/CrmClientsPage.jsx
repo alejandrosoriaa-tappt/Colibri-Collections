@@ -121,7 +121,9 @@ export default function CrmClientsPage() {
       if (sortBy === 'reciente') return new Date(b.updated_at) - new Date(a.updated_at)
       const si = STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status)
       if (si !== 0) return si
-      return PRIO_ORDER.indexOf(a.prioridad) - PRIO_ORDER.indexOf(b.prioridad)
+      const pi = PRIO_ORDER.indexOf(a.prioridad) - PRIO_ORDER.indexOf(b.prioridad)
+      if (pi !== 0) return pi
+      return new Date(b.updated_at) - new Date(a.updated_at)
     })
   }, [allClients, giroTab, statusFilter, prioridadFilter, search, sortBy])
 

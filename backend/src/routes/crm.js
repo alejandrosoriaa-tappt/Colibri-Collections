@@ -266,6 +266,9 @@ router.post('/clients/:id/followups', async (req, res) => {
 
     const followup = result.rows[0]
 
+    // Update client's updated_at so it surfaces in recent sort
+    await pool.query('UPDATE crm_clients SET updated_at = NOW() WHERE id = $1', [id])
+
     // Notificar a Tappt (no bloquea la respuesta)
     const clientRes = await pool.query(
       'SELECT id, razon_social, nombre_contacto, telefono FROM crm_clients WHERE id = $1 AND tenant_id = $2',
@@ -313,6 +316,40 @@ router.delete('/followups/:id', async (req, res) => {
     await pool.query('DELETE FROM crm_followups WHERE id = $1 AND tenant_id = $2', [id, tenantId])
     notifyFollowupCancelled(id)
     res.json({ ok: true })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// ── Daily activity feed ───────────────────────────────────────────────────────
+
+router.get('/activities/daily', async (req, res) => {
+  const { tenantId } = req
+  const { days = 7 } = req.query
+  try {
+    const result = await pool.query(`
+      SELECT
+        DATE(a.fecha AT TIME ZONE 'America/Mexico_City') AS day,
+        COUNT(DISTINCT a.client_id)::int                  AS empresas,
+        COUNT(*)::int                                     AS acciones,
+        json_agg(
+          json_build_object(
+            'id',          a.id,
+            'tipo',        a.tipo,
+            'descripcion', a.descripcion,
+            'fecha',       a.fecha,
+            'client_id',   a.client_id,
+            'razon_social', c.razon_social
+          ) ORDER BY a.fecha DESC
+        ) AS items
+      FROM crm_activities a
+      JOIN crm_clients c ON c.id = a.client_id AND c.tenant_id = a.tenant_id
+      WHERE a.tenant_id = $1
+        AND a.fecha >= NOW() - ($2::int || ' days')::interval
+      GROUP BY DATE(a.fecha AT TIME ZONE 'America/Mexico_City')
+      ORDER BY day DESC
+    `, [tenantId, Math.min(parseInt(days) || 7, 30)])
+    res.json(result.rows)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
