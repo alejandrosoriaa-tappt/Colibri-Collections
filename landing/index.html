@@ -512,17 +512,32 @@
       border-radius: 50%;
       background: rgba(255,255,255,0.05);
     }
+    .quote-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    .quote-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 32px;
+      text-align: left;
+    }
     .quote-sec blockquote {
-      font-size: 24px;
+      font-size: 20px;
       font-weight: 700;
       font-style: italic;
       color: #fff;
-      max-width: 680px;
-      margin: 0 auto 16px;
       line-height: 1.5;
       position: relative;
+      margin: 0 0 16px;
     }
     .quote-sec p { color: rgba(255,255,255,0.60); font-size: 14px; position: relative; }
+    @media (max-width: 640px) {
+      .quote-grid { grid-template-columns: 1fr; }
+    }
 
     /* ══════════════════════════════════════════════
        CTA
@@ -1151,10 +1166,18 @@
   </div>
 </div>
 
-<!-- ═══ QUOTE ═══ -->
+<!-- ═══ QUOTES ═══ -->
 <div class="quote-sec">
-  <blockquote>"Antes mandaba emails que nadie leía. Ahora mando un WhatsApp y en 10 minutos ya pagó la mitad del condominio."</blockquote>
-  <p>— Administrador de condominio, Querétaro</p>
+  <div class="quote-grid">
+    <div class="quote-card">
+      <blockquote>"Antes mandaba emails que poca gente leía. Desde que uso Kollybry, la rapidez de cobranza ha ido en aumento y ya tengo menos familias en convenio."</blockquote>
+      <p>— Directora de Escuela, Querétaro</p>
+    </div>
+    <div class="quote-card">
+      <blockquote>"Desde que usamos Kollybry, la comunicación con los residentes ha ido mejorando y nuestra cobranza también."</blockquote>
+      <p>— Administrador de Condominio, Querétaro</p>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ CTA ═══ -->
