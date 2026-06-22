@@ -85,14 +85,19 @@ export default function CrmDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([crmAPI.stats(), crmAPI.upcomingFollowups(), crmAPI.dailyActivity(7)])
-      .then(([statsRes, fuRes, dailyRes]) => {
+    // Stats + followups are critical — load together
+    Promise.all([crmAPI.stats(), crmAPI.upcomingFollowups()])
+      .then(([statsRes, fuRes]) => {
         setStats(statsRes.data)
         setFollowups(fuRes.data || [])
-        setDailyData(dailyRes.data || [])
       })
       .catch(console.error)
       .finally(() => setLoading(false))
+
+    // Daily activity is non-critical — load independently so failures don't blank the dashboard
+    crmAPI.dailyActivity(7)
+      .then(r => setDailyData(r.data || []))
+      .catch(() => {})
   }, [])
 
   if (loading) {
