@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Briefcase, Plus, TrendingUp, Users, Calendar, AlertCircle,
-  ChevronRight, Clock, Phone, Building2, Target, CheckCircle2
+  ChevronRight, Clock, Phone, Building2, Target, CheckCircle2, RefreshCw
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -83,6 +83,15 @@ export default function CrmDashboardPage() {
   const [followups, setFollowups] = useState([])
   const [dailyData, setDailyData] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshingDaily, setRefreshingDaily] = useState(false)
+
+  const refreshDaily = useCallback(() => {
+    setRefreshingDaily(true)
+    crmAPI.dailyActivity(7)
+      .then(r => setDailyData(r.data || []))
+      .catch(() => {})
+      .finally(() => setRefreshingDaily(false))
+  }, [])
 
   useEffect(() => {
     // Stats + followups are critical — load together
@@ -94,12 +103,7 @@ export default function CrmDashboardPage() {
       .catch(console.error)
       .finally(() => setLoading(false))
 
-    // Daily activity is non-critical — load independently so failures don't blank the dashboard
-    const refreshDaily = () => {
-      crmAPI.dailyActivity(7)
-        .then(r => setDailyData(r.data || []))
-        .catch(() => {})
-    }
+    // Daily activity is non-critical — load independently
     refreshDaily()
 
     // Refresh activity data when user returns to this tab/page
@@ -204,9 +208,19 @@ export default function CrmDashboardPage() {
             <Target size={16} className="text-crm-primary" />
             <h2 className="font-semibold text-crm-on-surface">Actividad diaria</h2>
           </div>
-          <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2.5 py-1 rounded-full">
-            Meta: {DAILY_GOAL} empresas/día
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2.5 py-1 rounded-full">
+              Meta: {DAILY_GOAL} empresas/día
+            </span>
+            <button
+              onClick={refreshDaily}
+              disabled={refreshingDaily}
+              className="p-1.5 rounded-full text-crm-on-surface-variant hover:bg-crm-surface-container transition-colors disabled:opacity-40"
+              title="Actualizar"
+            >
+              <RefreshCw size={14} className={refreshingDaily ? 'animate-spin' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Today's box */}
