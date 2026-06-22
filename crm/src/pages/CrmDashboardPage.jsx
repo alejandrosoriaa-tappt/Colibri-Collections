@@ -95,9 +95,21 @@ export default function CrmDashboardPage() {
       .finally(() => setLoading(false))
 
     // Daily activity is non-critical — load independently so failures don't blank the dashboard
-    crmAPI.dailyActivity(7)
-      .then(r => setDailyData(r.data || []))
-      .catch(() => {})
+    const refreshDaily = () => {
+      crmAPI.dailyActivity(7)
+        .then(r => setDailyData(r.data || []))
+        .catch(() => {})
+    }
+    refreshDaily()
+
+    // Refresh activity data when user returns to this tab/page
+    const onVisible = () => { if (!document.hidden) refreshDaily() }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', refreshDaily)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', refreshDaily)
+    }
   }, [])
 
   if (loading) {

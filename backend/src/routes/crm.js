@@ -345,7 +345,7 @@ router.get('/activities/daily', async (req, res) => {
       FROM crm_activities a
       JOIN crm_clients c ON c.id = a.client_id AND c.tenant_id = a.tenant_id
       WHERE a.tenant_id = $1
-        AND a.fecha >= NOW() - ($2::int || ' days')::interval
+        AND a.fecha >= NOW() - ($2::int * interval '1 day')
       GROUP BY DATE(a.fecha AT TIME ZONE 'America/Mexico_City')
       ORDER BY day DESC
     `, [tenantId, Math.min(parseInt(days) || 7, 30)])
