@@ -44,12 +44,12 @@ function yesterdayMx() {
 }
 
 function formatDayHeader(dayStr) {
+  const d10 = String(dayStr).slice(0, 10)
   const today = todayMx()
   const yesterday = yesterdayMx()
-  if (dayStr === today) return 'Hoy'
-  if (dayStr === yesterday) return 'Ayer'
-  // Parse as local noon to avoid timezone shifts
-  const d = new Date(dayStr + 'T12:00:00')
+  if (d10 === today) return 'Hoy'
+  if (d10 === yesterday) return 'Ayer'
+  const d = new Date(d10 + 'T12:00:00')
   return d.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
@@ -132,10 +132,10 @@ export default function CrmDashboardPage() {
 
   // Split daily data into today vs history
   const today = todayMx()
-  const todayRow = dailyData.find(d => d.day === today)
+  const todayRow = dailyData.find(d => String(d.day).slice(0, 10) === today)
   const todayCount = todayRow?.empresas || 0
   const todayItems = todayRow?.items || []
-  const historyRows = dailyData.filter(d => d.day !== today)
+  const historyRows = dailyData.filter(d => String(d.day).slice(0, 10) !== today)
 
   const goalReached = todayCount >= DAILY_GOAL
   const pct = Math.min(Math.round((todayCount / DAILY_GOAL) * 100), 100)
