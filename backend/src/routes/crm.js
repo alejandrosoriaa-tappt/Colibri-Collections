@@ -329,7 +329,7 @@ router.get('/activities/daily', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT
-        DATE(a.fecha AT TIME ZONE 'America/Mexico_City') AS day,
+        DATE(a.fecha AT TIME ZONE 'America/Mexico_City')::text AS day,
         COUNT(DISTINCT a.client_id)::int                  AS empresas,
         COUNT(*)::int                                     AS acciones,
         json_agg(
