@@ -89,7 +89,7 @@ export default function CrmDashboardPage() {
     setRefreshingDaily(true)
     crmAPI.dailyActivity(7)
       .then(r => setDailyData(r.data || []))
-      .catch(() => {})
+      .catch(err => console.error('[daily]', err.response?.status, JSON.stringify(err.response?.data), err.message))
       .finally(() => setRefreshingDaily(false))
   }, [])
 
