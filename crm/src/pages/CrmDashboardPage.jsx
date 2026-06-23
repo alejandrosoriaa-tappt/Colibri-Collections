@@ -82,20 +82,14 @@ export default function CrmDashboardPage() {
   const [stats, setStats] = useState(null)
   const [followups, setFollowups] = useState([])
   const [dailyData, setDailyData] = useState([])
-  const [dailyError, setDailyError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [refreshingDaily, setRefreshingDaily] = useState(false)
 
   const refreshDaily = useCallback(() => {
     setRefreshingDaily(true)
     crmAPI.dailyActivity(7)
-      .then(r => {
-        // Guard against a non-array body (e.g. backend returns HTML/error object
-        // with a 200) — a bad response must never crash the whole dashboard.
-        setDailyData(Array.isArray(r.data) ? r.data : [])
-        setDailyError(!Array.isArray(r.data))
-      })
-      .catch(() => setDailyError(true))
+      .then(r => setDailyData(r.data || []))
+      .catch(err => console.error('[daily]', err.response?.status, JSON.stringify(err.response?.data), err.message))
       .finally(() => setRefreshingDaily(false))
   }, [])
 
@@ -136,14 +130,12 @@ export default function CrmDashboardPage() {
   const nuevos = (porStatus.nuevo_registro || 0) + (porStatus.prospecto || 0)
   const followupsPendientes = stats?.followups_pendientes || 0
 
-  // Split daily data into today vs history.
-  // Always work off a guaranteed array so a malformed response can't crash render.
-  const dailyRows = Array.isArray(dailyData) ? dailyData : []
+  // Split daily data into today vs history
   const today = todayMx()
-  const todayRow = dailyRows.find(d => String(d.day).slice(0, 10) === today)
+  const todayRow = dailyData.find(d => String(d.day).slice(0, 10) === today)
   const todayCount = todayRow?.empresas || 0
   const todayItems = todayRow?.items || []
-  const historyRows = dailyRows.filter(d => String(d.day).slice(0, 10) !== today)
+  const historyRows = dailyData.filter(d => String(d.day).slice(0, 10) !== today)
 
   const goalReached = todayCount >= DAILY_GOAL
   const pct = Math.min(Math.round((todayCount / DAILY_GOAL) * 100), 100)
@@ -231,25 +223,6 @@ export default function CrmDashboardPage() {
           </div>
         </div>
 
-        {/* Error state — distinguishes "load failed" from "no activity yet" */}
-        {dailyError && (
-          <div className="rounded-2xl p-4 mb-4 bg-red-50 border border-red-200 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-700">
-                No se pudo cargar la actividad. El servidor podría estar actualizándose.
-              </p>
-            </div>
-            <button
-              onClick={refreshDaily}
-              disabled={refreshingDaily}
-              className="text-sm font-medium text-red-700 hover:underline flex-shrink-0 disabled:opacity-40"
-            >
-              Reintentar
-            </button>
-          </div>
-        )}
-
         {/* Today's box */}
         <div className={`rounded-2xl p-4 mb-4 ${goalReached ? 'bg-green-50 border border-green-200' : 'bg-crm-surface-container-low'}`}>
           <div className="flex items-center justify-between mb-2">
@@ -331,7 +304,7 @@ export default function CrmDashboardPage() {
           </div>
         )}
 
-        {dailyRows.length === 0 && !dailyError && (
+        {dailyData.length === 0 && (
           <div className="text-center py-4">
             <p className="text-sm text-crm-on-surface-variant">
               Aún no hay actividades registradas — comienza a contactar empresas
