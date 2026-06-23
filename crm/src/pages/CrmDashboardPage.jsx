@@ -82,14 +82,15 @@ export default function CrmDashboardPage() {
   const [stats, setStats] = useState(null)
   const [followups, setFollowups] = useState([])
   const [dailyData, setDailyData] = useState([])
+  const [dailyError, setDailyError] = useState(false)
   const [loading, setLoading] = useState(true)
   const [refreshingDaily, setRefreshingDaily] = useState(false)
 
   const refreshDaily = useCallback(() => {
     setRefreshingDaily(true)
     crmAPI.dailyActivity(7)
-      .then(r => setDailyData(r.data || []))
-      .catch(err => console.error('[daily]', err.response?.status, JSON.stringify(err.response?.data), err.message))
+      .then(r => { setDailyData(r.data || []); setDailyError(false) })
+      .catch(() => setDailyError(true))
       .finally(() => setRefreshingDaily(false))
   }, [])
 
@@ -223,6 +224,25 @@ export default function CrmDashboardPage() {
           </div>
         </div>
 
+        {/* Error state — distinguishes "load failed" from "no activity yet" */}
+        {dailyError && (
+          <div className="rounded-2xl p-4 mb-4 bg-red-50 border border-red-200 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} className="text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">
+                No se pudo cargar la actividad. El servidor podría estar actualizándose.
+              </p>
+            </div>
+            <button
+              onClick={refreshDaily}
+              disabled={refreshingDaily}
+              className="text-sm font-medium text-red-700 hover:underline flex-shrink-0 disabled:opacity-40"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
+
         {/* Today's box */}
         <div className={`rounded-2xl p-4 mb-4 ${goalReached ? 'bg-green-50 border border-green-200' : 'bg-crm-surface-container-low'}`}>
           <div className="flex items-center justify-between mb-2">
@@ -304,7 +324,7 @@ export default function CrmDashboardPage() {
           </div>
         )}
 
-        {dailyData.length === 0 && (
+        {dailyData.length === 0 && !dailyError && (
           <div className="text-center py-4">
             <p className="text-sm text-crm-on-surface-variant">
               Aún no hay actividades registradas — comienza a contactar empresas
