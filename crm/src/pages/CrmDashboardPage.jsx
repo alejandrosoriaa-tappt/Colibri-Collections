@@ -89,7 +89,12 @@ export default function CrmDashboardPage() {
   const refreshDaily = useCallback(() => {
     setRefreshingDaily(true)
     crmAPI.dailyActivity(7)
-      .then(r => { setDailyData(r.data || []); setDailyError(false) })
+      .then(r => {
+        // Guard against a non-array body (e.g. backend returns HTML/error object
+        // with a 200) — a bad response must never crash the whole dashboard.
+        setDailyData(Array.isArray(r.data) ? r.data : [])
+        setDailyError(!Array.isArray(r.data))
+      })
       .catch(() => setDailyError(true))
       .finally(() => setRefreshingDaily(false))
   }, [])
@@ -131,12 +136,14 @@ export default function CrmDashboardPage() {
   const nuevos = (porStatus.nuevo_registro || 0) + (porStatus.prospecto || 0)
   const followupsPendientes = stats?.followups_pendientes || 0
 
-  // Split daily data into today vs history
+  // Split daily data into today vs history.
+  // Always work off a guaranteed array so a malformed response can't crash render.
+  const dailyRows = Array.isArray(dailyData) ? dailyData : []
   const today = todayMx()
-  const todayRow = dailyData.find(d => String(d.day).slice(0, 10) === today)
+  const todayRow = dailyRows.find(d => String(d.day).slice(0, 10) === today)
   const todayCount = todayRow?.empresas || 0
   const todayItems = todayRow?.items || []
-  const historyRows = dailyData.filter(d => String(d.day).slice(0, 10) !== today)
+  const historyRows = dailyRows.filter(d => String(d.day).slice(0, 10) !== today)
 
   const goalReached = todayCount >= DAILY_GOAL
   const pct = Math.min(Math.round((todayCount / DAILY_GOAL) * 100), 100)
@@ -324,7 +331,7 @@ export default function CrmDashboardPage() {
           </div>
         )}
 
-        {dailyData.length === 0 && !dailyError && (
+        {dailyRows.length === 0 && !dailyError && (
           <div className="text-center py-4">
             <p className="text-sm text-crm-on-surface-variant">
               Aún no hay actividades registradas — comienza a contactar empresas
