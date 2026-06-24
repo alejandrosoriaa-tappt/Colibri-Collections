@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_price_snapshot",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_price_history",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_option_data",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_option_parameters",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_account_summary",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_account_positions",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_account_balances",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__get_account_trades",
+      "mcp__ec3fb4e1-a50b-4956-b3f2-1031e8f88749__search_contracts"
+    ]
+  }
+}
