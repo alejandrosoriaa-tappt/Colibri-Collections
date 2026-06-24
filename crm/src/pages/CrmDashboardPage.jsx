@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Briefcase, Plus, TrendingUp, Users, Calendar, AlertCircle,
-  ChevronRight, Clock, Phone, Building2, Target, CheckCircle2, RefreshCw
+  ChevronRight, ChevronDown, Clock, Phone, Building2, Target, CheckCircle2, RefreshCw
 } from 'lucide-react'
 import { crmAPI } from '../lib/api.js'
 
@@ -84,6 +84,7 @@ export default function CrmDashboardPage() {
   const [dailyData, setDailyData] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshingDaily, setRefreshingDaily] = useState(false)
+  const [expandedDays, setExpandedDays] = useState({})
 
   const refreshDaily = useCallback(() => {
     setRefreshingDaily(true)
@@ -278,26 +279,53 @@ export default function CrmDashboardPage() {
             {historyRows.map(day => {
               const done = day.empresas >= DAILY_GOAL
               const dayPct = Math.min(Math.round((day.empresas / DAILY_GOAL) * 100), 100)
+              const items = day.items || []
+              const isOpen = !!expandedDays[day.day]
               return (
-                <div
-                  key={day.day}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-2xl hover:bg-crm-surface-container-low transition-colors"
-                >
-                  <span className="text-sm text-crm-on-surface-variant w-32 flex-shrink-0 capitalize">
-                    {formatDayHeader(day.day)}
-                  </span>
-                  <div className="flex-1 bg-crm-outline-variant/20 rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full transition-all duration-500 ${done ? 'bg-green-500' : 'bg-crm-primary/50'}`}
-                      style={{ width: `${dayPct}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center gap-1 flex-shrink-0 w-16 justify-end">
-                    {done && <CheckCircle2 size={12} className="text-green-500" />}
-                    <span className={`text-sm font-semibold ${done ? 'text-green-600' : 'text-crm-on-surface-variant'}`}>
-                      {day.empresas}/{DAILY_GOAL}
+                <div key={day.day} className="rounded-2xl overflow-hidden">
+                  <button
+                    onClick={() => setExpandedDays(prev => ({ ...prev, [day.day]: !prev[day.day] }))}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-crm-surface-container-low transition-colors text-left"
+                  >
+                    <span className="text-sm text-crm-on-surface-variant w-32 flex-shrink-0 capitalize">
+                      {formatDayHeader(day.day)}
                     </span>
-                  </div>
+                    <div className="flex-1 bg-crm-outline-variant/20 rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full transition-all duration-500 ${done ? 'bg-green-500' : 'bg-crm-primary/50'}`}
+                        style={{ width: `${dayPct}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0 w-16 justify-end">
+                      {done && <CheckCircle2 size={12} className="text-green-500" />}
+                      <span className={`text-sm font-semibold ${done ? 'text-green-600' : 'text-crm-on-surface-variant'}`}>
+                        {day.empresas}/{DAILY_GOAL}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={14}
+                      className={`text-crm-on-surface-variant/50 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}
+                    />
+                  </button>
+                  {isOpen && items.length > 0 && (
+                    <div className="px-3 pb-3 space-y-1.5 bg-crm-surface-container-low/50">
+                      {items.map(item => (
+                        <Link
+                          key={item.id}
+                          to={`/crm/clients/${item.client_id}`}
+                          className="flex items-center gap-2 py-1 hover:opacity-80 transition-opacity group"
+                        >
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${TIPO_BADGE[item.tipo] || 'bg-gray-100 text-gray-600'}`}>
+                            {TIPO_LABEL[item.tipo] || item.tipo}
+                          </span>
+                          <span className="text-sm text-crm-on-surface truncate flex-1 group-hover:text-crm-primary transition-colors">
+                            {item.razon_social}
+                          </span>
+                          <span className="text-xs text-crm-on-surface-variant flex-shrink-0">{relTime(item.fecha)}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
