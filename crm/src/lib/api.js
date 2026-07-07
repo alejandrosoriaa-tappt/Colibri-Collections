@@ -52,6 +52,7 @@ export const crmAPI = {
   updateFollowup:     (id, data)   => api.put(`/api/crm/followups/${id}`, data),
   deleteFollowup:     (id)         => api.delete(`/api/crm/followups/${id}`),
   sendEmail:          (id, data)   => api.post(`/api/crm/clients/${id}/emails`, data),
+  dailyActivity:      (days = 7)  => api.get('/api/crm/activities/daily', { params: { days } }),
 }
 
 export default api
