@@ -1,0 +1,336 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+* { box-sizing: border-box; }
+@page { size: 152mm 214mm; margin: 20mm 16mm 20mm 16mm; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { margin:0; background:#FAF7F0; color:#1c2b26;
+  font-family:'Inter',-apple-system,Helvetica,Arial,sans-serif; font-size:16px; line-height:1.75; }
+.page { padding:0; }
+h1 { font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:34px; color:#075E54; line-height:1.15; margin:0 0 6px; }
+h2.chapter { font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:29px; color:#075E54;
+  line-height:1.2; margin:0 0 6px; break-before:page; page-break-before:always; clear:both; }
+h2.chapter::after { content:""; display:block; width:44px; height:3px; background:#E0A83C; margin:12px 0 4px; }
+h3 { font-family:'Inter',sans-serif; font-weight:600; font-size:13.5px; color:#128C7E;
+  text-transform:uppercase; letter-spacing:0.06em; margin:24px 0 8px; }
+h4 { font-family:'Fraunces',Georgia,serif; font-weight:600; font-size:17px; color:#0B2721; margin:18px 0 6px; }
+p { margin:0 0 11px; }
+code { font-family:ui-monospace,Menlo,monospace; font-size:0.88em; background:#EDE7DA; color:#075E54; padding:1px 5px; border-radius:4px; }
+strong { font-weight:600; color:#0B2721; }
+.wa { color:#0f7a5f; font-weight:600; font-size:1.05em; letter-spacing:0.01em; }
+a { color:#128C7E; text-decoration:none; }
+ul,ol { margin:0 0 12px; padding-left:30px; }
+li { margin:3px 0; }
+li.task { list-style:none; margin-left:-16px; }
+hr.divider { border:none; border-top:0.5px solid #ddd5c6; margin:20px 0; }
+blockquote.epigraph { font-family:'Fraunces',Georgia,serif; font-style:italic; font-size:17px;
+  color:#5a6b64; border-left:3px solid #E0A83C; margin:14px 0 18px; padding:2px 0 2px 16px; line-height:1.5; }
+.co { border-radius:0 10px 10px 0; padding:14px 17px; margin:16px 0; font-size:13px; line-height:1.62; page-break-inside:avoid; clear:both; }
+.co strong { display:inline; }
+.co-phone { background:#E7F7EE; border-left:4px solid #25D366; color:#0b4a40; }
+.co-pc    { background:#E8F0F5; border-left:4px solid #2A6F97; color:#244f68; }
+.co-gold  { background:#FBF1DC; border-left:4px solid #E0A83C; color:#7a5210; }
+.co-ex    { background:#F1ECE1; border-left:4px solid #b8ad95; color:#4a4436; }
+table.md { border-collapse:collapse; width:100%; font-size:12px; margin:12px 0 16px; page-break-inside:avoid; clear:both; }
+table.md th { background:#075E54; color:#fff; font-weight:500; text-align:left; padding:7px 9px; }
+table.md td { border-bottom:0.5px solid #e4ddce; padding:6px 9px; vertical-align:top; }
+table.md tr:nth-child(even) td { background:#F3EFE6; }
+img.cover { display:block; width:68%; max-width:290px; margin:0 auto 16px; border-radius:6px; }
+img.hero { display:block; width:100%; border-radius:8px; margin:10px 0 18px; page-break-inside:avoid; }
+.mock-center { text-align:center; margin:20px 0; page-break-inside:avoid; clear:both; }
+.ig-block { clear:both; margin:18px 0; page-break-inside:avoid; }
+figure.graphic { margin:0; page-break-inside:avoid; }
+figure.infographic { background:#FAF7F0; border:0.5px solid #e6e0d5; border-radius:12px; padding:20px 18px; }
+figure.graphic .graphic { }
+.ig-kicker { font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:#128C7E; margin-bottom:3px; }
+.ig-title { font-family:'Fraunces',Georgia,serif; font-size:18px; color:#075E54; }
+.ig-rule { width:44px; height:3px; background:#E0A83C; margin:6px 0 16px; }
+.ig-tail { margin-top:14px; font-size:10.5px; color:#5f5a50; line-height:1.5; }
+.ig-flow { display:flex; flex-wrap:wrap; align-items:center; gap:7px 5px; font-size:11px; font-weight:600; }
+table.ig-table { border-collapse:collapse; width:100%; font-size:11px; }
+table.ig-table th { padding:8px; text-align:center; color:#5f5a50; font-weight:600; }
+table.ig-table th.hl { background:#075E54; color:#fff; border-radius:8px 8px 0 0; }
+table.ig-table th.hl span { font-size:8.5px; font-weight:400; opacity:0.9; }
+table.ig-table td { padding:7px 8px; text-align:center; border-bottom:0.5px solid #ece5d6; }
+table.ig-table td:first-child { text-align:left; color:#5f5a50; }
+table.ig-table td.hlc { background:#E7F7EE; }
+table.ig-table td.x { color:#c0392b; }
+.cover-page { text-align:center; page-break-after:always; padding-top:2mm; }
+.cover-page .cover-title { font-size:24px; margin:0 0 6px; line-height:1.15; }
+.cover-page .cover-sub { font-size:13.5px; color:#128C7E; font-family:'Fraunces',Georgia,serif; margin:0 auto 12px; max-width:88%; line-height:1.35; }
+.legal-page { page-break-after:always; break-after:page; padding-top:6mm; }
+.legal-page .legal-title { font-family:'Fraunces',Georgia,serif; font-size:15px; color:#075E54; margin-bottom:16px; }
+.legal-page p { font-size:11px; line-height:1.65; color:#5f5a50; margin:0 0 10px; }
+.legal-page .legal-foot { margin-top:20px; font-size:11px; color:#8a8577; }
+.byline { font-size:12px; color:#5f5a50; margin-top:6px; text-align:center; }
+.byline .edition { font-style:italic; color:#8a8577; }
+</style></head><body><div class="page">
+<section class="cover-page"><img class="cover" src="ebook-assets/images-web/cover.jpg"><h1 class="cover-title">Turn WhatsApp Business Into Your Best Sales Employee</h1><p class="cover-sub">The Practical Setup Guide — Configure WhatsApp Business Step by Step and Start Winning Customers</p><div class="byline"><strong>By Alejandro Soria — Founder, NKUVO Labs</strong><div class="edition">A NKUVO Labs Publication · First Edition</div></div></section>
+<section class="legal-page">
+<div class="legal-title">Turn WhatsApp Business Into Your Best Sales Employee</div>
+<p><strong>Published by NKUVO Labs.</strong></p>
+<p>Copyright &copy; 2026 Alejandro Soria / NKUVO Labs. All rights reserved.</p>
+<p>No part of this publication may be reproduced, distributed, or transmitted in any form or by any means — including photocopying, recording, screenshotting, or other electronic or mechanical methods — without the prior written permission of the publisher, except for brief quotations used in reviews. This ebook is licensed for the personal use of the original purchaser only and may not be resold or given away.</p>
+<p>First Edition. Published in the United States of America.</p>
+<p><strong>Disclaimer.</strong> This book is provided for general informational and educational purposes only. It does not constitute legal, financial, tax, or professional business advice. While every effort has been made to ensure accuracy, the author and publisher make no representations or warranties with respect to the completeness or accuracy of the contents and assume no liability for any loss or damage arising from its use. App features, prices, and screens described may change over time. Results vary from business to business; nothing in this book guarantees any particular outcome.</p>
+<p><strong>Trademarks.</strong> "WhatsApp" and "WhatsApp Business" are trademarks of WhatsApp LLC and/or Meta Platforms, Inc. "ChatGPT" is a trademark of OpenAI, L.L.C. All other trademarks are the property of their respective owners. This book is an independent publication and is <strong>not affiliated with, authorized by, sponsored by, or endorsed by</strong> WhatsApp, Meta, or OpenAI.</p>
+<p class="legal-foot">NKUVO Labs &nbsp;&middot;&nbsp; nkuvo.com</p>
+</section>
+<h2>Contents</h2>
+<p><strong>Introduction — Why <span class="wa">WhatsApp Business</span></strong></p>
+<p><strong>Part 1 — Set Up <span class="wa">WhatsApp Business</span></strong></p>
+<ol><li>Get the App (and Why It's Not Your Personal <span class="wa">WhatsApp</span>)</li><li>Set Up a Profile Customers Trust</li><li>Turn On Your Auto-Replies</li><li>Save Your Answers with Quick Replies</li><li>Build Your Catalog</li><li>Get Your Chat Link &amp; QR Code</li><li>Organize Every Customer with Lists</li><li>Get Paid with Payment Links</li></ol>
+<p><strong>Part 2 — Put It to Work</strong></p>
+<ol><li>A Day with <span class="wa">WhatsApp Business</span></li><li>Let AI Write Your Messages</li><li>Follow Up Like a Pro</li></ol>
+<p><strong>Closing — Your First Week</strong></p>
+<p><strong>Bonuses:</strong> Ready-to-Use Scripts · The Ultimate Checklist</p>
+<h2>Introduction — Why WhatsApp Business</h2>
+<blockquote class="epigraph">"Your customers are already on WhatsApp. This book simply shows you how to turn it into your best employee."</blockquote>
+<p>This is a hands-on guide. There is very little theory here — just the exact steps to turn <span class="wa">WhatsApp Business</span> into the tool that greets your customers, answers their questions, keeps them organized, and helps you get paid.</p>
+<p>You already know a business needs to answer fast and follow up. What almost nobody shows you is <em>how</em> to make that happen with the free app your customers already use every day. That's what you'll do here, one screen at a time.</p>
+<div class="co co-gold"><strong>Did you know?</strong><br>Hispanic Americans are the largest <span class="wa">WhatsApp</span> user group in the United States — 56% use it actively, well above any other demographic. For many of your customers, <span class="wa">WhatsApp</span> isn't one option among many. It's the app they already trust for anything that matters. Meeting them there removes the biggest barrier to a sale before it even exists.</div>
+<p>Keep your phone next to you as you read. By the end, your <span class="wa">WhatsApp Business</span> will be set up and working for you.</p>
+<img class="hero" src="ebook-assets/images-web/ch02-hero.jpg">
+<h2 class="chapter">Chapter 1 — Get the App (and Why It's Not Your Personal WhatsApp)</h2>
+<h3>Download, verify, and understand the difference</h3>
+<p><strong><span class="wa">WhatsApp Business</span> is a separate, free app.</strong> This is the part almost nobody explains. It is <em>not</em> the same app you use to text your family. It's a different app — with a different icon — that you download for free from the App Store or Google Play. It gives you business tools (greeting messages, catalog, lists, quick replies) that regular <span class="wa">WhatsApp</span> simply doesn't have. You can use it with the same phone number you already have, and your customers won't notice any difference on their side — they just message you as usual.</p>
+<div class="ig-block"><figure class="graphic infographic"><div class="ig-kicker">Chapter 1</div><div class="ig-title">The three versions of WhatsApp</div><div class="ig-rule"></div>
+<table class="ig-table"><thead><tr><th></th><th>Personal</th><th class="hl">Business<br><span>Free · this book</span></th><th>API</th></tr></thead><tbody>
+<tr><td>Cost</td><td>Free</td><td class="hlc" style="font-weight:700;color:#075E54;">Free</td><td>Pay per use</td></tr>
+<tr><td>Auto messages</td><td class="x">✕</td><td class="hlc" style="color:#128C7E;font-weight:700;">✓</td><td style="color:#128C7E;">✓</td></tr>
+<tr><td>Catalog</td><td class="x">✕</td><td class="hlc" style="color:#128C7E;font-weight:700;">✓</td><td style="color:#128C7E;">✓</td></tr>
+<tr><td>Quick replies / lists</td><td class="x">✕</td><td class="hlc" style="color:#128C7E;font-weight:700;">✓</td><td style="color:#128C7E;">✓</td></tr>
+<tr><td>Advanced automation</td><td class="x">✕</td><td class="hlc">Basic</td><td style="color:#128C7E;font-weight:700;">✓</td></tr>
+<tr><td>System integration</td><td class="x">✕</td><td class="hlc x">✕</td><td style="color:#128C7E;font-weight:700;">✓</td></tr>
+</tbody></table><div class="ig-tail">The free <b>Business</b> app gives a small business almost everything it needs. The API is for scaling later.</div></figure></div>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Get <span class="wa">WhatsApp Business</span> (Free)</strong><br>1. Open the <strong>App Store</strong> (iPhone) or <strong>Google Play</strong> (Android).<br>2. Search for <strong>"<span class="wa">WhatsApp Business</span>"</strong> and tap <strong>Get / Install</strong>. Look for the icon with the letter <strong>B</strong> inside the speech bubble — that's the business version.<br>3. Open it and <strong>verify your phone number</strong>. If you already use regular <span class="wa">WhatsApp</span> on this number, the app will offer to <strong>move your chats over</strong> — tap yes.<br>4. Fill in your <strong>business name</strong> and category. Done.<br><br>Note: you can keep your personal <span class="wa">WhatsApp</span> on a second number if you like, but most solo owners simply turn their existing number into their business number.<br><br><strong>💻 On your computer, too.</strong> <span class="wa">WhatsApp Business</span> also has a <strong>desktop app</strong> (Windows/Mac) and a browser version at <strong>web.whatsapp.com</strong>. You'll set up most tools on your phone, but once they're ready you can reply from a full keyboard.</div>
+<p>That's it — you now have the tool. The rest of Part 1 is about switching on each feature, one at a time.</p>
+<img class="hero" src="ebook-assets/images-web/ch01-hero.jpg">
+<h2 class="chapter">Chapter 2 — Set Up a Profile Customers Trust</h2>
+<h3>Your profile is your digital storefront</h3>
+<p>Before a customer reads your first reply, they look at your profile. A complete, professional profile answers the silent question <em>"Can I trust this business?"</em> — so fill in every field.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Find Your Business Tools</strong><br>Everything in this book lives in one place. Learn to get there once:<br>- <strong>Android:</strong> open <strong><span class="wa">WhatsApp Business</span></strong> → tap the <strong>⋮</strong> (three dots, top right) → <strong>Business tools</strong>.<br>- <strong>iPhone:</strong> open <strong><span class="wa">WhatsApp Business</span></strong> → tap <strong>Settings</strong> (bottom right) → <strong>Business tools</strong>.<br><br>To edit your name, photo, description, address, and website, tap your <strong>business name</strong> at the top of Settings → <strong>Business profile</strong>.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#F5F3EF;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:10px 13px;font-size:14px;font-weight:600;">‹  Business tools</div>
+  <div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:.5px solid #E7E3DA;"><span style="font-size:17px;">💬</span><div style="flex:1;"><div style="font-size:12px;">Greeting message</div><div style="font-size:10px;color:#9a958c;">Welcomes new customers</div></div><span style="font-size:10px;color:#128C7E;font-weight:600;">On</span></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:.5px solid #E7E3DA;"><span style="font-size:17px;">🌙</span><div style="flex:1;"><div style="font-size:12px;">Away message</div><div style="font-size:10px;color:#9a958c;">Replies after hours</div></div><span style="font-size:10px;color:#9a958c;">Off</span></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:.5px solid #E7E3DA;"><span style="font-size:17px;">⚡</span><div style="flex:1;"><div style="font-size:12px;">Quick replies</div><div style="font-size:10px;color:#9a958c;">/hours · /insurance · /pricing</div></div><span style="font-size:10px;color:#9a958c;">5</span></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:.5px solid #E7E3DA;"><span style="font-size:17px;">🏷️</span><div style="flex:1;"><div style="font-size:12px;">Lists</div><div style="font-size:10px;color:#9a958c;">Organize your customers</div></div><span style="font-size:10px;color:#9a958c;">8</span></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:.5px solid #E7E3DA;"><span style="font-size:17px;">🛍️</span><div style="flex:1;"><div style="font-size:12px;">Catalog</div><div style="font-size:10px;color:#9a958c;">Show your services</div></div><span style="font-size:10px;color:#9a958c;">6</span></div>
+    <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;"><span style="font-size:17px;">🔗</span><div style="flex:1;"><div style="font-size:12px;">Short link</div><div style="font-size:10px;color:#9a958c;">wa.me/12105550142</div></div><span style="color:#c7c2b8;">›</span></div>
+  </div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Business tools — where greetings, quick replies, lists and your catalog live.</div></figure></div>
+<p>Fill in each field the way a customer would want to see it:</p>
+<ul><li><strong>Name:</strong> your business name, clear and searchable (e.g. <em>Bright Smile Dental</em>), not a nickname.</li><li><strong>Photo:</strong> a clean logo, or a professional headshot if you're a solo provider. People buy from people.</li><li><strong>Description:</strong> what you do, who you help, and why choose you — in one or two lines.</li><li><strong>Address, website, email, hours:</strong> complete them all. Missing information makes customers suspicious.</li></ul>
+<p><strong>Set honest business hours</strong> so customers know when to expect a reply — and so your Away Message (Chapter 3) can switch on automatically.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Set Your Business Hours</strong><br>1. Go to your <strong>Business profile</strong> → tap <strong>Business hours</strong> (Android) / <strong>Hours</strong> (iPhone).<br>2. Choose <strong>Open with hours</strong>.<br>3. Tap each day to set opening and closing times. Turn off the days you're closed.<br>4. Tap <strong>Save</strong>.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#F5F3EF;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:10px 13px;font-size:14px;font-weight:600;">‹  Business hours</div>
+  <div style="padding:10px 13px;background:#E7F7EE;display:flex;justify-content:space-between;font-size:12px;color:#075E54;font-weight:600;">Open with hours <span>✓</span></div>
+  <div>
+    <div style="display:flex;justify-content:space-between;padding:10px 15px;border-bottom:.5px solid #E7E3DA;font-size:12px;"><span>Monday–Friday</span><span style="color:#5f5a50;">8:00 AM – 5:00 PM</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 15px;border-bottom:.5px solid #E7E3DA;font-size:12px;"><span>Saturday</span><span style="color:#5f5a50;">9:00 AM – 1:00 PM</span></div>
+    <div style="display:flex;justify-content:space-between;padding:10px 15px;font-size:12px;"><span>Sunday</span><span style="color:#b0413e;">Closed</span></div>
+  </div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Honest hours build trust — and power your away message.</div></figure></div>
+<img class="hero" src="ebook-assets/images-web/ch03-hero.jpg">
+<h2 class="chapter">Chapter 3 — Turn On Your Auto-Replies</h2>
+<h3>Greet every customer, even while you sleep</h3>
+<p>Two settings make your business feel responsive around the clock: a <strong>greeting message</strong> for new chats and an <strong>away message</strong> for after hours. Set them once and they work forever.</p>
+<p><strong>The greeting message</strong> is your digital handshake. It welcomes every new customer before you ever touch your phone.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Turn On Your Greeting Message</strong><br>1. Open <strong>Business tools</strong> → <strong>Greeting message</strong>.<br>2. Turn on <strong>Send greeting message</strong>.<br>3. Tap the text to edit it. Paste your welcome message.<br>4. Tap <strong>Recipients</strong> (default: <strong>Everyone</strong> who messages you for the first time).<br>5. Tap <strong>Save</strong>.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#ECE5DD;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:8px 12px 10px;display:flex;align-items:center;gap:9px;">
+    <div style="width:32px;height:32px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;">🦷</div>
+    <div><div style="font-size:13px;font-weight:600;">Bright Smile Dental</div><div style="font-size:9px;opacity:.85;">Business account</div></div>
+  </div>
+  <div style="padding:14px 11px;min-height:150px;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><div style="background:#DCF8C6;font-size:12px;line-height:1.4;padding:7px 9px;border-radius:9px 9px 2px 9px;max-width:80%;">Hi, do you have any openings this week?</div></div>
+    <div style="display:flex;justify-content:flex-start;"><div style="background:#fff;font-size:12px;line-height:1.45;padding:8px 10px;border-radius:9px 9px 9px 2px;max-width:86%;"><div style="font-size:9px;color:#128C7E;font-weight:600;margin-bottom:3px;">⚡ Automatic reply</div>Hi! 👋 Thanks for contacting Bright Smile Dental. Tell us how we can help — a new appointment, an insurance question, or pricing — and a team member will reply shortly.</div></div>
+  </div>
+  <div style="background:#F0EFEA;padding:7px 9px;display:flex;align-items:center;gap:7px;"><div style="flex:1;background:#fff;border-radius:16px;padding:6px 11px;font-size:11px;color:#9a958c;">Message</div><div style="width:28px;height:28px;border-radius:50%;background:#075E54;color:#fff;display:flex;align-items:center;justify-content:center;">➤</div></div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">The greeting your customer receives automatically — day or night.</div></figure></div>
+<p><strong>The away message</strong> keeps customers informed when you're closed — no guilt about not answering at midnight.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Turn On Your Away Message</strong><br>1. Open <strong>Business tools</strong> → <strong>Away message</strong>.<br>2. Turn on <strong>Send away message</strong>.<br>3. Paste your away message.<br>4. Tap <strong>Schedule</strong> → <strong>Outside of business hours</strong> (it uses the hours you set in Chapter 2 — the easiest option).<br>5. Tap <strong>Recipients</strong>, then <strong>Save</strong>.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#ECE5DD;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:8px 12px 10px;display:flex;align-items:center;gap:9px;">
+    <div style="width:32px;height:32px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;">🦷</div>
+    <div><div style="font-size:13px;font-weight:600;">Bright Smile Dental</div><div style="font-size:9px;opacity:.85;">Business account</div></div>
+  </div>
+  <div style="padding:14px 11px;min-height:150px;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><div style="background:#DCF8C6;font-size:12px;line-height:1.4;padding:7px 9px;border-radius:9px 9px 2px 9px;max-width:80%;">Hi, are you open tomorrow?</div></div>
+    <div style="display:flex;justify-content:flex-start;"><div style="background:#fff;font-size:12px;line-height:1.45;padding:8px 10px;border-radius:9px 9px 9px 2px;max-width:86%;"><div style="font-size:9px;color:#128C7E;font-weight:600;margin-bottom:3px;">🌙 Away message</div>Thanks for your message! Our office is currently closed. Hours are Mon–Fri, 8 AM–5 PM. We'll reply first thing when we reopen. For a dental emergency, please call (210) 555-0142.</div></div>
+  </div>
+  <div style="background:#F0EFEA;padding:7px 9px;display:flex;align-items:center;gap:7px;"><div style="flex:1;background:#fff;border-radius:16px;padding:6px 11px;font-size:11px;color:#9a958c;">Message</div><div style="width:28px;height:28px;border-radius:50%;background:#075E54;color:#fff;display:flex;align-items:center;justify-content:center;">➤</div></div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Your away message keeps customers informed, even at 10 PM.</div></figure></div>
+<p>Keep both messages warm and human. Avoid robotic lines like <em>"Your inquiry has been received."</em> Sound like a real person who's glad to help.</p>
+<img class="hero" src="ebook-assets/images-web/ch04-hero.jpg">
+<h2 class="chapter">Chapter 4 — Save Your Answers with Quick Replies</h2>
+<h3>Stop typing the same thing every day</h3>
+<p>You answer the same questions constantly: your hours, your prices, your address, whether you take insurance. Save each answer once as a <strong>Quick Reply</strong>, then drop it into any chat by typing <strong><code>/</code></strong>.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Create a Quick Reply</strong><br>1. Open <strong>Business tools</strong> → <strong>Quick replies</strong>.<br>2. Tap <strong>Add</strong> (Android) / the <strong>+</strong> (iPhone).<br>3. In <strong>Message</strong>, type the full response (e.g. your hours or pricing).<br>4. In <strong>Shortcut</strong>, type a keyword like <code>hours</code> or <code>pricing</code> (no spaces).<br>5. Tap <strong>Save</strong>.<br><br>To use it: in any chat, type <strong><code>/</code></strong> followed by the shortcut (e.g. <code>/hours</code>), then pick it from the list. <strong>💻 On your computer</strong> it works the same way with the <code>/</code> key.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#ECE5DD;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:8px 12px 10px;display:flex;align-items:center;gap:9px;">
+    <div style="width:32px;height:32px;border-radius:50%;background:#25D366;color:#075E54;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:13px;">MR</div>
+    <div><div style="font-size:13px;font-weight:600;">Maria Ramirez</div><div style="font-size:9px;opacity:.85;">online</div></div>
+  </div>
+  <div style="padding:14px 11px;min-height:120px;"><div style="display:flex;justify-content:flex-start;"><div style="background:#fff;font-size:12px;padding:7px 9px;border-radius:9px 9px 9px 2px;">What are your hours?</div></div></div>
+  <div style="background:#fff;border-top:.5px solid #e2ded4;">
+    <div style="padding:5px 10px;font-size:9px;color:#9a958c;text-transform:uppercase;">Quick replies</div>
+    <div style="padding:8px 11px;border-top:.5px solid #eee;"><span style="color:#128C7E;font-weight:700;font-size:11px;">/hours</span> <span style="font-size:10px;color:#5f5a50;">We're open Mon–Fri, 8 AM–5 PM…</span></div>
+    <div style="padding:8px 11px;border-top:.5px solid #eee;"><span style="color:#128C7E;font-weight:700;font-size:11px;">/insurance</span> <span style="font-size:10px;color:#5f5a50;">Yes! We accept most major PPO…</span></div>
+    <div style="padding:8px 11px;border-top:.5px solid #eee;"><span style="color:#128C7E;font-weight:700;font-size:11px;">/pricing</span> <span style="font-size:10px;color:#5f5a50;">A new-patient exam is $89…</span></div>
+  </div>
+  <div style="background:#F0EFEA;padding:7px 9px;display:flex;align-items:center;gap:7px;"><div style="flex:1;background:#fff;border-radius:16px;padding:6px 11px;font-size:12px;color:#0B2721;">/</div><div style="width:28px;height:28px;border-radius:50%;background:#075E54;color:#fff;display:flex;align-items:center;justify-content:center;">➤</div></div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Type “/” and your saved answers appear instantly.</div></figure></div>
+<p>Start with five: <code>hours</code>, <code>pricing</code>, <code>address</code>, <code>booking</code>, and <code>insurance</code> (or whatever your customers ask most). Save two minutes per chat, thirty chats a day — that's an hour back, every day.</p>
+<h2 class="chapter">Chapter 5 — Build Your Catalog</h2>
+<h3>A one-tap showroom for your services</h3>
+<p>Instead of describing your services over and over, build a <strong>catalog</strong> once and send it with a single tap. Think of it as a digital showroom that lives inside the chat.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Create Your Catalog</strong><br>1. Open <strong>Business tools</strong> → <strong>Catalog</strong>.<br>2. Tap <strong>Add item</strong> (Android) / <strong>Add new item</strong> (iPhone).<br>3. Add one or more <strong>photos</strong> of the service or product.<br>4. Fill in <strong>Name</strong>, <strong>Price</strong> (or leave blank and add "Starting at…" in the description), and <strong>Description</strong>.<br>5. Optional: add a <strong>Link</strong> (your website/booking page).<br>6. Tap <strong>Save</strong>. Repeat for each service.<br><br>To send it: inside any chat, tap the <strong>paperclip / +</strong> → <strong>Catalog</strong> → choose items → <strong>Send</strong>.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#fff;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:10px 13px;font-size:14px;font-weight:600;">‹  Catalog</div>
+  <div style="height:130px;background:#ECE5DD;display:flex;align-items:center;justify-content:center;font-size:50px;">🦷</div>
+  <div style="padding:13px 15px;">
+    <div style="font-size:13px;font-weight:600;line-height:1.3;">New Patient Special — Exam, Cleaning &amp; X-Rays</div>
+    <div style="font-size:19px;font-weight:700;color:#128C7E;margin:7px 0;">$89</div>
+    <div style="font-size:11px;color:#5f5a50;line-height:1.5;">A complete check-up, professional cleaning, and digital X-rays for new patients. No insurance needed.</div>
+    <div style="margin-top:14px;background:#25D366;color:#053d24;text-align:center;font-size:12px;font-weight:600;padding:10px;border-radius:20px;">Message to book</div>
+  </div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Your catalog answers “what do you offer?” with one tap.</div></figure></div>
+<p>Give each item a specific name and a clean photo. <em>"New Patient Special — Exam, Cleaning &amp; X-Rays"</em> sells far better than <em>"Cleaning."</em></p>
+<h2 class="chapter">Chapter 6 — Get Your Chat Link &amp; QR Code</h2>
+<h3>Make it effortless to start a conversation</h3>
+<p>Every extra step loses customers. <span class="wa">WhatsApp Business</span> gives you a <strong>short link</strong> and a <strong>QR code</strong> so anyone can start a chat in one tap — put them everywhere.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Get Your Link &amp; QR Code</strong><br>1. Open <strong>Business tools</strong> → <strong>Short link</strong>.<br>2. Copy your ready-to-share link (e.g. <code>wa.me/1210XXXXXXX</code>) for your website, ads, and social bios.<br>3. Tap <strong>Edit default message</strong> to pre-fill what customers see, e.g. <em>"Hi! I'd like more information about…"</em>.<br>4. Tap <strong>QR code</strong> → <strong>Share</strong> or <strong>Save</strong> to download it for print.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#F5F3EF;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:10px 13px;font-size:14px;font-weight:600;">‹  Short link</div>
+  <div style="padding:20px 15px;text-align:center;">
+    <div style="width:110px;height:110px;margin:0 auto;background:#fff;border:1px solid #e2ded4;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:52px;">▦</div>
+    <div style="margin-top:14px;font-size:11px;color:#5f5a50;">Scan or share your link</div>
+    <div style="margin:8px 8px 0;background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:9px 11px;font-size:11px;color:#075E54;display:flex;justify-content:space-between;"><span>wa.me/12105550142</span><span style="color:#128C7E;">⧉</span></div>
+    <div style="margin:14px 8px 0;background:#25D366;color:#053d24;font-size:12px;font-weight:600;padding:10px;border-radius:20px;">Share link</div>
+  </div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Put this QR on cards, invoices and your window — every scan starts a chat.</div></figure></div>
+<p>Put the QR code on business cards, invoices, your storefront window, your vehicle, and email signatures. Every scan starts a conversation.</p>
+<h2 class="chapter">Chapter 7 — Organize Every Customer with Lists</h2>
+<h3>A simple CRM you already own</h3>
+<p>As chats pile up, they all start to look the same. <strong>Lists</strong> turn your inbox into an organized pipeline — you always know who's new, who's waiting, and who owes you money.</p>
+<div class="co co-phone"><strong>📱💻 Do It On Your Phone — Create and Assign Lists</strong><br>- <strong>Create:</strong> ⋮ / Settings → <strong>Business tools</strong> → <strong>Lists</strong> → <strong>New list</strong> → name it, pick a color → <strong>Save</strong>.<br>- <strong>Assign:</strong> press and <strong>hold</strong> a chat → tap the <strong>list</strong> icon → choose the list(s).<br>- <strong>View one stage:</strong> tap the <strong>Lists</strong> filter at the top of your chats and pick a list to see only those customers. Works on the desktop app too.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#fff;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:10px 13px;font-size:15px;font-weight:600;">Chats</div>
+  <div>
+    <div style="display:flex;gap:9px;padding:10px 11px;border-bottom:.5px solid #eee;"><div style="width:36px;height:36px;border-radius:50%;background:#E7F7EE;color:#075E54;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">MR</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;">Maria Ramirez</div><div style="font-size:10px;color:#9a958c;">What are your hours?</div><span style="display:inline-block;margin-top:3px;font-size:8.5px;background:#E7F7EE;color:#128C7E;padding:2px 6px;border-radius:5px;">● New lead</span></div></div>
+    <div style="display:flex;gap:9px;padding:10px 11px;border-bottom:.5px solid #eee;"><div style="width:36px;height:36px;border-radius:50%;background:#E1F0F7;color:#2A6F97;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">JC</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;">James Carter</div><div style="font-size:10px;color:#9a958c;">See you Tuesday at 10!</div><span style="display:inline-block;margin-top:3px;font-size:8.5px;background:#E1F0F7;color:#2A6F97;padding:2px 6px;border-radius:5px;">● Appointment confirmed</span></div></div>
+    <div style="display:flex;gap:9px;padding:10px 11px;border-bottom:.5px solid #eee;"><div style="width:36px;height:36px;border-radius:50%;background:#FBECEC;color:#b0413e;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">SL</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;">Sofia Lopez</div><div style="font-size:10px;color:#9a958c;">Invoice #2043 — $89</div><span style="display:inline-block;margin-top:3px;font-size:8.5px;background:#FBECEC;color:#b0413e;padding:2px 6px;border-radius:5px;">● Payment pending</span></div></div>
+    <div style="display:flex;gap:9px;padding:10px 11px;"><div style="width:36px;height:36px;border-radius:50%;background:#FBF1DC;color:#8a5a10;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">DW</div><div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:600;">Dr. Wong (referrals)</div><div style="font-size:10px;color:#9a958c;">Sent you two new patients 🙌</div><span style="display:inline-block;margin-top:3px;font-size:8.5px;background:#FBF1DC;color:#8a5a10;padding:2px 6px;border-radius:5px;">★ VIP</span></div></div>
+  </div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">Every customer has a status — your inbox becomes a pipeline.</div></figure></div>
+<p>Start with a simple pipeline and give every conversation exactly one list:</p>
+<div class="ig-block"><figure class="graphic infographic"><div class="ig-kicker">Chapter 7</div><div class="ig-title">The customer pipeline, built from lists</div><div class="ig-rule"></div><div class="ig-flow"><span style="background:#FBF1DC;color:#8a5a10;padding:6px 11px;border-radius:18px;">🟡 New lead</span><span style="color:#c7c2b8;">→</span><span style="background:#E1F0F7;color:#1C4E6B;padding:6px 11px;border-radius:18px;">🔵 Quote sent</span><span style="color:#c7c2b8;">→</span><span style="background:#FBEEE1;color:#9a5a1f;padding:6px 11px;border-radius:18px;">🟠 Follow-up needed</span><span style="color:#c7c2b8;">→</span><span style="background:#E7F7EE;color:#0B4A40;padding:6px 11px;border-radius:18px;">🟢 Active customer</span><span style="color:#c7c2b8;">→</span><span style="background:#EEE9F5;color:#4a3a72;padding:6px 11px;border-radius:18px;">🟣 Waiting on customer</span><span style="color:#c7c2b8;">→</span><span style="background:#FBECEC;color:#b0413e;padding:6px 11px;border-radius:18px;">🔴 Payment pending</span><span style="color:#c7c2b8;">→</span><span style="background:#FBF1DC;color:#8a5a10;padding:6px 11px;border-radius:18px;">⭐ VIP</span><span style="color:#c7c2b8;">→</span><span style="background:#EDEBE6;color:#44443f;padding:6px 11px;border-radius:18px;">⚫ Completed</span></div><div class="ig-tail">Every conversation gets one list. Each morning you open <b>Follow-up needed</b> and <b>Payment pending</b> first — that is where the revenue hides.</div></figure></div>
+<p>Each morning, open <strong>Follow-up needed</strong> and <strong>Payment pending</strong> first. That's where tomorrow's revenue is hiding.</p>
+<img class="hero" src="ebook-assets/images-web/ch06-hero.jpg">
+<h2 class="chapter">Chapter 8 — Get Paid with Payment Links</h2>
+<h3>Collect without the awkward conversation</h3>
+<p>Most late payments aren't intentional — customers simply forget. Make paying effortless by dropping a <strong>payment link</strong> right into the chat, and save it as a Quick Reply so it's one tap away.</p>
+<div class="co co-phone"><strong>📱 Do It On Your Phone — Keep Your Payment Link Handy</strong><br>1. Set up a payment link with your provider (Stripe, Square, PayPal, etc.).<br>2. Save it as a <strong>Quick Reply</strong>: <strong>Business tools</strong> → <strong>Quick replies</strong> → <strong>Add</strong> → paste your link → shortcut <code>pay</code> → <strong>Save</strong>.<br>3. In any chat, type <code>/pay</code> and send. The link drops right in — no searching.</div>
+<div class="mock-center"><figure class="graphic"><div style="width:238px;background:#0B2721;border-radius:34px;padding:9px;margin:0 auto;">
+<div style="background:#ECE5DD;border-radius:24px;overflow:hidden;">
+  <div style="background:#075E54;color:#fff;padding:8px 12px 10px;display:flex;align-items:center;gap:9px;">
+    <div style="width:32px;height:32px;border-radius:50%;background:#FBECEC;color:#b0413e;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;">SL</div>
+    <div><div style="font-size:13px;font-weight:600;">Sofia Lopez</div><div style="font-size:9px;opacity:.85;">online</div></div>
+  </div>
+  <div style="padding:14px 11px;min-height:140px;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px;"><div style="background:#fff;font-size:12px;line-height:1.45;padding:8px 10px;border-radius:9px 9px 2px 9px;max-width:88%;">Thank you for visiting today, Sofia! 😊 Here's your secure payment link:
+      <div style="margin-top:7px;border:.5px solid #d7e8df;border-radius:9px;overflow:hidden;"><div style="background:#E7F7EE;padding:8px 10px;"><div style="font-size:9px;color:#128C7E;font-weight:600;">SECURE PAYMENT · $89.00</div><div style="font-size:10px;color:#075E54;">pay.brightsmile.com/inv2043</div></div><div style="background:#25D366;color:#053d24;text-align:center;font-size:11px;font-weight:600;padding:8px;">Pay now</div></div>
+    </div></div>
+    <div style="display:flex;justify-content:flex-start;"><div style="background:#fff;font-size:12px;padding:7px 10px;border-radius:9px 9px 9px 2px;">Just paid — thank you! 🙌</div></div>
+  </div>
+  <div style="background:#F0EFEA;padding:7px 9px;display:flex;align-items:center;gap:7px;"><div style="flex:1;background:#fff;border-radius:16px;padding:6px 11px;font-size:11px;color:#9a958c;">Message</div><div style="width:28px;height:28px;border-radius:50%;background:#075E54;color:#fff;display:flex;align-items:center;justify-content:center;">➤</div></div>
+</div></div><div style="text-align:center;font-size:11px;color:#8a8577;font-style:italic;margin-top:8px;">One tap to pay — money arrives without an awkward conversation.</div></figure></div>
+<p>Use the same simple flow with every customer so cash flow becomes predictable:</p>
+<div class="ig-block"><figure class="graphic infographic"><div class="ig-kicker">Chapter 8</div><div class="ig-title">One payment system, every time</div><div class="ig-rule"></div><div class="ig-flow" style="font-weight:500;"><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Estimate</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Deposit</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Confirmation</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Reminder</span><span style="color:#c7c2b8;">→</span><span style="background:#25D366;color:#053d24;font-weight:700;padding:6px 11px;border-radius:7px;">Payment</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Receipt</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Thank you</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Review</span><span style="color:#c7c2b8;">→</span><span style="border:.5px solid #cfc8ba;background:#fff;padding:6px 11px;border-radius:7px;">Referral</span></div><div class="ig-tail">When every customer moves through the same steps, cash flow becomes predictable and late payments shrink.</div></figure></div>
+<p>Always confirm when a payment arrives (<em>"Thank you! We've received your payment."</em>) — it takes five seconds and builds trust.</p>
+<img class="hero" src="ebook-assets/images-web/ch08-hero.jpg">
+<h2 class="chapter">Chapter 9 — A Day with WhatsApp Business</h2>
+<h3>What it looks like in real businesses</h3>
+<p>Here's how the pieces you just set up work together in everyday situations. Adapt the messages to your own business.</p>
+<p><strong>A dental office.</strong> A new patient messages after hours. Your <strong>away message</strong> replies instantly with your hours and emergency number. In the morning you send <code>/insurance</code> and your <strong>catalog</strong> item for the new-patient special. You add them to your <strong>New Lead</strong> list, then move them to <strong>Appointment Confirmed</strong> once they book. After the visit, you send <code>/pay</code>, then a thank-you and a review request.</p>
+<p><strong>A roofing contractor.</strong> A homeowner scans the <strong>QR code</strong> on your truck and messages <em>"Can you look at a leak?"</em> Your <strong>greeting</strong> welcomes them and asks for their address and a photo. You send an estimate, add them to your <strong>Quote Sent</strong> list, and follow up in two days. When they approve, you collect a deposit with <code>/pay</code>.</p>
+<p><strong>A salon or med spa.</strong> A client asks <em>"How much is a facial?"</em> You reply with <code>/pricing</code> and your <strong>catalog</strong>. You book them, send a reminder the day before, and after the visit invite them to your loyalty offer — all sorted into lists so no one slips through the cracks.</p>
+<p>Different businesses, same toolkit: greet, answer with quick replies, show the catalog, organize with lists, and get paid with a link.</p>
+<img class="hero" src="ebook-assets/images-web/ch11-hero.jpg">
+<h2 class="chapter">Chapter 10 — Let AI Write Your Messages</h2>
+<h3>Never stare at a blank screen again</h3>
+<p>When you're not sure what to write, let AI draft it. Open ChatGPT, describe what you need, and paste the result into <span class="wa">WhatsApp</span> — then adjust it to sound like you and save it as a Quick Reply.</p>
+<p>Prompts you'll use again and again:</p>
+<ul><li><em>Write a warm <span class="wa">WhatsApp</span> greeting message for a [your business] in [your city]. Keep it friendly and professional.</em></li><li><em>Rewrite this reply to sound warmer and clearer: [paste your text].</em></li><li><em>Write a friendly, pressure-free follow-up for a customer who got a quote three days ago.</em></li><li><em>Write a polite payment reminder for an overdue invoice.</em></li><li><em>Give me five quick replies for a [your business].</em></li></ul>
+<div class="co co-phone"><strong>📱💻 Tip — Close the loop.</strong> When AI writes a response you love, paste it straight into <strong>Business tools → Quick replies</strong> so it's ready with a <code>/</code> shortcut forever. On your computer, you can even copy a whole chat into ChatGPT and ask it to summarize the customer's needs.</div>
+<p>AI generates; you decide. Always give it a quick read before you send — your personality is your advantage.</p>
+<img class="hero" src="ebook-assets/images-web/ch09-hero.jpg">
+<h2 class="chapter">Chapter 11 — Follow Up Like a Pro</h2>
+<h3>Staying in touch, without being pushy</h3>
+<p>Most sales happen after more than one message, yet most businesses stop after the first. You don't need a complicated system — just a simple rhythm and the tools you already set up.</p>
+<p>After you send a quote, add the customer to your <strong>Follow-up needed</strong> list and check in on a gentle schedule:</p>
+<div class="ig-block"><figure class="graphic infographic"><div class="ig-kicker">Chapter 5</div><div class="ig-title">The 14-day follow-up rhythm</div><div class="ig-rule"></div>
+<div style="position:relative;margin:6px;"><div style="position:absolute;top:9px;left:6%;right:6%;height:2px;background:#d8d2c6;"></div>
+<div style="display:flex;justify-content:space-between;position:relative;">
+<div style="text-align:center;width:19%;"><div style="width:18px;height:18px;border-radius:50%;background:#128C7E;margin:0 auto;"></div><div style="font-size:11px;font-weight:700;color:#075E54;margin-top:7px;">Day 0</div><div style="font-size:10px;color:#5f5a50;">Send proposal</div></div>
+<div style="text-align:center;width:19%;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #128C7E;margin:0 auto;"></div><div style="font-size:11px;font-weight:700;color:#075E54;margin-top:7px;">Day 2</div><div style="font-size:10px;color:#5f5a50;">Confirmation</div></div>
+<div style="text-align:center;width:19%;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #128C7E;margin:0 auto;"></div><div style="font-size:11px;font-weight:700;color:#075E54;margin-top:7px;">Day 5</div><div style="font-size:10px;color:#5f5a50;">Helpful tip</div></div>
+<div style="text-align:center;width:19%;"><div style="width:18px;height:18px;border-radius:50%;background:#fff;border:2px solid #128C7E;margin:0 auto;"></div><div style="font-size:11px;font-weight:700;color:#075E54;margin-top:7px;">Day 10</div><div style="font-size:10px;color:#5f5a50;">Customer story</div></div>
+<div style="text-align:center;width:19%;"><div style="width:18px;height:18px;border-radius:50%;background:#E0A83C;margin:0 auto;"></div><div style="font-size:11px;font-weight:700;color:#075E54;margin-top:7px;">Day 14</div><div style="font-size:10px;color:#5f5a50;">Final check-in</div></div>
+</div></div><div class="ig-tail">Six gentle touchpoints, each one helpful — not pushy. Save them as Quick Replies so a follow-up takes one tap.</div></figure></div>
+<p>Keep each message helpful, not needy. Save them as Quick Replies (<code>/checkin</code>, <code>/tip</code>, <code>/lastcall</code>) so a follow-up takes one tap. Every morning, open your <strong>Follow-up needed</strong> list and message everyone in it. That five-minute habit is where forgotten sales come back to life.</p>
+<img class="hero" src="ebook-assets/images-web/ch05-hero.jpg">
+<h2>Closing — Your First Week</h2>
+<p>You don't have to do everything at once. Set up one thing a day, and by the end of the week <span class="wa">WhatsApp Business</span> is doing real work for you.</p>
+<div class="ig-block"><figure class="graphic infographic"><div class="ig-kicker">Chapter 12</div><div class="ig-title">Your 7-day transformation</div><div class="ig-rule"></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;"><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 1</div><div style="font-size:12px;margin-top:2px;">Build your digital front door</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 2</div><div style="font-size:12px;margin-top:2px;">Hire your first digital employee</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 3</div><div style="font-size:12px;margin-top:2px;">Organize every customer</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 4</div><div style="font-size:12px;margin-top:2px;">Build your sales system</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 5</div><div style="font-size:12px;margin-top:2px;">Build your follow-up machine</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 6</div><div style="font-size:12px;margin-top:2px;">Add artificial intelligence</div></div><div style="background:#fff;border:.5px solid #e2ded4;border-radius:9px;padding:10px 12px;"><div style="font-size:10px;color:#128C7E;font-weight:700;">DAY 7</div><div style="font-size:12px;margin-top:2px;">Think like a CEO</div></div><div style="background:#E7F7EE;border:.5px solid #bfe6d3;border-radius:9px;padding:10px 12px;display:flex;align-items:center;gap:7px;"><span style="font-size:18px;">🚩</span><div style="font-size:12px;font-weight:600;color:#075E54;">A business that runs on systems</div></div></div><div class="ig-tail">One improvement a day. One system a week. One better business a year.</div></figure></div>
+<p><strong>A simple first week:</strong></p>
+<ul><li class="task">☐ <strong>Day 1</strong> — Install <span class="wa">WhatsApp Business</span> and complete your profile (Chapters 1–2).</li><li class="task">☐ <strong>Day 2</strong> — Turn on your greeting and away messages (Chapter 3).</li><li class="task">☐ <strong>Day 3</strong> — Create five Quick Replies (Chapter 4).</li><li class="task">☐ <strong>Day 4</strong> — Build your catalog and get your QR code (Chapters 5–6).</li><li class="task">☐ <strong>Day 5</strong> — Create your lists and sort every active chat into one (Chapter 7).</li><li class="task">☐ <strong>Day 6</strong> — Set up your payment link (Chapter 8).</li><li class="task">☐ <strong>Day 7</strong> — Add AI to your workflow and start your daily follow-up habit (Chapters 10–11).</li></ul>
+<p>That's it. No new software, no extra staff, no code — just the free app already in your pocket, finally working the way it should.</p>
+<p>Keep building. Keep it simple. And let <span class="wa">WhatsApp Business</span> be your best employee.</p>
+<p><strong>Alejandro Soria</strong> <em>Founder, NKUVO Labs</em> <em>"Helping small businesses grow through practical AI and intelligent automation."</em></p>
+<img class="hero" src="ebook-assets/images-web/ch12-hero.jpg">
+<h1>Bonuses</h1>
+<h2>Bonus 1 — Ready-to-Use Scripts</h2>
+<p>Copy, personalize, and send. Replace <code>[Business Name]</code> with yours.</p>
+<blockquote class="epigraph"><strong>Greeting</strong> — Hi! 👋 Thank you for contacting [Business Name]. Tell us how we can help today, and someone from our team will reply shortly.</blockquote>
+<blockquote class="epigraph"><strong>Away</strong> — Thanks for your message! Our office is currently closed. Our hours are Monday–Friday, 8 AM–5 PM. We'll reply first thing when we reopen.</blockquote>
+<blockquote class="epigraph"><strong>Pricing</strong> — I'd be happy to help with pricing. To recommend the right option, may I ask you a couple of quick questions first?</blockquote>
+<blockquote class="epigraph"><strong>Appointment</strong> — We'd love to schedule you. What day works best — morning or afternoon?</blockquote>
+<blockquote class="epigraph"><strong>Quote follow-up</strong> — Hi! I just wanted to make sure you received the estimate we sent. Happy to answer any questions.</blockquote>
+<blockquote class="epigraph"><strong>Payment reminder</strong> — Just a friendly reminder that your invoice is due tomorrow. Here's your payment link: [link]. Thank you!</blockquote>
+<blockquote class="epigraph"><strong>Thank you</strong> — Thank you for choosing us! We truly appreciate your business and look forward to serving you again.</blockquote>
+<blockquote class="epigraph"><strong>Review request</strong> — We're so glad we could help! If you enjoyed your experience, we'd really appreciate a quick Google review — it helps other customers find us.</blockquote>
+<blockquote class="epigraph"><strong>Referral request</strong> — The greatest compliment you can give us is referring a friend or family member. If someone you know could use our help, we'd love the introduction.</blockquote>
+<blockquote class="epigraph"><strong>Reactivation</strong> — Hi! It's been a while since we've seen you. Just checking in to see if there's anything we can help you with.</blockquote>
+<h2>Bonus 2 — The Ultimate Checklist</h2>
+<p>Before spending a dollar on marketing, make sure you've completed this.</p>
+<p><strong>Profile</strong></p>
+<ul><li class="task">☐ <span class="wa">WhatsApp Business</span> installed</li><li class="task">☐ Logo or professional headshot</li><li class="task">☐ Complete description</li><li class="task">☐ Business hours, address, email, website</li><li class="task">☐ Category selected</li></ul>
+<p><strong>Tools</strong></p>
+<ul><li class="task">☐ Greeting message on</li><li class="task">☐ Away message on (outside business hours)</li><li class="task">☐ At least five Quick Replies</li><li class="task">☐ Catalog with your main services</li><li class="task">☐ Short link and QR code saved</li></ul>
+<p><strong>Organize &amp; get paid</strong></p>
+<ul><li class="task">☐ Lists created</li><li class="task">☐ Every active customer sorted into a list</li><li class="task">☐ Payment link saved as <code>/pay</code></li><li class="task">☐ Completed chats archived</li></ul>
+<p><strong>Everyday habit</strong></p>
+<ul><li class="task">☐ Open <strong>Follow-up needed</strong> every morning</li><li class="task">☐ Review <strong>Payment pending</strong> daily</li><li class="task">☐ Ask happy customers for reviews and referrals</li></ul>
+<h2>A Final Word</h2>
+<p>You don't need to do everything in this book today. Pick one chapter, set up that one tool, and let it work for you before moving to the next. In a week, <span class="wa">WhatsApp Business</span> will be doing real work — greeting customers, answering the same questions, keeping your pipeline organized, and helping you get paid — without you lifting a finger for each one.</p>
+<p>That's the whole idea: not a bigger team, not new software, just the free app already in your pocket, finally set up the way it should be.</p>
+<p>Thank you for reading — now go turn it on.</p>
+<p><strong>Alejandro Soria</strong></p>
+<p><em>Founder, NKUVO Labs</em></p>
+<p><em>P.S. — If this guide helped your <span class="wa">WhatsApp</span> work harder for you, imagine what Tappt Business — NKUVO Labs' full appointment and follow-up platform built on <span class="wa">WhatsApp</span> — could do for your business next.</em></p>
+<hr class="divider">
+<p><em>End of book.</em></p>
+</div></body></html>
