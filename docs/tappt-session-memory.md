@@ -8,21 +8,71 @@
 
 ## Arquitectura general de Tappt
 - Backend Node.js/Express en Railway
-- WhatsApp Business API (Meta) para envío de mensajes
+- WhatsApp Business API (Meta) para envío y recepción de mensajes
 - Supabase compartido con Colibri-Collections (proyecto Tappt)
 - Auth: Supabase JWT — `req.user.id` = tenant_id
 - **Usuario de Alejandro:** `asoria@tappt.lat` / UUID `b05f6fb3-e389-4943-a61e-87c189d0ccb5`
 
-## Módulo en progreso: Tappt Business
+---
+
+## Ecosistema de productos Tappt
+
+Todos los tiers usan el mismo motor: **100% WhatsApp, sin app, sin web, sin humanos del otro lado.**
+
+| Tier | Para quién | Core |
+|------|-----------|------|
+| **Tappt** | Persona individual | Agenda y recordatorios personales |
+| **Tappt Pro** | Profesionistas independientes (plomero, carpintero, lavacoches…) | Citas con clientes, recordatorios de trabajos |
+| **Tappt Team** | Equipos pequeños | Agenda compartida, coordinación por WhatsApp |
+| **Tappt Family** | Familias | Calendario familiar, recordatorios para todos |
+| **Tappt Business** | Negocios de servicios (ver abajo) | SaaS completo de agendamiento autónomo |
+
+---
+
+## Tappt Business — Definición del producto
+
+### Qué es
+SaaS construido sobre el motor de Tappt dirigido a **negocios de servicios por cita**: doctores, clínicas, barberías, spas, estéticas.
+
+Permite que el **cliente final agende, pague, confirme, cambie y reprograme su cita — todo por WhatsApp, sin ningún humano del lado del negocio.**
+
+### Flujo completo (only WhatsApp)
+1. **Cliente escribe al WhatsApp del negocio**
+2. El bot de Tappt Business responde, muestra disponibilidad y servicios
+3. **Cliente agenda** — elige fecha, hora y servicio
+4. **Cliente prepaga** — integración de pagos dentro del chat
+5. **Confirmación automática** — el cliente recibe su resumen de cita
+6. **Recordatorio** — Tappt le avisa N horas antes
+7. **Si el cliente quiere cambiar** — puede reagendar o cancelar por WhatsApp sin llamar
+8. **Follow-up post-cita** — Tappt le escribe después (reseña, próxima cita, promoción)
+
+### Propuesta de valor
+> *"Tu negocio llena su agenda solo, cobra por adelantado y nunca pierde una cita — sin contratar recepcionista, sin app, solo WhatsApp."*
+
+### Segmento objetivo
+- Barberías / peluquerías
+- Spas y estéticas
+- Consultorios (médicos, dentistas, psicólogos)
+- Clínicas pequeñas
+- Nail studios, lash bars, masajistas
+
+### Diferenciadores clave
+- Sin app que descargar (el cliente ya tiene WhatsApp)
+- Sin humano gestionando la agenda
+- Prepago elimina no-shows
+- El negocio lo configura una vez y funciona solo
+
+---
+
+## Módulo Tappt Business — Estado de desarrollo
 > Sesión anterior: "Tappt New", ~14 junio 2026 (archivada)
 
-### Qué es Tappt Business
-Add-on/tier de pago para funcionalidades avanzadas de negocio. *(Completar con detalle al reanudar)*
-
 ### Estado al archivar la sesión
-- **Completado:** *(listar aquí lo que ya estaba hecho)*
-- **En progreso / pendiente:** *(listar aquí lo que quedó a medias)*
-- **Bloqueadores conocidos:** *(listar si los hay)*
+- **Completado:** *(revisar con `git log --oneline -15` al iniciar)*
+- **En progreso / pendiente:** *(revisar con `git status` y `git diff` al iniciar)*
+- **Bloqueadores conocidos:** *(ninguno documentado)*
+
+---
 
 ## Integración CRM → Tappt (ya implementada en el CRM)
 El CRM NKUVO (`colibri-collections/backend`) ya envía eventos HTTP a Tappt para follow-ups:
@@ -46,25 +96,21 @@ Spec completa en: `colibri-collections/docs/tappt-crm-integration.md`
 | `TAPPT_API_KEY` | API key compartida (generar con `openssl rand -hex 32`) |
 | `TAPPT_NOTIFY_PHONE` | WhatsApp de Alejandro `521XXXXXXXXXX` |
 
+---
+
 ## Cómo retomar eficientemente
 
-Al abrir la nueva sesión, pega este archivo y agrega al final:
+Al abrir la nueva sesión en `tappt-backend`, pega este archivo y agrega:
 
 ```
-Continúa donde quedamos. Revisa los últimos 10 commits del branch activo 
-y el diff pendiente, luego dime en 5 líneas qué había en progreso antes de continuar.
+Continúa donde quedamos con Tappt Business. 
+Revisa los últimos 15 commits y el diff pendiente, 
+luego dime en 5 líneas qué había en progreso antes de continuar.
 ```
-
-Esto hace que Claude reconstruya el contexto desde el código real en vez de desde la memoria, evitando alucinaciones y ahorrando tokens en el intercambio inicial.
 
 ## Comandos útiles al iniciar sesión
 ```bash
-# Ver en qué branch estamos y últimos commits
-git log --oneline -10
-
-# Ver cambios sin commitear
+git log --oneline -15
 git status && git diff --stat
-
-# Ver variables de entorno disponibles (sin mostrar valores)
 printenv | grep -E "TAPPT|SUPABASE|DATABASE|META|RAILWAY" | cut -d= -f1
 ```
