@@ -3,6 +3,7 @@
 
 ## Repo y acceso
 - **Repo:** `alejandrosoriaa-tappt/tappt-backend`
+- **El dashboard de Tappt Business está dentro de este mismo repo** (no es repo separado)
 - **Branch de trabajo activo:** confirmar con `git branch` al iniciar
 - **Deploy:** Railway (confirmar URL del servicio al iniciar)
 
