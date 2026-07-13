@@ -65,12 +65,19 @@ Permite que el **cliente final agende, pague, confirme, cambie y reprograme su c
 ---
 
 ## Módulo Tappt Business — Estado de desarrollo
-> Sesión anterior: "Tappt New", ~14 junio 2026 (archivada)
+> Última sesión activa: "Tappt New", ~14 junio 2026 (archivada en Mac)
+> Última actualización de este archivo: 13 julio 2026
 
-### Estado al archivar la sesión
-- **Completado:** *(revisar con `git log --oneline -15` al iniciar)*
-- **En progreso / pendiente:** *(revisar con `git status` y `git diff` al iniciar)*
-- **Bloqueadores conocidos:** *(ninguno documentado)*
+### Estado confirmado al 13 julio 2026
+- **Completado:**
+  - Dashboard de Tappt Business con **tema claro (light colors)** implementado ✅
+  - **Acceso demo/fake** funcionando — permite ver el producto sin login real ✅
+- **Próximo a implementar (sesión siguiente):**
+  - Integración **MercadoPago** para generación de links de cobro dentro del flujo de agendamiento
+    - OAuth para conectar cuenta MP del negocio
+    - Llamada a API MP para crear link de pago al confirmar cita
+    - Webhook de MP para confirmar pago → confirmar cita → notificar cliente
+- **Bloqueadores conocidos:** ninguno
 
 ---
 
