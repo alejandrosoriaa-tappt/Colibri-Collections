@@ -1038,7 +1038,7 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
     setSaving(true)
     setError(null)
     try {
-      // Actualizar mamá
+      // Mamá — actualizar si existe, crear si se llenó nombre/teléfono
       if (mama) {
         const parts = form.mama_nombre.trim().split(' ')
         await contactsAPI.update(mama.id, {
@@ -1047,8 +1047,18 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
           email: form.email.trim(),
           nombre_familia: form.nombre_familia.trim(),
         })
+      } else if (form.mama_nombre.trim() || form.mama_telefono.trim()) {
+        const parts = form.mama_nombre.trim().split(' ')
+        await contactsAPI.create({
+          nombre: parts[0] || 'Mamá', apellido: parts.slice(1).join(' '),
+          telefono: form.mama_telefono.trim(),
+          email: form.email.trim(),
+          nombre_familia: form.nombre_familia.trim(),
+          relationship_type: 'mama',
+          org_type: alumnos[0]?.org_type,
+        })
       }
-      // Actualizar papá
+      // Papá — actualizar si existe, crear si se llenó nombre/teléfono
       if (papa) {
         const parts = form.papa_nombre.trim().split(' ')
         await contactsAPI.update(papa.id, {
@@ -1056,6 +1066,16 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
           telefono: form.papa_telefono.trim(),
           email: form.email.trim(),
           nombre_familia: form.nombre_familia.trim(),
+        })
+      } else if (form.papa_nombre.trim() || form.papa_telefono.trim()) {
+        const parts = form.papa_nombre.trim().split(' ')
+        await contactsAPI.create({
+          nombre: parts[0] || 'Papá', apellido: parts.slice(1).join(' '),
+          telefono: form.papa_telefono.trim(),
+          email: form.email.trim(),
+          nombre_familia: form.nombre_familia.trim(),
+          relationship_type: 'papa',
+          org_type: alumnos[0]?.org_type,
         })
       }
       // Actualizar alumnos
@@ -1105,39 +1125,35 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
             <input className="input" type="email" value={form.email} onChange={set('email')} />
           </div>
 
-          {/* Mamá */}
-          {mama && (
-            <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
-              <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Mamá</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">Nombre completo</label>
-                  <input className="input" value={form.mama_nombre} onChange={set('mama_nombre')} />
-                </div>
-                <div>
-                  <label className="label">WhatsApp</label>
-                  <input className="input" value={form.mama_telefono} onChange={set('mama_telefono')} />
-                </div>
+          {/* Mamá — siempre visible */}
+          <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Mamá</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">Nombre completo</label>
+                <input className="input" value={form.mama_nombre} onChange={set('mama_nombre')} placeholder="Nombre apellido" />
+              </div>
+              <div>
+                <label className="label">WhatsApp</label>
+                <input className="input" value={form.mama_telefono} onChange={set('mama_telefono')} placeholder="+52..." />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Papá */}
-          {papa && (
-            <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
-              <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Papá</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="label">Nombre completo</label>
-                  <input className="input" value={form.papa_nombre} onChange={set('papa_nombre')} />
-                </div>
-                <div>
-                  <label className="label">WhatsApp</label>
-                  <input className="input" value={form.papa_telefono} onChange={set('papa_telefono')} />
-                </div>
+          {/* Papá — siempre visible */}
+          <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
+            <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Papá</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">Nombre completo</label>
+                <input className="input" value={form.papa_nombre} onChange={set('papa_nombre')} placeholder="Nombre apellido" />
+              </div>
+              <div>
+                <label className="label">WhatsApp</label>
+                <input className="input" value={form.papa_telefono} onChange={set('papa_telefono')} placeholder="+52..." />
               </div>
             </div>
-          )}
+          </div>
 
           {/* Alumnos */}
           {alumnosForm.length > 0 && (
