@@ -314,6 +314,10 @@ router.post('/:id/messages/:msgId/send', authMiddleware, inferTenantGuard, async
       return res.status(404).json({ error: 'Message not found' })
     }
 
+    if (msg.sent_at) {
+      return res.status(409).json({ error: 'Este mensaje ya fue enviado', sent_at: msg.sent_at })
+    }
+
     const tenant = campaign.tenants
     const filters = { campaign_id: campaign.id }
     if (msg.send_to === 'unpaid') filters.status = 'pending'
