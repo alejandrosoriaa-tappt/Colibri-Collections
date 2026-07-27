@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import {
   Search, Users, Loader2, ChevronLeft, ChevronRight, UserPlus,
   X, CheckCircle2, AlertCircle, UserMinus, UserCheck, Trash2,
-  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send, Sparkles, FileSpreadsheet
+  RefreshCw, Upload, AlertTriangle, Info, Mail, Download, Send, Sparkles, FileSpreadsheet, Pencil
 } from 'lucide-react'
 import { contactsAPI, uploadAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
@@ -1006,6 +1006,185 @@ function AiImportModal({ onClose, onDone }) {
   )
 }
 
+// ── Edit Family Modal ─────────────────────────────────────────────────────────
+function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
+  const mama = papas.find(p => p.relationship_type === 'mama')
+  const papa = papas.find(p => p.relationship_type === 'papa')
+
+  const [form, setForm] = useState({
+    nombre_familia: familia || '',
+    mama_nombre:    toTitleCase(`${mama?.nombre || ''} ${mama?.apellido || ''}`.trim()),
+    mama_telefono:  mama?.telefono || '',
+    papa_nombre:    toTitleCase(`${papa?.nombre || ''} ${papa?.apellido || ''}`.trim()),
+    papa_telefono:  papa?.telefono || '',
+    email:          papas[0]?.email || alumnos.find(a => a.email)?.email || '',
+  })
+  const [alumnosForm, setAlumnosForm] = useState(
+    alumnos.map(a => ({
+      id: a.id,
+      nombre_alumno: toTitleCase(a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim()),
+      grado:  a.grado || '',
+      salon:  a.salon || '',
+      seccion: a.seccion || '',
+    }))
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState(null)
+
+  const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError(null)
+    try {
+      // Actualizar mamá
+      if (mama) {
+        const parts = form.mama_nombre.trim().split(' ')
+        await contactsAPI.update(mama.id, {
+          nombre: parts[0], apellido: parts.slice(1).join(' '),
+          telefono: form.mama_telefono.trim(),
+          email: form.email.trim(),
+          nombre_familia: form.nombre_familia.trim(),
+        })
+      }
+      // Actualizar papá
+      if (papa) {
+        const parts = form.papa_nombre.trim().split(' ')
+        await contactsAPI.update(papa.id, {
+          nombre: parts[0], apellido: parts.slice(1).join(' '),
+          telefono: form.papa_telefono.trim(),
+          email: form.email.trim(),
+          nombre_familia: form.nombre_familia.trim(),
+        })
+      }
+      // Actualizar alumnos
+      for (const a of alumnosForm) {
+        const parts = a.nombre_alumno.trim().split(' ')
+        await contactsAPI.update(a.id, {
+          nombre: parts[0], apellido: parts.slice(1).join(' '),
+          nombre_alumno: a.nombre_alumno.trim(),
+          grado:  a.grado || null,
+          salon:  a.salon || null,
+          seccion: a.seccion || null,
+          nombre_familia: form.nombre_familia.trim(),
+        })
+      }
+      onSaved()
+    } catch (err) {
+      setError(err.response?.data?.error || err.message)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-5 border-b border-md-outline-variant flex-shrink-0">
+          <h2 className="text-base font-semibold text-md-on-surface flex items-center gap-2">
+            <Pencil size={16} className="text-md-primary" /> Editar familia {toTitleCase(familia)}
+          </h2>
+          <button onClick={onClose} className="text-md-on-surface-variant hover:text-md-on-surface p-1 rounded-full"><X size={18} /></button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-5 space-y-4 overflow-y-auto flex-1">
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-md-error-container rounded-2xl text-sm text-md-on-error-container">
+              <AlertCircle size={14} className="flex-shrink-0" /> {error}
+            </div>
+          )}
+
+          {/* Apellido de familia */}
+          <div>
+            <label className="label">Apellido de familia</label>
+            <input className="input" value={form.nombre_familia} onChange={set('nombre_familia')} />
+          </div>
+
+          {/* Email */}
+          <div>
+            <label className="label">Correo electrónico</label>
+            <input className="input" type="email" value={form.email} onChange={set('email')} />
+          </div>
+
+          {/* Mamá */}
+          {mama && (
+            <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Mamá</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Nombre completo</label>
+                  <input className="input" value={form.mama_nombre} onChange={set('mama_nombre')} />
+                </div>
+                <div>
+                  <label className="label">WhatsApp</label>
+                  <input className="input" value={form.mama_telefono} onChange={set('mama_telefono')} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Papá */}
+          {papa && (
+            <div className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
+              <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Papá</p>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="label">Nombre completo</label>
+                  <input className="input" value={form.papa_nombre} onChange={set('papa_nombre')} />
+                </div>
+                <div>
+                  <label className="label">WhatsApp</label>
+                  <input className="input" value={form.papa_telefono} onChange={set('papa_telefono')} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Alumnos */}
+          {alumnosForm.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-md-primary uppercase tracking-wide">Alumnos</p>
+              {alumnosForm.map((a, idx) => (
+                <div key={a.id} className="border border-md-outline-variant rounded-2xl p-3 space-y-2">
+                  <div>
+                    <label className="label">Nombre del alumno</label>
+                    <input className="input" value={a.nombre_alumno}
+                      onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, nombre_alumno: e.target.value } : x))} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="label">Sección</label>
+                      <input className="input" value={a.seccion}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, seccion: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className="label">Grado</label>
+                      <input className="input" value={a.grado}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))} />
+                    </div>
+                    <div>
+                      <label className="label">Salón</label>
+                      <input className="input" value={a.salon}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 btn-tonal text-sm">Cancelar</button>
+            <button type="submit" disabled={saving} className="flex-1 btn-filled text-sm flex items-center justify-center gap-2">
+              {saving ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 // ── Helper: Agrupar contactos por familia (para colegios) ────────────────────
 function groupByFamily(contacts) {
@@ -1048,6 +1227,7 @@ export default function ContactsPage() {
   const [confirmDeactivate, setConfirmDeactivate] = useState(null) // { ids }
   const [confirmDelete, setConfirmDelete] = useState(null)         // { ids }
   const [familyMsg, setFamilyMsg] = useState(null)                 // { familia, members }
+  const [editFamily, setEditFamily] = useState(null)               // { familia, papas, alumnos }
 
   // School filters (colegio view): filter families by their students' group
   const navigate = useNavigate()
@@ -1251,6 +1431,20 @@ export default function ContactsPage() {
             setFamilyMsg(null)
             setSelected(new Set())
             showToast(`Mensaje enviado a ${n} contacto${n !== 1 ? 's' : ''}`)
+          }}
+        />
+      )}
+
+      {editFamily && (
+        <EditFamilyModal
+          familia={editFamily.familia}
+          papas={editFamily.papas}
+          alumnos={editFamily.alumnos}
+          onClose={() => setEditFamily(null)}
+          onSaved={() => {
+            setEditFamily(null)
+            load()
+            showToast('Familia actualizada')
           }}
         />
       )}
@@ -1578,6 +1772,13 @@ export default function ContactsPage() {
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 text-xs text-md-on-surface-variant font-mono">{email || <span className="text-md-outline">—</span>}</td>
                         <td className="border border-md-outline-variant/60 py-1.5 px-3">
                           <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setEditFamily({ familia, papas, alumnos })}
+                              title="Editar familia"
+                              className="p-1.5 rounded text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
+                            >
+                              <Pencil size={14} />
+                            </button>
                             <button
                               onClick={() => setFamilyMsg({
                                 label: `familia ${familia}`,
