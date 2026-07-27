@@ -22,6 +22,13 @@ const SALONES = ['A', 'B', 'C', 'D', 'E']
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200]
 
+// Convierte "GUTIÉRREZ MENDOZA" → "Gutiérrez Mendoza" sin romper con vocales acentuadas.
+// Usa \s como separador (no \b) porque \b trata É/Í/Á como límite de palabra.
+function toTitleCase(str) {
+  if (!str) return str
+  return str.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase())
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('es-MX', {
@@ -1535,11 +1542,11 @@ export default function ContactsPage() {
                             className="rounded accent-md-primary cursor-pointer"
                           />
                         </td>
-                        <td className="border border-md-outline-variant/60 py-1.5 px-3 font-bold text-md-on-surface whitespace-nowrap">{familia}</td>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 font-bold text-md-on-surface whitespace-nowrap">{toTitleCase(familia)}</td>
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {mama ? (
                             <div className="leading-tight">
-                              <div className="font-medium text-md-on-surface">{mama.nombre} {mama.apellido || ''}</div>
+                              <div className="font-medium text-md-on-surface">{toTitleCase(`${mama.nombre} ${mama.apellido || ''}`.trim())}</div>
                               {mama.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{mama.telefono}</div>}
                             </div>
                           ) : <span className="text-md-outline">—</span>}
@@ -1547,7 +1554,7 @@ export default function ContactsPage() {
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {papa ? (
                             <div className="leading-tight">
-                              <div className="font-medium text-md-on-surface">{papa.nombre} {papa.apellido || ''}</div>
+                              <div className="font-medium text-md-on-surface">{toTitleCase(`${papa.nombre} ${papa.apellido || ''}`.trim())}</div>
                               {papa.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{papa.telefono}</div>}
                             </div>
                           ) : <span className="text-md-outline">—</span>}
@@ -1557,7 +1564,7 @@ export default function ContactsPage() {
                             <div className="flex flex-wrap gap-1">
                               {alumnos.map(a => (
                                 <span key={a.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-md-primary-container/50 text-md-on-primary-container rounded text-[11px] font-medium whitespace-nowrap">
-                                  {a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim()}
+                                  {toTitleCase(a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim())}
                                   {(a.grupo || a.grado || a.salon) && (
                                     <span className="px-1 py-px bg-md-primary/15 rounded text-[10px]">
                                       {[a.grado, a.salon].filter(Boolean).join(' ')}
