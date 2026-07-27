@@ -1485,41 +1485,42 @@ export default function ContactsPage() {
           // ═══════════════════════════════════════════════════════════════
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="border-b border-md-outline-variant bg-md-surface-container-low">
-                  <tr>
-                    <th className="py-3 px-4 w-10">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr className="bg-md-primary text-white">
+                    <th className="border border-md-primary/60 py-2 px-3 w-10">
                       <input
                         type="checkbox"
                         checked={allSelected}
                         ref={el => { if (el) el.indeterminate = someSelected }}
                         onChange={toggleAll}
-                        className="rounded accent-md-primary cursor-pointer"
+                        className="rounded accent-white cursor-pointer"
                       />
                     </th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Familia</th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Mamá</th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Papá</th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Alumnos</th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Email</th>
-                    <th className="py-3 px-3 text-left text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide">Acciones</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Familia</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Mamá</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Papá</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Alumnos</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Email</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {Object.entries(groupByFamily(contacts))
                     .filter(([, { alumnos }]) => !hasSchoolFilter || alumnos.some(alumnoMatchesFilter))
-                    .map(([familia, { papas, alumnos }]) => {
+                    .map(([familia, { papas, alumnos }], rowIdx) => {
                     const familiaIds = [...papas, ...alumnos].map(c => c.id)
                     const familySelected = familiaIds.some(id => selected.has(id))
                     const mama = papas.find(p => p.relationship_type === 'mama')
                     const papa = papas.find(p => p.relationship_type === 'papa')
                     const email = papas[0]?.email || alumnos.find(a => a.email)?.email || ''
+                    const rowBg = familySelected
+                      ? 'bg-md-primary-container/30'
+                      : rowIdx % 2 === 0 ? 'bg-white' : 'bg-md-surface-container-low/50'
 
                     return (
-                      <tr key={familia} className={`border-b border-md-outline-variant/50 transition-colors ${
-                        familySelected ? 'bg-md-primary-container/30' : 'hover:bg-md-surface-container-low'
-                      }`}>
-                        <td className="py-3 px-4 w-10">
+                      <tr key={familia} className={`${rowBg} hover:bg-md-primary-container/20 transition-colors`}>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 w-10 text-center">
                           <input
                             type="checkbox"
                             checked={familySelected}
@@ -1534,41 +1535,41 @@ export default function ContactsPage() {
                             className="rounded accent-md-primary cursor-pointer"
                           />
                         </td>
-                        <td className="py-3 px-3 text-sm font-bold text-md-on-surface">{familia}</td>
-                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 font-bold text-md-on-surface whitespace-nowrap">{familia}</td>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {mama ? (
-                            <>
-                              <div>{mama.nombre} {mama.apellido || ''}</div>
-                              {mama.telefono && <div className="text-xs font-mono text-md-on-surface">{mama.telefono}</div>}
-                            </>
-                          ) : '—'}
+                            <div className="leading-tight">
+                              <div className="font-medium text-md-on-surface">{mama.nombre} {mama.apellido || ''}</div>
+                              {mama.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{mama.telefono}</div>}
+                            </div>
+                          ) : <span className="text-md-outline">—</span>}
                         </td>
-                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {papa ? (
-                            <>
-                              <div>{papa.nombre} {papa.apellido || ''}</div>
-                              {papa.telefono && <div className="text-xs font-mono text-md-on-surface">{papa.telefono}</div>}
-                            </>
-                          ) : '—'}
+                            <div className="leading-tight">
+                              <div className="font-medium text-md-on-surface">{papa.nombre} {papa.apellido || ''}</div>
+                              {papa.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{papa.telefono}</div>}
+                            </div>
+                          ) : <span className="text-md-outline">—</span>}
                         </td>
-                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3">
                           {alumnos.length > 0 ? (
-                            <ul className="space-y-1">
+                            <div className="flex flex-wrap gap-1">
                               {alumnos.map(a => (
-                                <li key={a.id} className="flex items-center gap-1.5 flex-wrap">
-                                  <span>{a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim()}</span>
-                                  {(a.grupo || a.grado) && (
-                                    <span className="inline-block px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded text-[11px] font-medium">
-                                      {a.grupo || a.grado}
+                                <span key={a.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-md-primary-container/50 text-md-on-primary-container rounded text-[11px] font-medium whitespace-nowrap">
+                                  {a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim()}
+                                  {(a.grupo || a.grado || a.salon) && (
+                                    <span className="px-1 py-px bg-md-primary/15 rounded text-[10px]">
+                                      {[a.grado, a.salon].filter(Boolean).join(' ')}
                                     </span>
                                   )}
-                                </li>
+                                </span>
                               ))}
-                            </ul>
-                          ) : '—'}
+                            </div>
+                          ) : <span className="text-md-outline">—</span>}
                         </td>
-                        <td className="py-3 px-3 text-sm text-md-on-surface-variant">{email || '—'}</td>
-                        <td className="py-3 px-3">
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3 text-xs text-md-on-surface-variant font-mono">{email || <span className="text-md-outline">—</span>}</td>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3">
                           <div className="flex items-center gap-1">
                             <button
                               onClick={() => setFamilyMsg({
@@ -1577,16 +1578,16 @@ export default function ContactsPage() {
                                 members: [...papas, ...alumnos]
                               })}
                               title="Enviar mensaje a esta familia"
-                              className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
+                              className="p-1.5 rounded text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container/40 transition-colors"
                             >
-                              <Send size={15} />
+                              <Send size={14} />
                             </button>
                             <button
                               onClick={() => setConfirmDelete({ ids: familiaIds })}
                               title="Eliminar familia"
-                              className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                              className="p-1.5 rounded text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
                             >
-                              <Trash2 size={15} />
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </td>

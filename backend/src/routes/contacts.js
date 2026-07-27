@@ -146,6 +146,7 @@ router.get('/catalog', authMiddleware, inferTenantGuard, async (req, res) => {
       .from('contacts')
       .select('seccion, grado, salon')
       .eq('tenant_id', req.tenantId)
+      .eq('relationship_type', 'student')
       .neq('status', 'inactive')
     if (error) throw error
 
