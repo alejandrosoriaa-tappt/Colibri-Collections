@@ -1007,7 +1007,7 @@ function AiImportModal({ onClose, onDone }) {
 }
 
 // ── Edit Family Modal ─────────────────────────────────────────────────────────
-function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
+function EditFamilyModal({ familia, papas, alumnos, orgType = 'colegio', onClose, onSaved }) {
   const mama = papas.find(p => p.relationship_type === 'mama')
   const papa = papas.find(p => p.relationship_type === 'papa')
 
@@ -1055,7 +1055,7 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
           email: form.email.trim(),
           nombre_familia: form.nombre_familia.trim(),
           relationship_type: 'mama',
-          org_type: alumnos[0]?.org_type,
+          org_type: orgType,
         })
       }
       // Papá — actualizar si existe, crear si se llenó nombre/teléfono
@@ -1075,7 +1075,7 @@ function EditFamilyModal({ familia, papas, alumnos, onClose, onSaved }) {
           email: form.email.trim(),
           nombre_familia: form.nombre_familia.trim(),
           relationship_type: 'papa',
-          org_type: alumnos[0]?.org_type,
+          org_type: orgType,
         })
       }
       // Actualizar alumnos
@@ -1456,6 +1456,7 @@ export default function ContactsPage() {
           familia={editFamily.familia}
           papas={editFamily.papas}
           alumnos={editFamily.alumnos}
+          orgType={orgType}
           onClose={() => setEditFamily(null)}
           onSaved={() => {
             setEditFamily(null)
