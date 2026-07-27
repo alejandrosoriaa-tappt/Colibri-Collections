@@ -150,11 +150,21 @@ router.get('/catalog', authMiddleware, inferTenantGuard, async (req, res) => {
       .neq('status', 'inactive')
     if (error) throw error
 
+    // Un grado válido contiene dígito o empieza con keyword académica conocida.
+    // Esto descarta nombres de papás que hayan quedado en el campo grado por import mal mapeado.
+    const isValidGrado = (v) => {
+      if (!v) return true
+      if (/\d/.test(v)) return true
+      if (/^(taller|casa|cn\b|transitorio|preescolar|kinder|primaria|secundaria|bachillerato)/i.test(v)) return true
+      return false
+    }
+
     // Distinct {seccion, grado, salon} combos (any field may be null)
     const seen = new Set()
     const combos = []
     for (const r of data) {
       if (!r.seccion && !r.grado && !r.salon) continue
+      if (!isValidGrado(r.grado)) continue
       const key = `${r.seccion || ''}|${r.grado || ''}|${r.salon || ''}`
       if (seen.has(key)) continue
       seen.add(key)
