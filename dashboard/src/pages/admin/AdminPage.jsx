@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Building2, Users, Megaphone, MessageSquare, ArrowRight, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
+import { Building2, Users, MessageSquare, ArrowRight, Loader2, ChevronDown, ChevronUp } from 'lucide-react'
 import KPICard from '../../components/shared/KPICard.jsx'
 import StatusBadge from '../../components/shared/StatusBadge.jsx'
 import { adminAPI } from '../../lib/api.js'
@@ -103,9 +103,8 @@ export default function AdminPage() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <KPICard title="Activos" value={stats.active_tenants || 0} icon={Building2} color="green" subtitle={`${stats.trial_tenants || 0} en trial`} />
-          <KPICard title="Campañas activas" value={stats.active_campaigns || 0} icon={Megaphone} color="blue" />
           <KPICard title="Mensajes este mes" value={(stats.messages_this_month || 0).toLocaleString('es-MX')} icon={MessageSquare} color="orange" />
           <KPICard title="MRR" value={`$${(stats.mrr || 0).toLocaleString('es-MX')}`} icon={Building2} color="purple" />
         </div>

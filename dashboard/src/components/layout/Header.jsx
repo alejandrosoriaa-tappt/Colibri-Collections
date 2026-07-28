@@ -7,11 +7,9 @@ import { notificationsAPI } from '../../lib/api.js'
 const ROUTE_TITLES = {
   '/': 'Inicio',
   '/mensajes': 'Mensajes',
-  '/campaigns': 'Campañas',
+  '/comunicados': 'Comunicados',
   '/broadcasts': 'Comunicados',
-  '/upload': 'Subir archivo',
   '/contacts': 'Contactos',
-  '/messages': 'Registro de mensajes',
   '/settings': 'Configuración',
   '/admin': 'Panel Admin',
   '/admin/tenants': 'Gestión de Tenants'
@@ -19,7 +17,6 @@ const ROUTE_TITLES = {
 
 function getTitle(pathname) {
   if (ROUTE_TITLES[pathname]) return ROUTE_TITLES[pathname]
-  if (pathname.startsWith('/campaigns/')) return 'Detalle de campaña'
   if (pathname.startsWith('/contacts/')) return 'Detalle de contacto'
   if (pathname.startsWith('/admin/tenants/')) return 'Tenant'
   return 'Kollybry'

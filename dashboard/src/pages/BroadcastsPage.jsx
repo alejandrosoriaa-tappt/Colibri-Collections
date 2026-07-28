@@ -123,6 +123,16 @@ export default function BroadcastsPage() {
   const [groupsOpen, setGroupsOpen] = useState(false)
   const groupsRef = useRef(null)
 
+  // "general" = a toda la comunidad (sin selector de grupos)
+  // "grupos"  = dirigido a salones concretos (exige elegir al menos uno)
+  const modo = searchParams.get('modo') === 'general' ? 'general' : 'grupos'
+  const esGeneral = modo === 'general'
+  const copy = esGeneral
+    ? { titulo: 'Comunicados', nuevo: 'Nuevo comunicado', label: 'comunicado', volver: '/comunicados',
+        sub: 'Avisos para toda la comunidad' }
+    : { titulo: 'Mensajes', nuevo: 'Nuevo mensaje', label: 'mensaje', volver: '/mensajes',
+        sub: 'Dirigidos a salones o grupos de familias' }
+
   // Close the groups dropdown when clicking outside of it
   useEffect(() => {
     const onClick = (e) => {
@@ -154,7 +164,9 @@ export default function BroadcastsPage() {
       setShowForm(true)
       setForm({ ...EMPTY_FORM, group_filters: preGroups })
       setFormError(null)
-      setSearchParams({}, { replace: true })
+      // Conserva `modo`: define a quién va dirigido y se usa en toda la pantalla.
+      const modoParam = searchParams.get('modo')
+      setSearchParams(modoParam ? { modo: modoParam } : {}, { replace: true })
     }
   }, [searchParams])
 
@@ -182,31 +194,40 @@ export default function BroadcastsPage() {
     }))
   }
 
+  // Cada pantalla solo lista lo suyo: con grupo → Mensajes, sin grupo → Comunicados
+  const delModo = broadcasts.filter(b => (b.group_filter ? 'grupos' : 'general') === modo)
+
   const filtered = groupFilter
-    ? broadcasts.filter(b => {
+    ? delModo.filter(b => {
         if (!b.group_filter) return false
         // Support both single group ("1°A") and multi-group ("1°A, 1°B")
         return b.group_filter.split(', ').map(s => s.trim()).includes(groupFilter)
       })
-    : broadcasts
+    : delModo
 
   const handleSend = async (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.message.trim()) return
+    // En modo grupos el destinatario es obligatorio: sin esto el envío se iría
+    // a TODA la comunidad, que es justo lo contrario de lo que se pidió.
+    if (!esGeneral && form.group_filters.length === 0) {
+      setFormError('Elige al menos un salón o grupo. Para enviar a toda la comunidad usa Comunicados.')
+      return
+    }
     setFormError(null)
     setIsSending(true)
     try {
       await broadcastsAPI.send({
         title: form.title.trim(),
         message: form.message.trim(),
-        group_filters: form.group_filters.length > 0 ? form.group_filters : null,
+        group_filters: esGeneral || form.group_filters.length === 0 ? null : form.group_filters,
         media_url: form.media_url.trim() || null,
         media_type: form.media_url ? 'document' : null,
         media_filename: form.media_url ? form.media_url.split('/').pop() : null
       })
       setShowForm(false)
       setForm(EMPTY_FORM)
-      setSuccessMsg(`Comunicado "${form.title}" enviado correctamente`)
+      setSuccessMsg(`${esGeneral ? 'Comunicado' : 'Mensaje'} "${form.title}" enviado correctamente`)
       setTimeout(() => setSuccessMsg(null), 5000)
       setIsLoading(true)
       load()
@@ -233,14 +254,12 @@ export default function BroadcastsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Comunicados</h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Envía mensajes e información segmentada a tus contactos
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">{copy.titulo}</h1>
+          <p className="text-gray-500 text-sm mt-1">{copy.sub}</p>
         </div>
         <button onClick={openForm} className="btn-primary flex items-center gap-2 text-sm">
           <Plus size={16} />
-          Nuevo comunicado
+          {copy.nuevo}
         </button>
       </div>
 
@@ -252,8 +271,8 @@ export default function BroadcastsPage() {
         </div>
       )}
 
-      {/* Group filters */}
-      {groups.length > 0 && (
+      {/* Group filters — en Comunicados no aplica: ninguno tiene grupo */}
+      {!esGeneral && groups.length > 0 && (
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setGroupFilter('')}
@@ -290,14 +309,18 @@ export default function BroadcastsPage() {
         <div className="card text-center py-16">
           <Radio size={40} className="text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500 font-medium">
-            {groupFilter ? `Sin comunicados para "${groupFilter}"` : 'Aún no has enviado comunicados'}
+            {groupFilter
+              ? `Sin mensajes para "${groupFilter}"`
+              : `Aún no has enviado ${esGeneral ? 'comunicados' : 'mensajes'}`}
           </p>
           <p className="text-gray-400 text-sm mt-1">
-            Envía avisos, documentos o información a grupos específicos de contactos
+            {esGeneral
+              ? 'Envía avisos, documentos o información a toda la comunidad'
+              : 'Envía avisos, documentos o información a salones específicos'}
           </p>
           {!groupFilter && (
             <button onClick={openForm} className="btn-primary inline-flex items-center gap-2 mt-4 text-sm">
-              <Plus size={15} /> Crear primer comunicado
+              <Plus size={15} /> Crear primer {copy.label}
             </button>
           )}
         </div>
@@ -316,8 +339,12 @@ export default function BroadcastsPage() {
             {/* Modal header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Nuevo comunicado</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Se enviará por WhatsApp a los contactos seleccionados</p>
+                <h2 className="text-lg font-semibold text-gray-900">{copy.nuevo}</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {esGeneral
+                    ? 'Se enviará por WhatsApp a toda la comunidad'
+                    : 'Se enviará por WhatsApp a los salones que elijas'}
+                </p>
               </div>
               <button onClick={() => setShowForm(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
@@ -334,7 +361,7 @@ export default function BroadcastsPage() {
 
               {/* Title */}
               <div>
-                <label className="label">Título del comunicado *</label>
+                <label className="label">Título del {copy.label} *</label>
                 <input
                   className="input"
                   placeholder="Ej. Aviso de asamblea junio, Circular mantenimiento..."
@@ -344,10 +371,19 @@ export default function BroadcastsPage() {
                 />
               </div>
 
-              {/* Group selector — multi-select dropdown grouped by section */}
+              {/* Destinatarios. En Comunicados no hay nada que elegir: va a
+                  toda la comunidad, así que el selector ni se muestra. */}
               <div>
                 <label className="label">Destinatarios</label>
-                <div className="relative" ref={groupsRef}>
+
+                {esGeneral && (
+                  <div className="flex items-center gap-2 p-3 bg-colibri/10 rounded-xl">
+                    <Users size={15} className="text-colibri flex-shrink-0" />
+                    <p className="text-sm text-gray-700">Toda la comunidad</p>
+                  </div>
+                )}
+
+                <div className={`relative ${esGeneral ? 'hidden' : ''}`} ref={groupsRef}>
                   <button
                     type="button"
                     onClick={() => setGroupsOpen(o => !o)}
@@ -418,7 +454,7 @@ export default function BroadcastsPage() {
                 </div>
 
                 {/* Selected groups as removable chips */}
-                {form.group_filters.length > 0 && (
+                {!esGeneral && form.group_filters.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {form.group_filters.map(g => (
                       <span key={g} className="inline-flex items-center gap-1 px-2 py-0.5 bg-colibri/10 text-colibri rounded-lg text-xs font-medium">
