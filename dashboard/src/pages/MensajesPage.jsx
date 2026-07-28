@@ -1,19 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Plus, MessageSquare, Radio, Megaphone,
+  Plus, MessageSquare, Radio,
   ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
   Users, Calendar, FileText, ArrowRight
 } from 'lucide-react'
-import { campaignsAPI, broadcastsAPI, contactsAPI } from '../lib/api.js'
+import { broadcastsAPI, contactsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
-
-const TYPE_FILTERS = [
-  { key: 'all', label: 'Todos' },
-  { key: 'comunicado', label: 'Comunicados' },
-  { key: 'cobro', label: 'Campañas de cobro' },
-]
 
 const STATUS_CONFIG = {
   active: { label: 'Activo', cls: 'bg-green-100 text-green-700' },
@@ -24,19 +18,18 @@ const STATUS_CONFIG = {
   completed: { label: 'Completado', cls: 'bg-md-secondary-container text-md-on-secondary-container' },
 }
 
-function TypeChip({ type }) {
-  if (type === 'comunicado') {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-md-tertiary-container text-md-on-tertiary-container">
-        <Radio size={10} />
-        Comunicado
-      </span>
-    )
-  }
+// Distingue un mensaje dirigido a salones específicos de uno para toda la
+// comunidad — es la única diferencia que importa ahora que solo hay comunicados.
+function TypeChip({ scope }) {
+  const esGeneral = scope === 'general'
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-md-secondary-container text-md-on-secondary-container">
-      <Megaphone size={10} />
-      Recordatorio
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+      esGeneral
+        ? 'bg-md-tertiary-container text-md-on-tertiary-container'
+        : 'bg-md-secondary-container text-md-on-secondary-container'
+    }`}>
+      {esGeneral ? <Radio size={10} /> : <Users size={10} />}
+      {esGeneral ? 'Toda la comunidad' : 'Grupos'}
     </span>
   )
 }
@@ -50,13 +43,13 @@ function MessageCard({ item }) {
       <div className="flex items-start gap-3">
         {/* Icon container */}
         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-          item.type === 'comunicado'
+          item.scope === 'general'
             ? 'bg-md-tertiary-container'
             : 'bg-md-secondary-container'
         }`}>
-          {item.type === 'comunicado'
+          {item.scope === 'general'
             ? <Radio size={18} className="text-md-on-tertiary-container" />
-            : <Megaphone size={18} className="text-md-on-secondary-container" />
+            : <Users size={18} className="text-md-on-secondary-container" />
           }
         </div>
 
@@ -89,7 +82,7 @@ function MessageCard({ item }) {
 
           {/* Badges */}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <TypeChip type={item.type} />
+            <TypeChip scope={item.scope} />
             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${sc.cls}`}>
               {sc.label}
             </span>
@@ -164,7 +157,7 @@ function BroadcastDetailModal({ broadcast, onClose }) {
     { icon: Send,             label: 'Enviados',      sub: 'WhatsApp procesó el envío',  value: broadcast.sent_count || 0,      color: 'text-blue-600',   bg: 'bg-blue-50' },
     { icon: CheckCheck,       label: 'Entregados',    sub: 'Llegó al celular',            value: broadcast.delivered_count || 0, color: 'text-green-600',  bg: 'bg-green-50' },
     { icon: Eye,              label: 'Leídos',        sub: 'Abrió el mensaje',            value: broadcast.read_count || 0,      color: 'text-md-primary', bg: 'bg-md-primary-container/30' },
-    { icon: MousePointerClick,label: 'Tocaron enlace',sub: 'Abrió el link de pago',      value: broadcast.clicked_count || 0,   color: 'text-orange-600', bg: 'bg-orange-50' },
+    { icon: MousePointerClick,label: 'Tocaron enlace',sub: 'Abrió el enlace del mensaje', value: broadcast.clicked_count || 0,   color: 'text-orange-600', bg: 'bg-orange-50' },
   ]
 
   return (
@@ -298,62 +291,30 @@ export default function MensajesPage() {
   const navigate = useNavigate()
   const { tenant } = useAuthStore()
   const orgConfig = getOrgConfig(tenant?.org_type)
-  const [campaigns, setCampaigns] = useState([])
   const [broadcasts, setBroadcasts] = useState([])
-  const [filter, setFilter] = useState('all')
   const [isLoading, setIsLoading] = useState(true)
-  const [showNewModal, setShowNewModal] = useState(false)
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
 
   useEffect(() => {
-    Promise.all([
-      campaignsAPI.list(),
-      broadcastsAPI.list({ limit: 50 }).catch(() => ({ data: { broadcasts: [] } }))
-    ])
-      .then(([cRes, bRes]) => {
-        setCampaigns(cRes.data.campaigns || [])
-        setBroadcasts(bRes.data.broadcasts || [])
-      })
+    broadcastsAPI.list({ limit: 50 })
+      .then(res => setBroadcasts(res.data.broadcasts || []))
       .catch(console.error)
       .finally(() => setIsLoading(false))
   }, [])
 
-  // Normalize campaigns + broadcasts into a unified list
-  const allItems = [
-    ...campaigns.map(c => ({
-      id: `campaign-${c.id}`,
-      type: 'cobro',
-      title: c.name,
-      subtitle: `${c.total_contacts || 0} ${orgConfig.contactLabelPlural.toLowerCase()} · ${c.grupo_filter || 'Sin grupo'}`,
-      sent: c.msg_stats?.sent || 0,
-      total: c.total_contacts || 0,
-      status: c.status,
-      date: c.created_at,
-      href: `/campaigns/${c.id}`
-    })),
-    ...broadcasts.map(b => ({
-      id: `broadcast-${b.id}`,
-      type: 'comunicado',
-      title: b.title,
-      subtitle: b.group_filter ? `${orgConfig.groupLabel}: ${b.group_filter}` : `Todos los ${orgConfig.contactLabelPlural.toLowerCase()}`,
-      sent: b.sent_count || 0,
-      total: b.total_contacts || 0,
-      status: b.status || 'sent',
-      date: b.sent_at || b.created_at,
-      href: null,
-      broadcastData: b
-    }))
-  ].sort((a, b) => new Date(b.date) - new Date(a.date))
-
-  const filtered = filter === 'all'
-    ? allItems
-    : allItems.filter(i => i.type === filter)
-
-  const counts = {
-    all: allItems.length,
-    comunicado: allItems.filter(i => i.type === 'comunicado').length,
-    cobro: allItems.filter(i => i.type === 'cobro').length,
-  }
+  // Sin grupo seleccionado, el comunicado salió a toda la comunidad.
+  const items = broadcasts.map(b => ({
+    id: `broadcast-${b.id}`,
+    scope: b.group_filter ? 'grupos' : 'general',
+    title: b.title,
+    subtitle: b.group_filter ? `${orgConfig.groupLabel}: ${b.group_filter}` : `Todos los ${orgConfig.contactLabelPlural.toLowerCase()}`,
+    sent: b.sent_count || 0,
+    total: b.total_contacts || 0,
+    status: b.status || 'sent',
+    date: b.sent_at || b.created_at,
+    href: null,
+    broadcastData: b
+  })).sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return (
     <div className="space-y-5 relative min-h-full pb-24">
@@ -362,34 +323,8 @@ export default function MensajesPage() {
       <div>
         <h1 className="text-2xl font-semibold text-md-on-surface">Mensajes</h1>
         <p className="text-sm text-md-on-surface-variant mt-0.5">
-          Comunicados y recordatorios de cobro
+          Comunicados a salones específicos o a toda la comunidad
         </p>
-      </div>
-
-      {/* Type filter chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {TYPE_FILTERS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-colors duration-150 ${
-              filter === f.key
-                ? 'bg-md-secondary-container text-md-on-secondary-container'
-                : 'text-md-on-surface-variant hover:bg-md-surface-container border border-md-outline-variant'
-            }`}
-          >
-            {f.label}
-            {counts[f.key] > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${
-                filter === f.key
-                  ? 'bg-md-on-secondary-container/15 text-md-on-secondary-container'
-                  : 'bg-md-surface-container text-md-on-surface-variant'
-              }`}>
-                {counts[f.key]}
-              </span>
-            )}
-          </button>
-        ))}
       </div>
 
       {/* Loading skeleton */}
@@ -402,21 +337,19 @@ export default function MensajesPage() {
       {/* List */}
       {!isLoading && (
         <div className="space-y-3">
-          {filtered.length === 0 && (
+          {items.length === 0 && (
             <div className="card text-center py-16">
               <div className="w-16 h-16 rounded-full bg-md-surface-container-high flex items-center justify-center mx-auto mb-4">
                 <MessageSquare size={28} className="text-md-on-surface-variant/40" />
               </div>
-              <p className="font-medium text-md-on-surface">
-                {filter === 'all' ? 'Aún no hay mensajes' : `Sin ${filter === 'comunicado' ? 'comunicados' : 'recordatorios'}`}
-              </p>
+              <p className="font-medium text-md-on-surface">Aún no hay mensajes</p>
               <p className="text-sm text-md-on-surface-variant mt-1">
                 Toca <strong>+</strong> para enviar tu primer mensaje
               </p>
             </div>
           )}
 
-          {filtered.map(item => (
+          {items.map(item => (
             item.broadcastData
               ? <div key={item.id} onClick={() => setSelectedBroadcast(item.broadcastData)}>
                   <MessageCard item={item} />
@@ -434,81 +367,15 @@ export default function MensajesPage() {
         />
       )}
 
-      {/* FAB */}
+      {/* FAB — un solo tipo de mensaje, va directo al compositor */}
       <button
-        onClick={() => setShowNewModal(true)}
+        onClick={() => navigate('/broadcasts?new=1')}
         className="fab"
         title="Nuevo mensaje"
       >
         <Plus size={26} />
       </button>
 
-      {/* New message type selector (bottom sheet) */}
-      {showNewModal && (
-        <>
-          {/* Scrim */}
-          <div
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setShowNewModal(false)}
-          />
-          {/* Sheet */}
-          <div className="fixed bottom-0 left-0 right-0 bg-md-surface-container-low rounded-t-4xl p-6 z-50 shadow-md3-5">
-            {/* Drag handle */}
-            <div className="w-12 h-1 bg-md-outline-variant rounded-full mx-auto mb-6" />
-
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-semibold text-md-on-surface">Nuevo mensaje</h3>
-              <button
-                onClick={() => setShowNewModal(false)}
-                className="p-2 rounded-full text-md-on-surface-variant hover:bg-md-surface-container transition-colors"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <p className="text-sm text-md-on-surface-variant mb-5">¿Qué tipo de mensaje quieres enviar?</p>
-
-            <div className="space-y-3">
-              {/* Comunicado option */}
-              <button
-                onClick={() => { setShowNewModal(false); navigate('/broadcasts?new=1') }}
-                className="w-full flex items-center gap-4 p-4 rounded-3xl bg-md-tertiary-container hover:bg-md-on-tertiary-container/10 transition-colors text-left group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center flex-shrink-0">
-                  <Radio size={24} className="text-md-on-tertiary-container" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-md-on-tertiary-container">Comunicado</p>
-                  <p className="text-xs text-md-on-tertiary-container/70 mt-0.5 leading-relaxed">
-                    Aviso general a uno o varios grupos de contactos
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-md-on-tertiary-container/60 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              {/* Recordatorio de cobro option */}
-              <button
-                onClick={() => { setShowNewModal(false); navigate('/campaigns?new=1') }}
-                className="w-full flex items-center gap-4 p-4 rounded-3xl bg-md-secondary-container hover:bg-md-on-secondary-container/10 transition-colors text-left group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-white/50 flex items-center justify-center flex-shrink-0">
-                  <Megaphone size={24} className="text-md-on-secondary-container" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-md-on-secondary-container">Recordatorio de cobro</p>
-                  <p className="text-xs text-md-on-secondary-container/70 mt-0.5 leading-relaxed">
-                    Campaña automática con seguimiento de pagos y reintentos
-                  </p>
-                </div>
-                <ChevronRight size={18} className="text-md-on-secondary-container/60 flex-shrink-0 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-            </div>
-
-            {/* Safe area padding for iOS */}
-            <div className="h-4" />
-          </div>
-        </>
-      )}
     </div>
   )
 }
