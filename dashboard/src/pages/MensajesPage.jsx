@@ -287,44 +287,63 @@ function BroadcastDetailModal({ broadcast, onClose }) {
   )
 }
 
-export default function MensajesPage() {
+// Copy de cada modo. El motor de envío es el mismo (broadcasts); lo que cambia
+// es a quién va dirigido: a salones concretos o a toda la comunidad.
+const MODOS = {
+  grupos: {
+    titulo: 'Mensajes',
+    subtitulo: 'Dirigidos a salones o grupos de familias',
+    vacio: 'Aún no hay mensajes',
+    ayudaVacio: 'Toca + para enviar un mensaje a uno o varios salones',
+  },
+  general: {
+    titulo: 'Comunicados',
+    subtitulo: 'Avisos para toda la comunidad',
+    vacio: 'Aún no hay comunicados',
+    ayudaVacio: 'Toca + para enviar un aviso a toda la comunidad',
+  },
+}
+
+export default function MensajesPage({ modo = 'grupos' }) {
   const navigate = useNavigate()
   const { tenant } = useAuthStore()
   const orgConfig = getOrgConfig(tenant?.org_type)
+  const copy = MODOS[modo] || MODOS.grupos
   const [broadcasts, setBroadcasts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
 
   useEffect(() => {
+    setIsLoading(true)
     broadcastsAPI.list({ limit: 50 })
       .then(res => setBroadcasts(res.data.broadcasts || []))
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [])
+  }, [modo])
 
-  // Sin grupo seleccionado, el comunicado salió a toda la comunidad.
-  const items = broadcasts.map(b => ({
-    id: `broadcast-${b.id}`,
-    scope: b.group_filter ? 'grupos' : 'general',
-    title: b.title,
-    subtitle: b.group_filter ? `${orgConfig.groupLabel}: ${b.group_filter}` : `Todos los ${orgConfig.contactLabelPlural.toLowerCase()}`,
-    sent: b.sent_count || 0,
-    total: b.total_contacts || 0,
-    status: b.status || 'sent',
-    date: b.sent_at || b.created_at,
-    href: null,
-    broadcastData: b
-  })).sort((a, b) => new Date(b.date) - new Date(a.date))
+  // Sin grupo seleccionado, el envío salió a toda la comunidad.
+  const items = broadcasts
+    .filter(b => (b.group_filter ? 'grupos' : 'general') === modo)
+    .map(b => ({
+      id: `broadcast-${b.id}`,
+      scope: b.group_filter ? 'grupos' : 'general',
+      title: b.title,
+      subtitle: b.group_filter ? `${orgConfig.groupLabel}: ${b.group_filter}` : `Todos los ${orgConfig.contactLabelPlural.toLowerCase()}`,
+      sent: b.sent_count || 0,
+      total: b.total_contacts || 0,
+      status: b.status || 'sent',
+      date: b.sent_at || b.created_at,
+      href: null,
+      broadcastData: b
+    })).sort((a, b) => new Date(b.date) - new Date(a.date))
 
   return (
     <div className="space-y-5 relative min-h-full pb-24">
 
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-semibold text-md-on-surface">Mensajes</h1>
-        <p className="text-sm text-md-on-surface-variant mt-0.5">
-          Comunicados a salones específicos o a toda la comunidad
-        </p>
+        <h1 className="text-2xl font-semibold text-md-on-surface">{copy.titulo}</h1>
+        <p className="text-sm text-md-on-surface-variant mt-0.5">{copy.subtitulo}</p>
       </div>
 
       {/* Loading skeleton */}
@@ -342,10 +361,8 @@ export default function MensajesPage() {
               <div className="w-16 h-16 rounded-full bg-md-surface-container-high flex items-center justify-center mx-auto mb-4">
                 <MessageSquare size={28} className="text-md-on-surface-variant/40" />
               </div>
-              <p className="font-medium text-md-on-surface">Aún no hay mensajes</p>
-              <p className="text-sm text-md-on-surface-variant mt-1">
-                Toca <strong>+</strong> para enviar tu primer mensaje
-              </p>
+              <p className="font-medium text-md-on-surface">{copy.vacio}</p>
+              <p className="text-sm text-md-on-surface-variant mt-1">{copy.ayudaVacio}</p>
             </div>
           )}
 
@@ -367,11 +384,11 @@ export default function MensajesPage() {
         />
       )}
 
-      {/* FAB — un solo tipo de mensaje, va directo al compositor */}
+      {/* FAB — abre el compositor ya en el modo de esta pantalla */}
       <button
-        onClick={() => navigate('/broadcasts?new=1')}
+        onClick={() => navigate(`/broadcasts?new=1&modo=${modo}`)}
         className="fab"
-        title="Nuevo mensaje"
+        title={modo === 'general' ? 'Nuevo comunicado' : 'Nuevo mensaje'}
       >
         <Plus size={26} />
       </button>

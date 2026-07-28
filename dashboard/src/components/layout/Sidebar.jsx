@@ -7,12 +7,13 @@ import {
   Shield,
   Building2,
   LogOut,
-  X
+  X,
+  Radio
 } from 'lucide-react'
 import useAuthStore from '../../store/authStore.js'
 import { NAV_ITEMS, ROLE_LABELS } from '../../lib/permissions.js'
 
-const ICONS = { LayoutDashboard, MessageSquare, Users, Settings }
+const ICONS = { LayoutDashboard, MessageSquare, Users, Settings, Radio }
 
 const adminLinks = [
   { to: '/admin',         icon: Shield,    label: 'Panel Admin', exact: true },

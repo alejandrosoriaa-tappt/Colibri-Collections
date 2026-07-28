@@ -22,9 +22,9 @@ export const ROLE_LABELS = {
  * Paths are matched with startsWith so /x covers /x/:id.
  */
 const ROLE_ROUTES = {
-  owner:   ['/', '/mensajes', '/broadcasts', '/contacts', '/settings'],
-  billing: ['/', '/mensajes', '/broadcasts', '/contacts'],
-  comms:   ['/', '/mensajes', '/broadcasts'],
+  owner:   ['/', '/mensajes', '/comunicados', '/broadcasts', '/contacts', '/settings'],
+  billing: ['/', '/mensajes', '/comunicados', '/broadcasts', '/contacts'],
+  comms:   ['/', '/mensajes', '/comunicados', '/broadcasts'],
 }
 
 /**
@@ -44,7 +44,9 @@ export function canAccess(role, pathname) {
  */
 export const NAV_ITEMS = [
   { to: '/',         label: 'Inicio',         iconName: 'LayoutDashboard', exact: true,  roles: ['owner', 'billing', 'comms'] },
-  { to: '/mensajes', label: 'Mensajes',        iconName: 'MessageSquare',  exact: false, roles: ['owner', 'billing', 'comms'] },
+  // Mensajes = dirigido a salones/grupos · Comunicados = a toda la comunidad
+  { to: '/mensajes',    label: 'Mensajes',     iconName: 'MessageSquare',  exact: false, roles: ['owner', 'billing', 'comms'] },
+  { to: '/comunicados', label: 'Comunicados',  iconName: 'Radio',          exact: false, roles: ['owner', 'billing', 'comms'] },
   { to: '/contacts', label: 'Contactos',       iconName: 'Users',          exact: false, roles: ['owner', 'billing'] },
   { to: '/settings', label: 'Configuración',   iconName: 'Settings',       exact: false, roles: ['owner'] },
 ]

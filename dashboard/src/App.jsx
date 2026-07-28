@@ -50,9 +50,13 @@ export default function App() {
 
         <Route element={<AppLayout />}>
           {/* Accessible by all roles */}
-          <Route path="/"         element={<DashboardPage />} />
-          <Route path="/mensajes" element={<MensajesPage />} />
-          <Route path="/broadcasts" element={<BroadcastsPage />} />
+          <Route path="/"            element={<DashboardPage />} />
+          {/* Dos productos sobre el mismo motor de difusión: Mensajes va a
+              salones/grupos concretos, Comunicados va a toda la comunidad. */}
+          <Route path="/mensajes"    element={<MensajesPage modo="grupos" />} />
+          <Route path="/comunicados" element={<MensajesPage modo="general" />} />
+          {/* Compositor compartido; no aparece en el menú */}
+          <Route path="/broadcasts"  element={<BroadcastsPage />} />
 
           {/* contactos + owner */}
           <Route path="/contacts"        element={<RoleRoute><ContactsPage /></RoleRoute>} />

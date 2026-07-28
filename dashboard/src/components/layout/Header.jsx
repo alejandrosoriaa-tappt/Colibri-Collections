@@ -7,6 +7,7 @@ import { notificationsAPI } from '../../lib/api.js'
 const ROUTE_TITLES = {
   '/': 'Inicio',
   '/mensajes': 'Mensajes',
+  '/comunicados': 'Comunicados',
   '/broadcasts': 'Comunicados',
   '/contacts': 'Contactos',
   '/settings': 'Configuración',
