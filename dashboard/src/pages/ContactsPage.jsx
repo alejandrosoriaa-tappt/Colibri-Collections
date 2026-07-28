@@ -29,6 +29,13 @@ function toTitleCase(str) {
   return str.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase())
 }
 
+// Devuelve el catálogo incluyendo el valor actual si no es canónico, para que
+// un dato viejo (ej. grado "1°" importado de Excel) no se pierda al editar.
+function withCurrent(options, current) {
+  if (current && !options.includes(current)) return [current, ...options]
+  return options
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('es-MX', {
@@ -1179,18 +1186,38 @@ function EditFamilyModal({ familia, papas, alumnos, orgType = 'colegio', onClose
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="label">Sección</label>
-                      <input className="input" value={a.seccion}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, seccion: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.seccion}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx
+                          ? { ...x, seccion: e.target.value, grado: '' }   // cambiar sección resetea el grado
+                          : x))}
+                      >
+                        <option value="">Sección</option>
+                        {withCurrent(SECCIONES, a.seccion).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="label">Grado</label>
-                      <input className="input" value={a.grado}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.grado}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))}
+                      >
+                        <option value="">Grado</option>
+                        {withCurrent(GRADOS[a.seccion] || [], a.grado).map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="label">Salón</label>
-                      <input className="input" value={a.salon}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.salon}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))}
+                      >
+                        <option value="">Salón</option>
+                        {withCurrent(SALONES, a.salon).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>
