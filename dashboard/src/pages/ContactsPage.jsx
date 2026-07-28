@@ -168,6 +168,16 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
       }
 
       // ─────── OTROS TIPOS: CONTACTO GENÉRICO ─────────
+      if (!form.nombre.trim()) {
+        throw new Error(isCondominio ? 'El nombre del condómino es requerido' : 'El nombre es requerido')
+      }
+      if (isCondominio && !form.num_interior.trim()) {
+        throw new Error('El número interior es requerido')
+      }
+      if (!form.telefono.trim()) {
+        throw new Error('El WhatsApp es requerido')
+      }
+
       await contactsAPI.create({
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim() || undefined,
@@ -372,7 +382,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                 <div>
                   <label className="label">Número interior <span className="text-md-error">*</span></label>
                   <input className="input" value={form.num_interior} onChange={set('num_interior')}
-                    placeholder="Ej. 203" required />
+                    placeholder="Ej. 203" />
                 </div>
               </div>
             </>
@@ -435,7 +445,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
               <div>
                 <label className="label">WhatsApp <span className="text-md-error">*</span></label>
                 <input className="input font-mono" value={form.telefono} onChange={set('telefono')}
-                  placeholder="+521XXXXXXXXXX" required />
+                  placeholder="+521XXXXXXXXXX" />
                 <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
               </div>
 
