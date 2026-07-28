@@ -973,7 +973,10 @@ function AiImportModal({ onClose, onDone }) {
                 {[
                   { label: 'Contactos', value: s?.total_contactos },
                   { label: 'Alumnos', value: s?.alumnos },
-                  { label: 'Con teléfono', value: s?.con_telefono }
+                  { label: 'Mamás', value: s?.mamas },
+                  { label: 'Papás', value: s?.papas },
+                  { label: 'Con teléfono', value: s?.con_telefono },
+                  { label: 'Salones', value: s?.salones }
                 ].map((x) => (
                   <div key={x.label} className="bg-md-surface-container-low rounded-xl p-3 text-center">
                     <div className="text-xl font-semibold text-md-on-surface">{x.value ?? 0}</div>
@@ -982,13 +985,25 @@ function AiImportModal({ onClose, onDone }) {
                 ))}
               </div>
 
-              {s?.grupos_lista?.length > 0 && (
+              {s?.padres_sin_telefono > 0 && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">
+                    {s.padres_sin_telefono} {s.padres_sin_telefono === 1 ? 'papá/mamá viene' : 'papás/mamás vienen'} sin
+                    teléfono en el archivo. {s.padres_sin_telefono === 1 ? 'Se importa' : 'Se importan'} igual para no
+                    perder el registro, pero no {s.padres_sin_telefono === 1 ? 'podrá' : 'podrán'} recibir WhatsApp
+                    hasta que completes el número.
+                  </p>
+                </div>
+              )}
+
+              {s?.salones_lista?.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
-                    Grupos/salones detectados ({s.grupos})
+                    Grupos/salones detectados ({s.salones})
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {s.grupos_lista.map((g) => (
+                    {s.salones_lista.map((g) => (
                       <span key={g} className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{g}</span>
                     ))}
                   </div>

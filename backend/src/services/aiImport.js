@@ -31,10 +31,13 @@ function tidy(str) {
   if (str == null) return ''
   return String(str).replace(/\s+/g, ' ').trim()
 }
+// "GUTIÉRREZ MENDOZA" → "Gutiérrez Mendoza".
+// Usa \s como separador (no \b) porque \b trata É/Í/Á como límite de palabra
+// y devolvía "GutiÉRrez". Mismo criterio que toTitleCase del dashboard.
 function titleCase(str) {
   return tidy(str)
     .toLowerCase()
-    .replace(/\b([a-záéíóúñü])/g, (m) => m.toUpperCase())
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 }
 
 // ── Teléfonos: soporta varios separados por / , ; ────────────────────────────
@@ -185,7 +188,8 @@ Devuelve EXACTAMENTE este JSON (sin texto extra):
 }
 
 // ── Aplica el mapeo a TODAS las filas ────────────────────────────────────────
-function applyMapping(sheets, mapping) {
+// Exportada para poder verificarla sin llamar a Claude.
+export function applyMapping(sheets, mapping) {
   const colIdx = (letter) => (letter && letter !== 'null' ? XLSX.utils.decode_col(letter) : null)
   const C = mapping.columns || {}
   const cols = {
@@ -204,6 +208,7 @@ function applyMapping(sheets, mapping) {
 
   const contacts = []
   const byPhone = new Set()
+  const parentsSeen = new Map()   // "familia|rol|nombre" → contacto ya creado
   let alumnos = 0
 
   for (const s of sheets) {
@@ -246,19 +251,42 @@ function applyMapping(sheets, mapping) {
         ]) {
           const nom = get(nomI)
           const emailVal = get(emailI) || null
-          for (const tel of parsePhones(telI == null ? '' : row[telI])) {
-            if (byPhone.has(tel)) continue
-            byPhone.add(tel)
-            contacts.push({
-              relationship_type: tipo,
-              nombre: titleCase(nom) || (tipo === 'mama' ? 'Mamá' : 'Papá'),
-              apellido: familia,
-              nombre_familia: familia,
-              salon: null, seccion: null, grado: null, grupo: null,
-              telefono: tel,
-              email: emailVal
-            })
+          const telefonos = parsePhones(telI == null ? '' : row[telI])
+
+          // La columna viene vacía: esa mamá/papá no existe en el archivo.
+          // Ojo: basta el NOMBRE para darla de alta; no exigimos teléfono.
+          if (!nom && telefonos.length === 0) continue
+
+          const nombreLimpio = titleCase(nom) || (tipo === 'mama' ? 'Mamá' : 'Papá')
+          const clave = `${familia}|${tipo}|${nombreLimpio}`
+
+          // Un contacto por PERSONA, no uno por teléfono. Tomamos el primer
+          // número que no esté tomado; si todos lo están (mamá y papá comparten
+          // la línea de casa) la persona se guarda igual sin teléfono, porque
+          // contacts tiene UNIQUE(tenant_id, telefono) y si no se perdería.
+          const tel = telefonos.find((t) => !byPhone.has(t)) || null
+
+          // Hermanos: los papás ya se crearon en la fila del otro hijo.
+          // Completamos lo que falte en vez de duplicar a la persona.
+          const yaCreado = parentsSeen.get(clave)
+          if (yaCreado) {
+            if (!yaCreado.telefono && tel) { yaCreado.telefono = tel; byPhone.add(tel) }
+            if (!yaCreado.email && emailVal) yaCreado.email = emailVal
+            continue
           }
+
+          if (tel) byPhone.add(tel)
+          const padre = {
+            relationship_type: tipo,
+            nombre: nombreLimpio,
+            apellido: familia,
+            nombre_familia: familia,
+            salon: null, seccion: null, grado: null, grupo: null,
+            telefono: tel,
+            email: emailVal
+          }
+          parentsSeen.set(clave, padre)
+          contacts.push(padre)
         }
       } else {
         // Estructura simple: una fila = un contacto
@@ -298,11 +326,22 @@ export async function analyzeContactsFile(buffer) {
   const salones = [...new Set(contacts.map((c) => c.salon).filter(Boolean))].sort()
   const secciones = [...new Set(contacts.map((c) => c.seccion).filter(Boolean))].sort()
 
+  const mamas = contacts.filter((c) => c.relationship_type === 'mama').length
+  const papas = contacts.filter((c) => c.relationship_type === 'papa').length
+  // Un padre/madre sin teléfono se importa igual, pero no puede recibir
+  // WhatsApp: hay que mostrarlo para que el colegio complete el dato.
+  const padresSinTel = contacts.filter(
+    (c) => (c.relationship_type === 'mama' || c.relationship_type === 'papa') && !c.telefono
+  ).length
+
   return {
     mapping,
     summary: {
       total_contactos: contacts.length,
       alumnos,
+      mamas,
+      papas,
+      padres_sin_telefono: padresSinTel,
       con_telefono: conTel,
       hojas_procesadas: sheets.length,
       salones: salones.length,
