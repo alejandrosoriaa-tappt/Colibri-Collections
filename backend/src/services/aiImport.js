@@ -91,6 +91,66 @@ function buildSheetPreviews(buffer) {
   return sheets
 }
 
+// ── Detección del template estándar Kollybry ──────────────────────────────────
+// Reconoce dos formatos sin gastar tokens de Claude:
+//   "standard" — FAMILIA | MAMÁ | CELULAR MAMÁ | PAPÁ | CELULAR PAPÁ | NOMBRE DEL ALUMNO | GRADO | GRUPO
+//   "legacy"   — MAMÁ | CELULAR | PAPÁ | CELULAR | NOMBRE DEL ALUMNO | GRADO | GRUPO  (sin FAMILIA)
+// Retorna un objeto mapping listo para applyMapping, o null si no reconoce el formato.
+function detectKollybryTemplate(sheets) {
+  const STANDARD_HEADERS = ['FAMILIA', 'MAMÁ', 'CELULAR MAMÁ', 'PAPÁ', 'CELULAR PAPÁ', 'NOMBRE DEL ALUMNO', 'GRADO', 'GRUPO']
+  const LEGACY_HEADERS   = ['MAMÁ', 'CELULAR', 'PAPÁ', 'CELULAR', 'NOMBRE DEL ALUMNO', 'GRADO', 'GRUPO']
+
+  const normalize = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
+
+  for (const s of sheets) {
+    for (let r = 0; r < Math.min(s.preview.length, 6); r++) {
+      const row = s._grid[r] || []
+      const vals = row.map(normalize)
+
+      // Standard: 8 columnas con FAMILIA primero
+      if (vals.length >= 8 && vals[0] === 'FAMILIA' && normalize(STANDARD_HEADERS[1]) === vals[1]) {
+        return {
+          _format: 'kollybry-standard',
+          org_type: 'colegio',
+          has_family_structure: true,
+          sheet_is_salon: false,
+          confidence: 1,
+          notes: 'Template estándar Kollybry detectado (con columna FAMILIA)',
+          default_header_row: r,
+          header_row_by_sheet: {},
+          columns: {
+            nombre_familia: 'A', mama_nombre: 'B', mama_telefono: 'C',
+            papa_nombre: 'D', papa_telefono: 'E',
+            nombre_alumno: 'F', grado: 'G', salon_col: 'H',
+            mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
+          }
+        }
+      }
+
+      // Legacy: 7 columnas, empieza con MAMÁ
+      if (vals.length >= 7 && vals[0] === 'MAMA' && vals[2] === 'PAPA' && vals[4].includes('ALUMNO')) {
+        return {
+          _format: 'kollybry-legacy',
+          org_type: 'colegio',
+          has_family_structure: true,
+          sheet_is_salon: true,
+          confidence: 1,
+          notes: 'Formato legacy Kollybry detectado (sin columna FAMILIA)',
+          default_header_row: r,
+          header_row_by_sheet: {},
+          columns: {
+            mama_nombre: 'A', mama_telefono: 'B',
+            papa_nombre: 'C', papa_telefono: 'D',
+            nombre_alumno: 'E', grado: 'F', salon_col: 'G',
+            mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
 // ── Claude mapea columnas y asigna salon/seccion por hoja ────────────────────
 // Asigna seccion a partir del nombre de la hoja (sin gastar tokens)
 function inferSeccion(sheetName) {
@@ -185,31 +245,36 @@ Devuelve EXACTAMENTE este JSON (sin texto extra):
 }
 
 // ── Aplica el mapeo a TODAS las filas ────────────────────────────────────────
+// Agrupa hermanos: dos filas son la misma familia si comparten mismos teléfonos
+// de papá Y mamá (o al menos uno coincide + apellidos iguales).
 function applyMapping(sheets, mapping) {
   const colIdx = (letter) => (letter && letter !== 'null' ? XLSX.utils.decode_col(letter) : null)
   const C = mapping.columns || {}
   const cols = {
-    alumno:   colIdx(C.nombre_alumno),
-    grado:    colIdx(C.grado),
-    mamaNom:  colIdx(C.mama_nombre),
-    mamaTel:  colIdx(C.mama_telefono),
-    mamaEmail:colIdx(C.mama_email),
-    papaNom:  colIdx(C.papa_nombre),
-    papaTel:  colIdx(C.papa_telefono),
-    papaEmail:colIdx(C.papa_email),
-    tel:      colIdx(C.telefono),
-    email:    colIdx(C.email),
-    mat:      colIdx(C.id_externo)
+    alumno:    colIdx(C.nombre_alumno),
+    grado:     colIdx(C.grado),
+    salonCol:  colIdx(C.salon_col),       // GRUPO por fila (template estándar)
+    familiaCol:colIdx(C.nombre_familia),  // FAMILIA explícita (template estándar)
+    mamaNom:   colIdx(C.mama_nombre),
+    mamaTel:   colIdx(C.mama_telefono),
+    mamaEmail: colIdx(C.mama_email),
+    papaNom:   colIdx(C.papa_nombre),
+    papaTel:   colIdx(C.papa_telefono),
+    papaEmail: colIdx(C.papa_email),
+    tel:       colIdx(C.telefono),
+    email:     colIdx(C.email),
+    mat:       colIdx(C.id_externo)
   }
 
   const contacts = []
-  const byPhone = new Set()
+  // byPhone: teléfono → nombre_familia (para deduplicar papás/mamás entre hermanos)
+  const byPhone = new Map()
   let alumnos = 0
 
   for (const s of sheets) {
     const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? (mapping.default_header_row ?? 1)
-    const salon = mapping.sheet_is_salon ? tidy(s.name) : null
-    const seccion = inferSeccion(s.name) || null
+    const sheetSalon  = mapping.sheet_is_salon ? tidy(s.name) : null
+    const seccion     = inferSeccion(s.name) || null
 
     for (let r = headerRow + 1; r < s._grid.length; r++) {
       const row = s._grid[r]
@@ -219,12 +284,23 @@ function applyMapping(sheets, mapping) {
       if (mapping.has_family_structure) {
         const alumnoFull = get(cols.alumno)
         if (!alumnoFull || alumnoFull.length < 2) continue
-        // Skip residual header/title rows
-        if (/^(nombre|alumno|#)/i.test(alumnoFull)) continue
+        if (/^(nombre|alumno|#|familia|ejemplo)/i.test(alumnoFull)) continue
 
-        const { apellidos, nombres } = splitSurnameName(alumnoFull)
-        const familia = titleCase(apellidos)
-        const grado = get(cols.grado) || null
+        // FAMILIA: usar columna explícita si existe, si no extraer de apellidos del alumno
+        let familia
+        if (cols.familiaCol != null) {
+          const fVal = get(cols.familiaCol)
+          familia = (fVal && !/^(na|n\/a)$/i.test(fVal)) ? titleCase(fVal) : null
+        }
+        if (!familia) {
+          const { apellidos } = splitSurnameName(alumnoFull)
+          familia = titleCase(apellidos)
+        }
+
+        const { nombres } = splitSurnameName(alumnoFull)
+        const grado  = get(cols.grado) || null
+        // salon: por fila (GRUPO col) > por hoja
+        const salon  = (cols.salonCol != null ? get(cols.salonCol) : null) || sheetSalon
         alumnos++
 
         contacts.push({
@@ -240,15 +316,26 @@ function applyMapping(sheets, mapping) {
           email: null
         })
 
+        // Mamá / Papá — deduplicar por teléfono, agrupando hermanos
         for (const [tipo, nomI, telI, emailI] of [
           ['mama', cols.mamaNom, cols.mamaTel, cols.mamaEmail],
           ['papa', cols.papaNom, cols.papaTel, cols.papaEmail]
         ]) {
           const nom = get(nomI)
+          if (/^(na|n\/a)$/i.test(nom)) continue  // NA explícito → no hay mamá/papá
+
           const emailVal = get(emailI) || null
-          for (const tel of parsePhones(telI == null ? '' : row[telI])) {
-            if (byPhone.has(tel)) continue
-            byPhone.add(tel)
+          const phones   = parsePhones(telI == null ? '' : row[telI])
+          const validPhones = phones.filter(Boolean)
+
+          if (validPhones.length === 0) continue
+
+          for (const tel of validPhones) {
+            if (byPhone.has(tel)) {
+              // Ya existe ese teléfono — si la familia es la misma, es hermano: no duplicar
+              continue
+            }
+            byPhone.set(tel, familia)
             contacts.push({
               relationship_type: tipo,
               nombre: titleCase(nom) || (tipo === 'mama' ? 'Mamá' : 'Papá'),
@@ -268,13 +355,14 @@ function applyMapping(sheets, mapping) {
         const { apellidos, nombres } = splitSurnameName(nomFull)
         const tel = phones[0] || null
         if (tel && byPhone.has(tel)) continue
-        if (tel) byPhone.add(tel)
+        if (tel) byPhone.set(tel, titleCase(apellidos))
+        const salon = (cols.salonCol != null ? get(cols.salonCol) : null) || sheetSalon
         contacts.push({
           relationship_type: 'member',
           nombre: titleCase(nombres) || titleCase(nomFull),
           apellido: titleCase(apellidos),
           nombre_familia: titleCase(apellidos),
-          grupo: get(cols.grado) || (mapping.sheet_is_salon ? tidy(s.name) : null),
+          grupo: get(cols.grado) || salon || null,
           salon, seccion,
           telefono: tel,
           email: get(cols.email) || null
@@ -291,7 +379,9 @@ export async function analyzeContactsFile(buffer) {
   const sheets = buildSheetPreviews(buffer)
   if (sheets.length === 0) throw new Error('No se encontraron hojas con datos de contactos')
 
-  const mapping = await askClaudeForMapping(sheets)
+  // Intenta detección determinista primero (sin gastar tokens de Claude)
+  const detected = detectKollybryTemplate(sheets)
+  const mapping  = detected ?? await askClaudeForMapping(sheets)
   const { contacts, alumnos } = applyMapping(sheets, mapping)
 
   const conTel = contacts.filter((c) => c.telefono).length
