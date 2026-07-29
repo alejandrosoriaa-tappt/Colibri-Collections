@@ -1,41 +1,28 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MessageSquare, ArrowRight, Loader2, Plus } from 'lucide-react'
-import CampaignCard from '../components/campaigns/CampaignCard.jsx'
+import { MessageSquare, Loader2, Plus } from 'lucide-react'
 import KpiBar from '../components/shared/KpiBar.jsx'
-import { campaignsAPI, broadcastsAPI } from '../lib/api.js'
+import { broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
 
 export default function DashboardPage() {
   const { tenant } = useAuthStore()
   const orgConfig = getOrgConfig(tenant?.org_type)
-  const [campaigns, setCampaigns] = useState([])
   const [broadcasts, setBroadcasts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    Promise.all([
-      campaignsAPI.list(),
-      broadcastsAPI.list({ limit: 3 }).catch(() => ({ data: { broadcasts: [] } }))
-    ])
-      .then(([cRes, bRes]) => {
-        setCampaigns(cRes.data.campaigns || [])
-        setBroadcasts(bRes.data.broadcasts || [])
-      })
+    broadcastsAPI.list({ limit: 50 })
+      .then(res => setBroadcasts(res.data.broadcasts || []))
       .catch(console.error)
       .finally(() => setIsLoading(false))
   }, [])
 
-  const activeCampaigns = campaigns.filter(c => c.status === 'active')
-
   // Aggregate communication stats
-  const totalEnviados = campaigns.reduce((acc, c) => acc + (c.msg_stats?.sent || 0), 0)
-    + broadcasts.reduce((acc, b) => acc + (b.sent_count || 0), 0)
-  const totalEntregados = campaigns.reduce((acc, c) => acc + (c.msg_stats?.delivered || 0), 0)
-    + broadcasts.reduce((acc, b) => acc + (b.delivered_count || 0), 0)
-  const totalLeidos = campaigns.reduce((acc, c) => acc + (c.msg_stats?.read || 0), 0)
-    + broadcasts.reduce((acc, b) => acc + (b.read_count || 0), 0)
+  const totalEnviados   = broadcasts.reduce((acc, b) => acc + (b.sent_count || 0), 0)
+  const totalEntregados = broadcasts.reduce((acc, b) => acc + (b.delivered_count || 0), 0)
+  const totalLeidos     = broadcasts.reduce((acc, b) => acc + (b.read_count || 0), 0)
 
   if (isLoading) {
     return (
@@ -44,8 +31,6 @@ export default function DashboardPage() {
       </div>
     )
   }
-
-  const isEmpty = campaigns.length === 0 && broadcasts.length === 0
 
   return (
     <div className="space-y-6">
@@ -67,36 +52,20 @@ export default function DashboardPage() {
       />
 
       {/* Empty state */}
-      {isEmpty && (
+      {broadcasts.length === 0 && (
         <div className="card text-center py-14">
           <div className="w-16 h-16 rounded-full bg-md-primary-container flex items-center justify-center mx-auto mb-4">
             <MessageSquare size={28} className="text-md-on-primary-container" />
           </div>
           <p className="font-semibold text-md-on-surface text-lg">¡Bienvenido a Kollybry!</p>
           <p className="text-md-on-surface-variant text-sm mt-2 max-w-xs mx-auto">
-            Envía tu primer mensaje a tus {orgConfig.contactLabelPlural.toLowerCase()}. Puedes crear comunicados generales o recordatorios de {orgConfig.amountLabel.toLowerCase()}.
+            Envía tu primer mensaje a tus {orgConfig.contactLabelPlural.toLowerCase()}.
+            Puedes dirigirlo a ciertos salones o a toda la comunidad.
           </p>
           <Link to="/mensajes" className="btn-primary inline-flex mt-6 text-sm gap-2">
             <Plus size={16} />
             Crear primer mensaje
           </Link>
-        </div>
-      )}
-
-      {/* Active campaigns */}
-      {activeCampaigns.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-md-on-surface">Campañas activas</h2>
-            <Link to="/campaigns" className="text-sm text-md-primary hover:text-md-primary/80 flex items-center gap-1 font-medium">
-              Ver todas <ArrowRight size={14} />
-            </Link>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {activeCampaigns.slice(0, 3).map(c => (
-              <CampaignCard key={c.id} campaign={c} />
-            ))}
-          </div>
         </div>
       )}
     </div>

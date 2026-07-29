@@ -51,26 +51,6 @@ export const authAPI = {
 }
 
 // ================================================================
-// CAMPAIGNS
-// ================================================================
-export const campaignsAPI = {
-  list: () => api.get('/api/campaigns'),
-  get: (id) => api.get(`/api/campaigns/${id}`),
-  create: (data) => api.post('/api/campaigns', data),
-  update: (id, data) => api.patch(`/api/campaigns/${id}`, data),
-  delete: (id) => api.delete(`/api/campaigns/${id}`),
-  activate: (id) => api.post(`/api/campaigns/${id}/activate`),
-  pause: (id) => api.post(`/api/campaigns/${id}/pause`),
-  getMessages: (id) => api.get(`/api/campaigns/${id}/messages`),
-  updateMessage: (campaignId, msgId, data) =>
-    api.patch(`/api/campaigns/${campaignId}/messages/${msgId}`, data),
-  getInvoices: (id, params) => api.get(`/api/campaigns/${id}/invoices`, { params }),
-  addContacts: (id, data) => api.post(`/api/campaigns/${id}/add-contacts`, data),
-  populateFromGroup: (id) => api.post(`/api/campaigns/${id}/populate-from-group`),
-  sendMessage: (campaignId, msgId) => api.post(`/api/campaigns/${campaignId}/messages/${msgId}/send`)
-}
-
-// ================================================================
 // CONTACTS
 // ================================================================
 export const contactsAPI = {
@@ -100,27 +80,6 @@ export const contactsAPI = {
 }
 
 // ================================================================
-// COBRANZA POR COLOR
-// ================================================================
-export const cobranzaAPI = {
-  analyze: (formData) => api.post('/api/cobranza/analyze', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 120000
-  }),
-  commit: (campaigns) => api.post('/api/cobranza/commit', { campaigns }, { timeout: 120000 }),
-  getTemplates: () => api.get('/api/cobranza/templates')
-}
-
-// ================================================================
-// INVOICES
-// ================================================================
-export const invoicesAPI = {
-  markPaid: (id, data) => api.patch(`/api/invoices/${id}/mark-paid`, data),
-  addNotes: (id, data) => api.patch(`/api/invoices/${id}/notes`, data),
-  suspend: (id) => api.patch(`/api/invoices/${id}/suspend`)
-}
-
-// ================================================================
 // UPLOAD
 // ================================================================
 export const uploadAPI = {
@@ -132,21 +91,6 @@ export const uploadAPI = {
   getStatus: (id) => api.get(`/api/upload/${id}`),
   downloadLayout: (orgType) =>
     api.get('/api/upload/layout', { params: orgType ? { org_type: orgType } : {}, responseType: 'blob' })
-}
-
-// ================================================================
-// MESSAGES
-// ================================================================
-export const messagesAPI = {
-  list: (params) => api.get('/api/messages', { params })
-}
-
-// ================================================================
-// GOOGLE SHEETS
-// ================================================================
-export const sheetsAPI = {
-  preview: (url) => api.get('/api/sheets/preview', { params: { url } }),
-  import:  (data) => api.post('/api/sheets/import', data)
 }
 
 // ================================================================

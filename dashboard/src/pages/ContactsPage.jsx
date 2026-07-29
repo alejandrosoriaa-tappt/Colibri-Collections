@@ -29,6 +29,13 @@ function toTitleCase(str) {
   return str.toLowerCase().replace(/(^|\s)\S/g, c => c.toUpperCase())
 }
 
+// Devuelve el catálogo incluyendo el valor actual si no es canónico, para que
+// un dato viejo (ej. grado "1°" importado de Excel) no se pierda al editar.
+function withCurrent(options, current) {
+  if (current && !options.includes(current)) return [current, ...options]
+  return options
+}
+
 function formatDate(dateStr) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('es-MX', {
@@ -168,6 +175,16 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
       }
 
       // ─────── OTROS TIPOS: CONTACTO GENÉRICO ─────────
+      if (!form.nombre.trim()) {
+        throw new Error(isCondominio ? 'El nombre del condómino es requerido' : 'El nombre es requerido')
+      }
+      if (isCondominio && !form.num_interior.trim()) {
+        throw new Error('El número interior es requerido')
+      }
+      if (!form.telefono.trim()) {
+        throw new Error('El WhatsApp es requerido')
+      }
+
       await contactsAPI.create({
         nombre: form.nombre.trim(),
         apellido: form.apellido.trim() || undefined,
@@ -372,7 +389,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                 <div>
                   <label className="label">Número interior <span className="text-md-error">*</span></label>
                   <input className="input" value={form.num_interior} onChange={set('num_interior')}
-                    placeholder="Ej. 203" required />
+                    placeholder="Ej. 203" />
                 </div>
               </div>
             </>
@@ -435,7 +452,7 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
               <div>
                 <label className="label">WhatsApp <span className="text-md-error">*</span></label>
                 <input className="input font-mono" value={form.telefono} onChange={set('telefono')}
-                  placeholder="+521XXXXXXXXXX" required />
+                  placeholder="+521XXXXXXXXXX" />
                 <p className="text-xs text-md-on-surface-variant mt-1.5">Con código de país: +5215512345678</p>
               </div>
 
@@ -956,7 +973,10 @@ function AiImportModal({ onClose, onDone }) {
                 {[
                   { label: 'Contactos', value: s?.total_contactos },
                   { label: 'Alumnos', value: s?.alumnos },
-                  { label: 'Con teléfono', value: s?.con_telefono }
+                  { label: 'Mamás', value: s?.mamas },
+                  { label: 'Papás', value: s?.papas },
+                  { label: 'Con teléfono', value: s?.con_telefono },
+                  { label: 'Salones', value: s?.salones }
                 ].map((x) => (
                   <div key={x.label} className="bg-md-surface-container-low rounded-xl p-3 text-center">
                     <div className="text-xl font-semibold text-md-on-surface">{x.value ?? 0}</div>
@@ -965,13 +985,25 @@ function AiImportModal({ onClose, onDone }) {
                 ))}
               </div>
 
-              {s?.grupos_lista?.length > 0 && (
+              {s?.padres_sin_telefono > 0 && (
+                <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                  <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-700">
+                    {s.padres_sin_telefono} {s.padres_sin_telefono === 1 ? 'papá/mamá viene' : 'papás/mamás vienen'} sin
+                    teléfono en el archivo. {s.padres_sin_telefono === 1 ? 'Se importa' : 'Se importan'} igual para no
+                    perder el registro, pero no {s.padres_sin_telefono === 1 ? 'podrá' : 'podrán'} recibir WhatsApp
+                    hasta que completes el número.
+                  </p>
+                </div>
+              )}
+
+              {s?.salones_lista?.length > 0 && (
                 <div>
                   <p className="text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide mb-1.5">
-                    Grupos/salones detectados ({s.grupos})
+                    Grupos/salones detectados ({s.salones})
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {s.grupos_lista.map((g) => (
+                    {s.salones_lista.map((g) => (
                       <span key={g} className="text-[11px] px-1.5 py-0.5 bg-md-primary-container/40 text-md-on-primary-container rounded">{g}</span>
                     ))}
                   </div>
@@ -1169,18 +1201,38 @@ function EditFamilyModal({ familia, papas, alumnos, orgType = 'colegio', onClose
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="label">Sección</label>
-                      <input className="input" value={a.seccion}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, seccion: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.seccion}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx
+                          ? { ...x, seccion: e.target.value, grado: '' }   // cambiar sección resetea el grado
+                          : x))}
+                      >
+                        <option value="">Sección</option>
+                        {withCurrent(SECCIONES, a.seccion).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="label">Grado</label>
-                      <input className="input" value={a.grado}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.grado}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))}
+                      >
+                        <option value="">Grado</option>
+                        {withCurrent(GRADOS[a.seccion] || [], a.grado).map(g => <option key={g} value={g}>{g}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="label">Salón</label>
-                      <input className="input" value={a.salon}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))} />
+                      <select
+                        className="input"
+                        value={a.salon}
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))}
+                      >
+                        <option value="">Salón</option>
+                        {withCurrent(SALONES, a.salon).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>

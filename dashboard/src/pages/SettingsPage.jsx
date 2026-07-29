@@ -540,7 +540,7 @@ export default function SettingsPage() {
 // ── Role metadata ──────────────────────────────────────────────
 const ROLES = [
   { value: 'owner',   label: 'Administrador', icon: Crown,     bg: 'bg-md-primary-container',   text: 'text-md-on-primary-container' },
-  { value: 'billing', label: 'Cobranza',       icon: CreditCard, bg: 'bg-amber-100',              text: 'text-amber-800' },
+  { value: 'billing', label: 'Coordinación',   icon: Users,     bg: 'bg-amber-100',              text: 'text-amber-800' },
   { value: 'comms',   label: 'Comunicados',    icon: Megaphone, bg: 'bg-green-100',              text: 'text-green-800' },
 ]
 const roleInfo = (role) => ROLES.find(r => r.value === role) || ROLES[2]
@@ -649,8 +649,8 @@ function InviteModal({ onClose, onInvited }) {
                     <p className="text-sm font-medium text-md-on-surface">{r.label}</p>
                     <p className="text-xs text-md-on-surface-variant">
                       {r.value === 'owner'   && 'Acceso completo a todas las funciones'}
-                      {r.value === 'billing' && 'Campañas, facturas y contactos'}
-                      {r.value === 'comms'   && 'Solo comunicados y difusiones'}
+                      {r.value === 'billing' && 'Mensajes y padrón de contactos'}
+                      {r.value === 'comms'   && 'Solo mensajes y comunicados'}
                     </p>
                   </div>
                 </label>

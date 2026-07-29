@@ -7,12 +7,7 @@ import AppLayout from './components/layout/AppLayout.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
-import CampaignsPage from './pages/CampaignsPage.jsx'
-import CampaignDetailPage from './pages/CampaignDetailPage.jsx'
-import CobranzaPage from './pages/CobranzaPage.jsx'
-import UploadPage from './pages/UploadPage.jsx'
 import ContactsPage from './pages/ContactsPage.jsx'
-import MessagesPage from './pages/MessagesPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import BroadcastsPage from './pages/BroadcastsPage.jsx'
 import MensajesPage from './pages/MensajesPage.jsx'
@@ -55,17 +50,16 @@ export default function App() {
 
         <Route element={<AppLayout />}>
           {/* Accessible by all roles */}
-          <Route path="/"         element={<DashboardPage />} />
-          <Route path="/mensajes" element={<MensajesPage />} />
-          <Route path="/broadcasts" element={<BroadcastsPage />} />
+          <Route path="/"            element={<DashboardPage />} />
+          {/* Dos productos sobre el mismo motor de difusión: Mensajes va a
+              salones/grupos concretos, Comunicados va a toda la comunidad. */}
+          <Route path="/mensajes"    element={<MensajesPage modo="grupos" />} />
+          <Route path="/comunicados" element={<MensajesPage modo="general" />} />
+          {/* Compositor compartido; no aparece en el menú */}
+          <Route path="/broadcasts"  element={<BroadcastsPage />} />
 
-          {/* billing + owner */}
+          {/* contactos + owner */}
           <Route path="/contacts"        element={<RoleRoute><ContactsPage /></RoleRoute>} />
-          <Route path="/cobranza"        element={<RoleRoute><CobranzaPage /></RoleRoute>} />
-          <Route path="/campaigns"       element={<RoleRoute><CampaignsPage /></RoleRoute>} />
-          <Route path="/campaigns/:id"   element={<RoleRoute><CampaignDetailPage /></RoleRoute>} />
-          <Route path="/upload"          element={<RoleRoute><UploadPage /></RoleRoute>} />
-          <Route path="/messages"        element={<RoleRoute><MessagesPage /></RoleRoute>} />
 
           {/* owner only */}
           <Route path="/settings"        element={<RoleRoute><SettingsPage /></RoleRoute>} />
