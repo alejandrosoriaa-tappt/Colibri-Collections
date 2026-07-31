@@ -1466,7 +1466,16 @@ export default function ContactsPage() {
           onClose={() => setShowAiImport(false)}
           onDone={(r) => {
             setShowAiImport(false)
-            showToast(`Importados ${r.inserted} contactos${r.skipped ? ` (${r.skipped} duplicados omitidos)` : ''}`)
+            // Los rechazados se distinguen de los duplicados: un duplicado es
+            // normal al reimportar, un rechazo significa que ese contacto NO
+            // quedó guardado y hay que verlo.
+            const partes = [`Importados ${r.inserted} contactos`]
+            if (r.duplicados) partes.push(`${r.duplicados} ya existían`)
+            if (r.fallidos) partes.push(`⚠️ ${r.fallidos} no se pudieron guardar`)
+            showToast(partes.join(' · '))
+            if (r.detalle_fallidos?.length) {
+              console.error('Contactos rechazados en la importación:', r.detalle_fallidos)
+            }
             load()
             contactsAPI.catalog().then(res => setCatalog(res.data.combos || [])).catch(() => {})
           }}

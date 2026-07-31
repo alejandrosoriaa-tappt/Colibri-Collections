@@ -213,26 +213,48 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
       return row
     })
 
-    let inserted = 0, skipped = 0
-    const CHUNK = 200
-    for (let i = 0; i < rows.length; i += CHUNK) {
-      const slice = rows.slice(i, i + CHUNK)
-      const { data, error } = await supabase
-        .from('contacts')
-        .upsert(slice, { onConflict: 'tenant_id,telefono', ignoreDuplicates: true })
-        .select('id')
-      if (error) {
-        // si falla el lote completo, insertamos 1 por 1 para no perder todo
-        for (const one of slice) {
-          const { error: e1 } = await supabase.from('contacts').insert(one)
-          if (e1) skipped++; else inserted++
-        }
+    let inserted = 0, duplicados = 0
+    const fallidos = []   // { nombre, familia, rol, motivo }
+
+    const describe = (r) =>
+      `${r.relationship_type || 'contacto'} ${r.nombre || '(sin nombre)'} ${r.apellido || ''}`.trim() +
+      (r.nombre_familia ? ` — familia ${r.nombre_familia}` : '')
+
+    // Fila por fila. Es más lento que un upsert masivo, pero un lote entero ya
+    // no se cae por culpa de una sola fila mala y, sobre todo, sabemos QUÉ se
+    // quedó fuera: antes todo error se contaba como "omitido" sin explicación
+    // y el colegio veía desaparecer papás y alumnos sin ninguna pista.
+    for (const row of rows) {
+      const { error } = await supabase.from('contacts').insert(row)
+      if (!error) { inserted++; continue }
+
+      if (error.code === '23505') {
+        // Ya existe alguien con ese teléfono en este tenant
+        duplicados++
       } else {
-        inserted += (data?.length || 0)
-        skipped += slice.length - (data?.length || 0)
+        fallidos.push({
+          contacto: describe(row),
+          grupo: row.grupo || null,
+          motivo: error.message
+        })
       }
     }
-    return res.json({ inserted, skipped, total: rows.length })
+
+    if (fallidos.length > 0) {
+      console.error('POST /contacts/ai-import/commit — filas rechazadas:',
+        JSON.stringify(fallidos.slice(0, 20), null, 2))
+    }
+
+    return res.json({
+      inserted,
+      duplicados,
+      fallidos: fallidos.length,
+      // Muestra acotada para que el dashboard pueda explicar qué pasó
+      detalle_fallidos: fallidos.slice(0, 20),
+      total: rows.length,
+      // compatibilidad con el front anterior
+      skipped: duplicados + fallidos.length
+    })
   } catch (err) {
     console.error('POST /contacts/ai-import/commit error:', err)
     return res.status(500).json({ error: err.message })

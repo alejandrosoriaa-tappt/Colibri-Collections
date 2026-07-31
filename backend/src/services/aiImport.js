@@ -436,9 +436,25 @@ export async function analyzeContactsFile(buffer) {
   const sheets = buildSheetPreviews(buffer)
   if (sheets.length === 0) throw new Error('No se encontraron hojas con datos de contactos')
 
-  // Intenta detección determinista primero (sin gastar tokens de Claude)
+  // El layout de Kollybry es obligatorio: se lee tal cual, sin que un modelo
+  // decida qué columna es qué. Cuando la IA interpretaba el archivo, el
+  // resultado variaba entre corridas y se perdían papás y alumnos sin aviso.
   const detected = detectKollybryTemplate(sheets)
-  const mapping  = detected ?? await askClaudeForMapping(sheets)
+  if (!detected) {
+    if (process.env.AI_IMPORT_FALLBACK !== '1') {
+      throw new Error(
+        'El archivo no tiene el layout de Kollybry. Cada hoja debe iniciar con una fila de ' +
+        'encabezados con estas columnas, en este orden: ' +
+        'FAMILIA | MAMÁ | CELULAR MAMÁ | PAPÁ | CELULAR PAPÁ | NOMBRE DEL ALUMNO | GRADO | GRUPO. ' +
+        'También se acepta el formato sin la columna FAMILIA: ' +
+        'MAMÁ | CELULAR | PAPÁ | CELULAR | NOMBRE DEL ALUMNO | GRADO | GRUPO. ' +
+        'Descarga la plantilla desde Contactos y vacía ahí tus listas.'
+      )
+    }
+    // Respaldo opt-in para archivos raros: hay que prenderlo a propósito.
+    console.warn('aiImport: layout no reconocido, usando interpretación con IA (AI_IMPORT_FALLBACK=1)')
+  }
+  const mapping = detected ?? await askClaudeForMapping(sheets)
   const { contacts, alumnos } = applyMapping(sheets, mapping)
 
   const conTel = contacts.filter((c) => c.telefono).length
