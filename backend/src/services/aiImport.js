@@ -108,6 +108,19 @@ function inferSeccion(sheetName) {
   return null
 }
 
+// El nombre de la hoja de Casa de Niños suele traer a la guía pegada
+// ("CASA DE NIÑOS A - LAURA"), y eso terminaba como nombre del grupo.
+// El salón debe quedar solo como CNA / CNB / CNC.
+function normalizeSalonHoja(sheetName, seccion) {
+  const limpio = tidy(sheetName)
+  if (seccion !== 'Casa de Niños') return limpio
+  const sinPrefijo = limpio
+    .toUpperCase()
+    .replace(/^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*/, '')
+  const letra = sinPrefijo.match(/^[-–—\s]*([A-E])\b/)
+  return letra ? `CN${letra[1]}` : limpio
+}
+
 async function askClaudeForMapping(sheets) {
   const client = new Anthropic()
 
@@ -213,8 +226,8 @@ export function applyMapping(sheets, mapping) {
 
   for (const s of sheets) {
     const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? (mapping.default_header_row ?? 1)
-    const salon = mapping.sheet_is_salon ? tidy(s.name) : null
     const seccion = inferSeccion(s.name) || null
+    const salon = mapping.sheet_is_salon ? normalizeSalonHoja(s.name, seccion) : null
 
     for (let r = headerRow + 1; r < s._grid.length; r++) {
       const row = s._grid[r]
