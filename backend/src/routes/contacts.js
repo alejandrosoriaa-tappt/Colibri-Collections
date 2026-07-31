@@ -782,21 +782,32 @@ router.get('/families/search', authMiddleware, inferTenantGuard, async (req, res
 
     const searchTerm = `%${q.trim()}%`
 
-    // Paso 1: familias que coinciden por apellido de familia O por nombre de
-    // alumno. Se buscan las FAMILIAS y no los contactos sueltos porque quien
-    // recibe el WhatsApp es el papá/mamá: si alguien busca a un alumno espera
-    // que el mensaje llegue a sus papás, no que no llegue a nadie.
-    const { data: matches, error: matchError } = await supabase
-      .from('contacts')
-      .select('nombre_familia')
-      .eq('tenant_id', req.tenantId)
-      .neq('status', 'inactive')
-      .not('nombre_familia', 'is', null)
-      .or(`nombre_familia.ilike.${searchTerm},nombre_alumno.ilike.${searchTerm}`)
+    // Paso 1: familias que coinciden. Se buscan las FAMILIAS y no los contactos
+    // sueltos porque quien recibe el WhatsApp es el papá/mamá: si alguien busca
+    // a un alumno espera que el mensaje llegue a sus papás, no que no llegue a
+    // nadie.
+    //
+    // Se usan consultas separadas en vez de un .or() encadenado: el `or` de
+    // PostgREST es sensible al escapado del valor y un fallo ahí regresaba
+    // vacío, que en pantalla se ve idéntico a "no existe esa familia".
+    const buscarPor = async (columna) => {
+      const { data, error } = await supabase
+        .from('contacts')
+        .select('nombre_familia')
+        .eq('tenant_id', req.tenantId)
+        .neq('status', 'inactive')
+        .not('nombre_familia', 'is', null)
+        .ilike(columna, searchTerm)
+      if (error) throw error
+      return (data || []).map(r => r.nombre_familia).filter(Boolean)
+    }
 
-    if (matchError) throw matchError
-
-    const familias = [...new Set((matches || []).map(m => m.nombre_familia).filter(Boolean))]
+    const familias = [...new Set([
+      ...await buscarPor('nombre_familia'),
+      ...await buscarPor('nombre_alumno'),
+      ...await buscarPor('apellido'),
+      ...await buscarPor('nombre')
+    ])]
     if (familias.length === 0) return res.json({ families: [] })
 
     // Paso 2: traer TODOS los integrantes de esas familias
