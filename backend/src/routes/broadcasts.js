@@ -15,7 +15,9 @@ import { sendWhatsAppTemplate } from '../services/whatsapp.js'
 import {
   TEMPLATE_NAMES,
   comunicadoComponents,
-  comunicadoImagenComponents
+  comunicadoImagenComponents,
+  comunicadoDocComponents,
+  docTemplateActiva
 } from '../templates/whatsappTemplates.js'
 
 const router = Router()
@@ -234,11 +236,19 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     console.warn('Broadcast: could not load tenant name:', e.message)
   }
 
-  // Determine which template to use. Text comunicados go out as UTILITY
-  // (kollybry_comunicado_util) so they're exempt from Meta's per-user
-  // marketing frequency cap; the image template only exists as MARKETING.
+  // Qué plantilla usar. El texto sale como UTILITY (kollybry_comunicado_util)
+  // para quedar exento del tope de frecuencia de marketing de Meta.
   const useImage = !!(media_url && media_type?.startsWith('image'))
-  const tpl = useImage ? TEMPLATE_NAMES.COMUNICADO_IMAGEN : TEMPLATE_NAMES.COMUNICADO_UTIL
+  // Adjunto real: solo si hay archivo no-imagen Y la plantilla con encabezado
+  // de documento ya está aprobada en Meta. Mientras no lo esté, el link se
+  // sigue pegando al cuerpo (comportamiento actual, no se rompe nada).
+  const useDoc = !!(media_url && !useImage && docTemplateActiva())
+
+  const tpl = useImage
+    ? TEMPLATE_NAMES.COMUNICADO_IMAGEN
+    : useDoc
+    ? TEMPLATE_NAMES.COMUNICADO_DOC
+    : TEMPLATE_NAMES.COMUNICADO_UTIL
 
   for (const contact of contacts) {
     try {
@@ -258,12 +268,16 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
       // Non-image attachments (e.g. PDF) ride inside the body as a link —
       // only images get their own template header (comunicado_imagen)
-      if (media_url && !useImage) {
+      // Si va como adjunto real, el archivo viaja en el encabezado: repetir
+      // la URL en el texto sería ruido.
+      if (media_url && !useImage && !useDoc) {
         personalizedMessage = `${personalizedMessage} 📎 Documento: ${media_url}`
       }
 
       const components = useImage
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
+        : useDoc
+        ? comunicadoDocComponents({ orgName, cuerpo: personalizedMessage, docUrl: media_url, filename: media_filename })
         : comunicadoComponents({ titulo: title, orgName, cuerpo: personalizedMessage })
 
       // Each template carries its own Meta-registered language code (tpl.lang)

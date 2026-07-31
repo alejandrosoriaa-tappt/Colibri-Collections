@@ -28,6 +28,18 @@ export const TEMPLATE_NAMES = {
   COMUNICADO_UTIL:      { name: 'kollybry_comunicado_util',         lang: 'es_MX' },
   COMUNICADO:           { name: 'kollybry_comunicado',              lang: 'es'    },
   COMUNICADO_IMAGEN:    { name: 'kollybry_comunicado_imagen',       lang: 'es'    },
+  // Adjuntos reales (PDF y demás). EN ESPERA: la plantilla todavía no existe
+  // en Meta. Se activa poniendo KOLLYBRY_DOC_TEMPLATE con su nombre una vez
+  // aprobada; mientras esté vacía, el envío sigue pegando el link al cuerpo.
+  COMUNICADO_DOC:       {
+    name: process.env.KOLLYBRY_DOC_TEMPLATE || 'kollybry_comunicado_doc',
+    lang: process.env.KOLLYBRY_DOC_TEMPLATE_LANG || 'es_MX'
+  },
+}
+
+/** ¿Ya está aprobada la plantilla con encabezado de documento? */
+export function docTemplateActiva() {
+  return !!process.env.KOLLYBRY_DOC_TEMPLATE
 }
 
 // ================================================================
@@ -135,6 +147,29 @@ export function comunicadoImagenComponents({ titulo, orgName, cuerpo, imageUrl }
       type: 'body',
       parameters: [titulo, orgName, cuerpo].map(textParam)
     }
+  ]
+}
+
+/**
+ * kollybry_comunicado_doc  (COMUNICADO_DOC)
+ * HEADER: document (link + filename)  ·  {{1}} orgName  {{2}} cuerpo
+ *
+ * Manda el archivo como ADJUNTO real de WhatsApp, no como link dentro del
+ * texto. Meta descarga el archivo desde `docUrl`, así que tiene que ser una
+ * URL directa y pública: un enlace de Google Drive NO sirve (devuelve HTML,
+ * no el PDF). Por eso el archivo se sube antes a Supabase Storage con
+ * POST /api/broadcasts/media, que ya regresa una URL válida.
+ */
+export function comunicadoDocComponents({ orgName, cuerpo, docUrl, filename }) {
+  return [
+    {
+      type: 'header',
+      parameters: [{
+        type: 'document',
+        document: { link: docUrl, filename: filename || 'Documento.pdf' }
+      }]
+    },
+    { type: 'body', parameters: [orgName, cuerpo].map(textParam) }
   ]
 }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   X, Loader2, AlertCircle, Users, Send, FileText, Eye,
-  ChevronDown, Check, Search, Radio
+  ChevronDown, Check, Search, Radio, Paperclip
 } from 'lucide-react'
 import { broadcastsAPI, contactsAPI } from '../../lib/api.js'
 import useAuthStore from '../../store/authStore.js'
@@ -77,6 +77,36 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
   const [showVars, setShowVars] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [formError, setFormError] = useState(null)
+
+  // Archivo adjunto. Se sube a Supabase Storage y se manda su URL pública:
+  // WhatsApp descarga el archivo desde ahí, y un enlace de Drive no sirve
+  // porque devuelve HTML en vez del PDF.
+  const archivoRef = useRef(null)
+  const [subiendo, setSubiendo] = useState(false)
+  const [archivo, setArchivo] = useState(null)   // { url, type, filename }
+
+  const subirArchivo = async (file) => {
+    if (!file) return
+    setSubiendo(true)
+    setFormError(null)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const { data } = await broadcastsAPI.uploadMedia(fd)
+      setArchivo(data)
+      setForm(f => ({ ...f, media_url: data.url }))
+    } catch (err) {
+      setFormError(err.response?.data?.error || 'No se pudo subir el archivo')
+    } finally {
+      setSubiendo(false)
+    }
+  }
+
+  const quitarArchivo = () => {
+    setArchivo(null)
+    setForm(f => ({ ...f, media_url: '' }))
+    if (archivoRef.current) archivoRef.current.value = ''
+  }
 
   useEffect(() => {
     broadcastsAPI.groups()
@@ -191,8 +221,11 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
           ? [...new Set(form.contactos.map(c => c.familia).filter(Boolean))].join(', ')
           : undefined,
         media_url: form.media_url.trim() || null,
-        media_type: form.media_url ? 'document' : null,
-        media_filename: form.media_url ? form.media_url.split('/').pop() : null
+        // El tipo real importa: decide si va como imagen, como adjunto o como
+        // link en el texto. Antes iba 'document' fijo y las imágenes nunca se
+        // mandaban como tales.
+        media_type: archivo?.type || (form.media_url ? 'application/octet-stream' : null),
+        media_filename: archivo?.filename || (form.media_url ? form.media_url.split('/').pop() : null)
       })
       onSent?.(`${esGeneral ? 'Comunicado' : 'Mensaje'} "${form.title.trim()}" enviado correctamente`)
     } catch (err) {
@@ -511,18 +544,48 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
             </div>
           </div>
 
-          {/* ── Documento opcional ── */}
+          {/* ── Adjunto opcional ── */}
           <div>
-            <label className="label">Enlace a documento (opcional)</label>
+            <label className="label">Archivo adjunto (opcional)</label>
+
             <input
-              className="input"
-              type="url"
-              placeholder="https://drive.google.com/… o cualquier URL pública"
-              value={form.media_url}
-              onChange={e => setForm(f => ({ ...f, media_url: e.target.value }))}
+              ref={archivoRef}
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp"
+              className="hidden"
+              onChange={e => subirArchivo(e.target.files?.[0])}
             />
+
+            {!archivo ? (
+              <button
+                type="button"
+                onClick={() => archivoRef.current?.click()}
+                disabled={subiendo}
+                className="w-full border-2 border-dashed border-md-outline-variant rounded-2xl p-4 text-center hover:border-md-primary hover:bg-md-surface-container transition-colors disabled:opacity-60"
+              >
+                {subiendo ? (
+                  <span className="flex items-center justify-center gap-2 text-sm text-md-on-surface-variant">
+                    <Loader2 size={15} className="animate-spin" /> Subiendo…
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2 text-sm text-md-on-surface-variant">
+                    <Paperclip size={15} /> Elegir PDF o imagen
+                  </span>
+                )}
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
+                <FileText size={16} className="text-md-primary flex-shrink-0" />
+                <span className="text-sm text-md-on-surface truncate flex-1">{archivo.filename}</span>
+                <button type="button" onClick={quitarArchivo} className="text-md-on-surface-variant hover:text-md-error">
+                  <X size={15} />
+                </button>
+              </div>
+            )}
+
             <p className="text-xs text-md-on-surface-variant mt-1">
-              Pega el enlace de un PDF en Google Drive, Dropbox, etc. Se incluirá en el mensaje.
+              El archivo se sube a Kollybry y se envía por WhatsApp. No uses enlaces de
+              Google Drive: WhatsApp no puede leerlos.
             </p>
           </div>
 
