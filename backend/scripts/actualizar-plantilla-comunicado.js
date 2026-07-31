@@ -45,7 +45,9 @@ const PLANTILLA = 'kollybry_comunicado_util'
 const COMPONENTES = [
   {
     type: 'BODY',
-    text: '*{{1}}* te envía un mensaje importante:\n\n{{2}}',
+    // Meta rechaza cuerpos que empiecen o terminen con variable, por eso el
+    // 'Hola,' al inicio y el cierre después de {{2}}.
+    text: 'Hola, *{{1}}* te envía un mensaje importante:\n\n{{2}}\n\nGracias por tu atención.',
     // Meta exige ejemplos cuando el cuerpo lleva parámetros
     example: {
       body_text: [['Colegio Las Américas', 'La junta de padres es el viernes a las 7pm']]
