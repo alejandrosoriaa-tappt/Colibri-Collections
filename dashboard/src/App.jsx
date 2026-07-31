@@ -9,7 +9,6 @@ import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ContactsPage from './pages/ContactsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
-import BroadcastsPage from './pages/BroadcastsPage.jsx'
 import MensajesPage from './pages/MensajesPage.jsx'
 import AdminPage from './pages/admin/AdminPage.jsx'
 import TenantsPage from './pages/admin/TenantsPage.jsx'
@@ -55,8 +54,8 @@ export default function App() {
               salones/grupos concretos, Comunicados va a toda la comunidad. */}
           <Route path="/mensajes"    element={<MensajesPage modo="grupos" />} />
           <Route path="/comunicados" element={<MensajesPage modo="general" />} />
-          {/* Compositor compartido; no aparece en el menú */}
-          <Route path="/broadcasts"  element={<BroadcastsPage />} />
+          {/* El compositor ahora vive dentro de cada pantalla como modal */}
+          <Route path="/broadcasts"  element={<Navigate to="/mensajes" replace />} />
 
           {/* contactos + owner */}
           <Route path="/contacts"        element={<RoleRoute><ContactsPage /></RoleRoute>} />
