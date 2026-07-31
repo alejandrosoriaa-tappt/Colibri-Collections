@@ -212,6 +212,9 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   // Send messages in background
   let sentCount = 0
   let failedCount = 0
+  // Fallos al registrar en message_logs. No impiden el envío, pero sin esas
+  // filas los KPIs de entregado/leído se quedan en cero, así que hay que verlos.
+  let logErrors = 0
 
   // Check credentials once before loop
   const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID
@@ -270,39 +273,42 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
 
         // Log the message in message_logs table
-        try {
-          await supabase.from('message_logs').insert({
-            tenant_id: req.tenantId,
-            contact_id: contact.id,
-            broadcast_id: broadcast.id,
-            phone: contact.telefono,
-            wa_message_id: result.wa_message_id,
-            type: 'broadcast',
-            status: 'sent',
-            sent_at: new Date().toISOString()
-          })
-          console.log(`Broadcast: logged message for ${contact.telefono}`)
-        } catch (logErr) {
-          console.error(`Broadcast: failed to log message for contact ${contact.id}:`, logErr)
+        // OJO: supabase-js NO lanza en error, resuelve con { error }. Hay que
+        // revisarlo explícitamente — si no, el fallo pasa desapercibido y sin
+        // esta fila los KPIs de entregado/leído se quedan en 0 para siempre,
+        // porque el webhook empata contra wa_message_id.
+        const { error: logErr } = await supabase.from('message_logs').insert({
+          tenant_id: req.tenantId,
+          contact_id: contact.id,
+          broadcast_id: broadcast.id,
+          phone: contact.telefono,
+          wa_message_id: result.wa_message_id,
+          type: 'broadcast',
+          status: 'sent',
+          sent_at: new Date().toISOString()
+        })
+        if (logErr) {
+          logErrors++
+          console.error(`Broadcast: NO se pudo registrar el envío a ${contact.telefono} — ${logErr.message}`)
         }
       } else {
         failedCount++
         console.error(`Broadcast: ✗ failed ${contact.telefono} — code:${result.error_code} msg:${result.error}`)
 
         // Log the failed message
-        try {
-          await supabase.from('message_logs').insert({
-            tenant_id: req.tenantId,
-            contact_id: contact.id,
-            broadcast_id: broadcast.id,
-            phone: contact.telefono,
-            type: 'broadcast',
-            status: 'failed',
-            error_message: result.error,
-            sent_at: new Date().toISOString()
-          })
-        } catch (logErr) {
-          console.error(`Broadcast: failed to log error for contact ${contact.id}:`, logErr)
+        const { error: logErr } = await supabase.from('message_logs').insert({
+          tenant_id: req.tenantId,
+          contact_id: contact.id,
+          broadcast_id: broadcast.id,
+          phone: contact.telefono,
+          type: 'broadcast',
+          status: 'failed',
+          error_message: result.error,
+          sent_at: new Date().toISOString()
+        })
+        if (logErr) {
+          logErrors++
+          console.error(`Broadcast: NO se pudo registrar el fallo de ${contact.telefono} — ${logErr.message}`)
         }
       }
 
@@ -312,18 +318,18 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       console.error(`Broadcast: error sending to contact ${contact.id}:`, err)
 
       // Log the error
-      try {
-        await supabase.from('message_logs').insert({
-          tenant_id: req.tenantId,
-          contact_id: contact.id,
-          broadcast_id: broadcast.id,
-          type: 'broadcast',
-          status: 'failed',
-          error_message: err.message,
-          sent_at: new Date().toISOString()
-        })
-      } catch (logErr) {
-        console.error(`Broadcast: failed to log exception for contact ${contact.id}:`, logErr)
+      const { error: logErr } = await supabase.from('message_logs').insert({
+        tenant_id: req.tenantId,
+        contact_id: contact.id,
+        broadcast_id: broadcast.id,
+        type: 'broadcast',
+        status: 'failed',
+        error_message: err.message,
+        sent_at: new Date().toISOString()
+      })
+      if (logErr) {
+        logErrors++
+        console.error(`Broadcast: NO se pudo registrar la excepción de ${contact.id} — ${logErr.message}`)
       }
     }
   }
@@ -339,6 +345,13 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   }
 
   console.log(`Broadcast "${title}": sent ${sentCount}, failed ${failedCount} of ${contacts.length}`)
+  if (logErrors > 0) {
+    console.error(
+      `Broadcast "${title}": ${logErrors} de ${contacts.length} envíos NO quedaron registrados en message_logs. ` +
+      'Los KPIs de entregado/leído van a salir en cero para este comunicado. ' +
+      'Revisa que la tabla tenga las columnas broadcast_id y type (migrations/004_message_logs_broadcasts.sql).'
+    )
+  }
 })
 
 export default router
