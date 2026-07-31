@@ -232,6 +232,12 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               required
             />
+            {/* El título NO viaja en el WhatsApp: la plantilla de Meta solo
+                lleva colegio y cuerpo. Decirlo evita que se redacte pensando
+                que los papás lo van a leer. */}
+            <p className="text-xs text-md-on-surface-variant mt-1">
+              Solo para identificarlo aquí en Kollybry. No aparece en el WhatsApp que reciben.
+            </p>
           </div>
 
           {/* ── Destinatarios ── */}
