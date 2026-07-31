@@ -266,14 +266,19 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
 // ============================================================
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
-    const { search, page = 1, limit = 50, status = 'active', seccion, grado, salon } = req.query
+    const { search, page = 1, limit = 50, status = 'active', seccion, grado, salon, agrupar } = req.query
     const offset = (Number(page) - 1) * Number(limit)
+
+    // agrupar=familia → la página cuenta FAMILIAS, no contactos, y devuelve
+    // completos a todos sus integrantes (ver getContactsByTenant).
+    const porFamilia = agrupar === 'familia'
 
     const { data: contacts, count } = await getContactsByTenant(req.tenantId, {
       search,
       status,
       limit: Number(limit),
       offset,
+      porFamilia,
       seccion: seccion || undefined,
       grado:   grado   || undefined,
       salon:   salon   || undefined

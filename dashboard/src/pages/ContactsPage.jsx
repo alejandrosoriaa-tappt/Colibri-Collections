@@ -1357,6 +1357,10 @@ export default function ContactsPage() {
       limit: pageSize,
       page: page + 1,
       status: statusTab,
+      // En colegios la lista se ve por familia: hay que paginar por familia,
+      // no por contacto. Si no, el corte de página parte a una familia y se
+      // ve como si le faltaran el papá o los alumnos.
+      ...(isColegio ? { agrupar: 'familia' } : {}),
       ...(debouncedSearch ? { search: debouncedSearch } : {}),
       ...(filtroSeccion ? { seccion: filtroSeccion } : {}),
       ...(filtroGrado   ? { grado:   filtroGrado   } : {}),
@@ -1368,7 +1372,7 @@ export default function ContactsPage() {
       })
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [page, pageSize, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon])
+  }, [page, pageSize, debouncedSearch, statusTab, filtroSeccion, filtroGrado, filtroSalon, isColegio])
 
   useEffect(() => { load() }, [load])
 
@@ -1542,7 +1546,11 @@ export default function ContactsPage() {
         <div>
           <h1 className="text-2xl font-semibold text-md-on-surface">{orgConfig.contactLabelPlural}</h1>
           <p className="text-sm text-md-on-surface-variant mt-0.5">
-            {total.toLocaleString('es-MX')} {statusTab === 'active' ? 'activos' : statusTab === 'inactive' ? 'inactivos' : orgConfig.contactLabelPlural.toLowerCase()}
+            {/* En colegios el total son FAMILIAS: es lo que se lista y lo que se pagina */}
+            {total.toLocaleString('es-MX')}{' '}
+            {isColegio
+              ? `${total === 1 ? 'familia' : 'familias'} ${statusTab === 'inactive' ? 'inactivas' : statusTab === 'active' ? 'activas' : ''}`.trim()
+              : statusTab === 'active' ? 'activos' : statusTab === 'inactive' ? 'inactivos' : orgConfig.contactLabelPlural.toLowerCase()}
           </p>
         </div>
         <div className="flex gap-2">
