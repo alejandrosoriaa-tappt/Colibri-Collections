@@ -22,6 +22,11 @@ import crmRouter from './routes/crm.js'
 import cobranzaRouter from './routes/cobranza.js'
 
 const app = express()
+
+// Railway pone un proxy delante: sin esto express-rate-limit no puede
+// identificar al cliente real y tira ERR_ERL_UNEXPECTED_X_FORWARDED_FOR
+// en cada request (visible en los logs de producción).
+app.set('trust proxy', 1)
 const PORT = process.env.PORT || 3000
 
 // Security middleware
