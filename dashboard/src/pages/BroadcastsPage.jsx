@@ -145,6 +145,7 @@ export default function BroadcastsPage() {
   const [busqueda, setBusqueda] = useState('')
   const [resultados, setResultados] = useState([])
   const [buscando, setBuscando] = useState(false)
+  const [errorBusqueda, setErrorBusqueda] = useState(null)
   const copy = esGeneral
     ? { titulo: 'Comunicados', nuevo: 'Nuevo comunicado', label: 'comunicado', volver: '/comunicados',
         sub: 'Avisos para toda la comunidad' }
@@ -220,10 +221,17 @@ export default function BroadcastsPage() {
     const q = busqueda.trim()
     if (q.length < 2) { setResultados([]); return }
     setBuscando(true)
+    setErrorBusqueda(null)
     const t = setTimeout(() => {
       contactsAPI.getFamilies(q)
         .then(res => setResultados(res.data.families || []))
-        .catch(() => setResultados([]))
+        .catch((err) => {
+          // Un fallo de la búsqueda NO puede verse igual que "no hay resultados":
+          // así se ocultaba que el endpoint estaba fallando.
+          console.error('Error buscando familias:', err)
+          setResultados([])
+          setErrorBusqueda(err.response?.data?.error || 'No se pudo buscar. Intenta de nuevo.')
+        })
         .finally(() => setBuscando(false))
     }, 300)
     return () => clearTimeout(t)
@@ -523,7 +531,11 @@ export default function BroadcastsPage() {
                       </div>
                     )}
 
-                    {busqueda.trim().length >= 2 && !buscando && resultados.length === 0 && (
+                    {errorBusqueda && (
+                      <p className="text-xs text-red-600 mt-1.5">{errorBusqueda}</p>
+                    )}
+
+                    {!errorBusqueda && busqueda.trim().length >= 2 && !buscando && resultados.length === 0 && (
                       <p className="text-xs text-gray-400 mt-1.5">Sin resultados para "{busqueda.trim()}"</p>
                     )}
 
