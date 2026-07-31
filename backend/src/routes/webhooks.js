@@ -75,26 +75,52 @@ async function handleStatusUpdate(statusUpdate) {
 
   const mappedStatus = statusMap[status] || status
 
-  try {
-    const { error } = await supabase
-      .from('message_logs')
-      .update({
+  // Meta puede avisar 'sent'/'delivered' ANTES de que terminemos de insertar la
+  // fila en message_logs (se vio en producción llegando en el mismo segundo).
+  // Un UPDATE que no empata ninguna fila NO es error en Postgres, así que el
+  // evento se perdía en silencio y los KPIs se quedaban en cero. Reintentamos
+  // dándole tiempo al insert.
+  const REINTENTOS = [0, 2000, 5000, 15000]
+
+  for (let intento = 0; intento < REINTENTOS.length; intento++) {
+    if (REINTENTOS[intento] > 0) {
+      await new Promise(r => setTimeout(r, REINTENTOS[intento]))
+    }
+    try {
+      const cambios = {
         status: mappedStatus,
-        delivered_at: mappedStatus === 'delivered' ? new Date(Number(timestamp) * 1000).toISOString() : undefined,
-        read_at: mappedStatus === 'read' ? new Date(Number(timestamp) * 1000).toISOString() : undefined,
         error_message: errors ? JSON.stringify(errors) : undefined,
         updated_at: new Date().toISOString()
-      })
-      .eq('wa_message_id', waMessageId)
+      }
+      if (mappedStatus === 'delivered') cambios.delivered_at = new Date(Number(timestamp) * 1000).toISOString()
+      if (mappedStatus === 'read')      cambios.read_at      = new Date(Number(timestamp) * 1000).toISOString()
 
-    if (error) {
-      console.error('Webhook: Failed to update message log:', error)
-    } else {
-      console.log(`Webhook: Updated message ${waMessageId} to status ${mappedStatus}`)
+      // .select() devuelve las filas afectadas: así sabemos si de verdad empató
+      const { data, error } = await supabase
+        .from('message_logs')
+        .update(cambios)
+        .eq('wa_message_id', waMessageId)
+        .select('id')
+
+      if (error) {
+        console.error('Webhook: error actualizando message_log:', error.message)
+        return
+      }
+      if (data && data.length > 0) {
+        console.log(`Webhook: ${waMessageId} → ${mappedStatus}`)
+        return
+      }
+      // 0 filas: el envío todavía no se registra. Se reintenta.
+    } catch (err) {
+      console.error('Webhook: excepción actualizando estado:', err)
+      return
     }
-  } catch (err) {
-    console.error('Webhook: Error handling status update:', err)
   }
+
+  console.warn(
+    `Webhook: ${waMessageId} → ${mappedStatus} sin fila en message_logs tras ${REINTENTOS.length} intentos. ` +
+    'Ese envío no va a contar en entregados/leídos.'
+  )
 }
 
 async function handleIncomingMessage(message, contacts) {
