@@ -1,12 +1,15 @@
 /**
  * Actualiza el texto de la plantilla de comunicados en Meta.
  *
+ * Lo más simple es correrlo DESDE RAILWAY (servicio kollybry-api), donde
+ * WABA_ACCESS_TOKEN ya está configurado y hay salida a graph.facebook.com:
+ *
  *   node scripts/actualizar-plantilla-comunicado.js            # muestra qué haría
  *   node scripts/actualizar-plantilla-comunicado.js --aplicar  # la manda a Meta
  *
  * Requiere en el entorno (NUNCA hardcodeadas):
- *   WABA_BUSINESS_ID   — id de la cuenta de WhatsApp Business
  *   WABA_ACCESS_TOKEN  — token con permiso whatsapp_business_management
+ *   WABA_BUSINESS_ID   — opcional; si falta se usa la WABA documentada
  *
  * Nota: para EDITAR una plantilla existente hay que hacer POST al id de la
  * plantilla. El POST a /{WABA_ID}/message_templates solo CREA — es el error
@@ -23,9 +26,16 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 const GRAPH = 'https://graph.facebook.com/v20.0'
-const businessId = process.env.WABA_BUSINESS_ID
 const token = process.env.WABA_ACCESS_TOKEN
 const aplicar = process.argv.includes('--aplicar')
+
+// WABA_BUSINESS_ID no está en .env.example ni la usa el código de envío, así
+// que puede no existir en Railway. Se acepta por env, por argumento
+// (--waba=123) o se cae al id documentado en whatsappTemplates.js, verificado
+// contra Meta el 2026-06-09.
+const WABA_CONOCIDA = '948092824711194'
+const argWaba = process.argv.find(a => a.startsWith('--waba='))?.split('=')[1]
+const businessId = process.env.WABA_BUSINESS_ID || argWaba || WABA_CONOCIDA
 
 // ── Lo que va a quedar registrado en Meta ────────────────────────────────────
 // {{1}} = nombre del colegio   {{2}} = cuerpo del mensaje
@@ -53,8 +63,15 @@ function salirCon(msg) {
 }
 
 async function main() {
-  if (!businessId || !token) {
-    salirCon('Faltan WABA_BUSINESS_ID o WABA_ACCESS_TOKEN en el entorno.')
+  if (!token) {
+    salirCon(
+      'Falta WABA_ACCESS_TOKEN en el entorno.\n' +
+      '   Si lo corres desde Railway (servicio kollybry-api) ya debería estar puesto.'
+    )
+  }
+  if (!process.env.WABA_BUSINESS_ID && !argWaba) {
+    console.log(`ℹ  WABA_BUSINESS_ID no está en el entorno; usando ${WABA_CONOCIDA} (la documentada en el código).`)
+    console.log('   Si no es la correcta, pásala con --waba=<id>.')
   }
 
   console.log(`\nPlantilla: ${PLANTILLA}`)
