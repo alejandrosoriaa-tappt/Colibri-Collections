@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, MessageSquare, Radio,
   ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
   Users, Calendar, FileText, ArrowRight
 } from 'lucide-react'
 import { broadcastsAPI, contactsAPI } from '../lib/api.js'
+import CompositorMensaje from '../components/mensajes/CompositorMensaje.jsx'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
 
@@ -312,6 +313,18 @@ export default function MensajesPage({ modo = 'grupos' }) {
   const [broadcasts, setBroadcasts] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
+  const [showCompositor, setShowCompositor] = useState(false)
+  const [aviso, setAviso] = useState(null)
+  const [gruposPre, setGruposPre] = useState([])
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Contactos manda aquí con los salones ya filtrados: ?nuevo=1&grupos=A,B
+  useEffect(() => {
+    if (searchParams.get('nuevo') !== '1') return
+    setGruposPre((searchParams.get('grupos') || '').split(',').map(g => g.trim()).filter(Boolean))
+    setShowCompositor(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams])
 
   useEffect(() => {
     setIsLoading(true)
@@ -346,6 +359,12 @@ export default function MensajesPage({ modo = 'grupos' }) {
         <p className="text-sm text-md-on-surface-variant mt-0.5">{copy.subtitulo}</p>
       </div>
 
+      {aviso && (
+        <div className="flex items-center gap-2 p-3 bg-md-primary-container rounded-2xl text-sm text-md-on-primary-container">
+          <CheckCheck size={15} className="flex-shrink-0" /> {aviso}
+        </div>
+      )}
+
       {/* Loading skeleton */}
       {isLoading && (
         <div className="space-y-3">
@@ -376,6 +395,25 @@ export default function MensajesPage({ modo = 'grupos' }) {
         </div>
       )}
 
+      {showCompositor && (
+        <CompositorMensaje
+          modo={modo}
+          gruposIniciales={gruposPre}
+          onClose={() => { setShowCompositor(false); setGruposPre([]) }}
+          onSent={(msg) => {
+            setShowCompositor(false)
+            setGruposPre([])
+            setAviso(msg)
+            setTimeout(() => setAviso(null), 5000)
+            setIsLoading(true)
+            broadcastsAPI.list({ limit: 50 })
+              .then(res => setBroadcasts(res.data.broadcasts || []))
+              .catch(console.error)
+              .finally(() => setIsLoading(false))
+          }}
+        />
+      )}
+
       {/* Broadcast detail modal */}
       {selectedBroadcast && (
         <BroadcastDetailModal
@@ -384,9 +422,10 @@ export default function MensajesPage({ modo = 'grupos' }) {
         />
       )}
 
-      {/* FAB — abre el compositor ya en el modo de esta pantalla */}
+      {/* FAB — abre el compositor SOBRE esta pantalla: mandarlo a otra vista
+          cambiaba la lista de fondo y el diseño de golpe. */}
       <button
-        onClick={() => navigate(`/broadcasts?new=1&modo=${modo}`)}
+        onClick={() => setShowCompositor(true)}
         className="fab"
         title={modo === 'general' ? 'Nuevo comunicado' : 'Nuevo mensaje'}
       >
