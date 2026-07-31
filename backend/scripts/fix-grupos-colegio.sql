@@ -25,65 +25,50 @@ GROUP BY t.name, c.grupo, c.seccion, c.grado, c.salon
 ORDER BY t.name, c.grupo;
 
 
--- ── 2. Grupos que no deberían existir (p. ej. "Primaria 3B", "Primaria 4B") ──
+-- ── 2. Grupos sobrantes ────────────────────────────────────────────────────
+-- Estado observado en colegio-americas (jul 2026): los grupos reales tienen
+-- entre 19 y 35 contactos, mientras que estos dos tienen 1 cada uno, lo que
+-- delata una importación mala y no un salón de verdad.
+--   Primaria 3ro B → 1 contacto
+--   Primaria 4to B → 1 contacto
+-- OJO con el nombre exacto: es "Primaria 3ro B", NO "Primaria 3B".
+--
 -- Primero mira QUIÉN está ahí. No borres a ciegas.
-SELECT t.name AS colegio, c.id, c.nombre, c.apellido,
-       c.nombre_familia, c.nombre_alumno, c.grupo, c.telefono
+SELECT c.id, c.relationship_type, c.nombre, c.apellido, c.nombre_familia,
+       c.nombre_alumno, c.grupo, c.seccion, c.grado, c.salon, c.telefono
 FROM contacts c
 JOIN tenants t ON t.id = c.tenant_id
-WHERE c.grupo IN ('Primaria 3B', 'Primaria 4B')
-ORDER BY t.name, c.grupo, c.nombre_familia;
+WHERE c.grupo IN ('Primaria 3ro B', 'Primaria 4to B');
 
 -- Según lo que salga, elige UNA de las tres salidas y descoméntala.
--- Cambia 'NOMBRE DEL COLEGIO' por el valor real de la columna colegio.
 
--- Caso A — el salón existe pero está mal escrito: reasignar al grupo correcto.
--- UPDATE contacts c
--- SET salon = 'A', grupo = 'Primaria 3ro A'
--- FROM tenants t
--- WHERE t.id = c.tenant_id AND t.name = 'NOMBRE DEL COLEGIO'
---   AND c.grupo = 'Primaria 3B';
+-- Caso A — es un alumno real mal clasificado: reasignar al grupo correcto.
+-- UPDATE contacts SET salon = 'A', grupo = 'Primaria 3ro A'
+-- WHERE grupo = 'Primaria 3ro B';
 
 -- Caso B — quedó de una importación equivocada: dar de baja (REVERSIBLE).
--- UPDATE contacts c
--- SET status = 'inactive', inactive_since = NOW()
--- FROM tenants t
--- WHERE t.id = c.tenant_id AND t.name = 'NOMBRE DEL COLEGIO'
---   AND c.grupo IN ('Primaria 3B', 'Primaria 4B');
+-- UPDATE contacts SET status = 'inactive', inactive_since = NOW()
+-- WHERE grupo IN ('Primaria 3ro B', 'Primaria 4to B');
 
 -- Caso C — borrado definitivo. IRREVERSIBLE, se lleva el historial del
 -- contacto. Solo si ya lo confirmaste con el colegio.
--- DELETE FROM contacts c
--- USING tenants t
--- WHERE t.id = c.tenant_id AND t.name = 'NOMBRE DEL COLEGIO'
---   AND c.grupo IN ('Primaria 3B', 'Primaria 4B');
+-- DELETE FROM contacts
+-- WHERE grupo IN ('Primaria 3ro B', 'Primaria 4to B');
 
 
 -- ── 3. Casa de Niños: quitar el nombre de la guía ──────────────────────────
--- "CASA DE NIÑOS A - LAURA" → "CNA".
+-- Los grupos traían pegada a la guía. Valores reales encontrados y su destino:
+--   CN A ROSY  (19 contactos) → CNA
+--   CN B SOFIA (22 contactos) → CNB
+--   CN C BETY  (20 contactos) → CNC
+--
 -- Solo hace falta para lo YA importado: las importaciones nuevas toman el
 -- nombre de la columna GRUPO del archivo ("CNA", "TI D").
 --
--- Revisa primero qué cambiaría:
-SELECT t.name AS colegio, c.id, c.nombre, c.apellido, c.grupo, c.salon,
-       'CN' || upper(substring(
-         regexp_replace(c.salon, '^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*[-–—]?\s*', '', 'i')
-         FROM 1 FOR 1)) AS grupo_nuevo
-FROM contacts c
-JOIN tenants t ON t.id = c.tenant_id
-WHERE (c.salon ILIKE '%casa de ni%' OR c.salon ILIKE 'CN%')
-  AND regexp_replace(c.salon, '^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*[-–—]?\s*', '', 'i') ~ '^[A-Ea-e]';
-
--- Y cuando la columna grupo_nuevo se vea correcta:
--- UPDATE contacts
--- SET salon = 'CN' || upper(substring(
---       regexp_replace(salon, '^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*[-–—]?\s*', '', 'i')
---       FROM 1 FOR 1)),
---     grupo = 'CN' || upper(substring(
---       regexp_replace(salon, '^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*[-–—]?\s*', '', 'i')
---       FROM 1 FOR 1))
--- WHERE (salon ILIKE '%casa de ni%' OR salon ILIKE 'CN%')
---   AND regexp_replace(salon, '^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*[-–—]?\s*', '', 'i') ~ '^[A-Ea-e]';
+-- Es un rename: no borra nada y es reversible.
+UPDATE contacts SET grupo = 'CNA', salon = 'CNA' WHERE grupo = 'CN A ROSY';
+UPDATE contacts SET grupo = 'CNB', salon = 'CNB' WHERE grupo = 'CN B SOFIA';
+UPDATE contacts SET grupo = 'CNC', salon = 'CNC' WHERE grupo = 'CN C BETY';
 
 
 -- ── 4. Acentos rotos por el bug viejo de titleCase ─────────────────────────
