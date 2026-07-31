@@ -30,6 +30,12 @@ const upload = multer({
   }
 })
 
+// Quita acentos y pasa a minúsculas para comparar: nadie escribe los acentos
+// al buscar, así que "sarachaga" debe encontrar a "Saráchaga".
+function sinAcentos(v) {
+  return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+}
+
 // ── Phone normalization (same logic as fileProcessor) ────────────────────────
 function normalizePhone(raw) {
   if (!raw) return null
@@ -787,37 +793,40 @@ router.get('/families/search', authMiddleware, inferTenantGuard, async (req, res
     // a un alumno espera que el mensaje llegue a sus papás, no que no llegue a
     // nadie.
     //
-    // Se usan consultas separadas en vez de un .or() encadenado: el `or` de
-    // PostgREST es sensible al escapado del valor y un fallo ahí regresaba
-    // vacío, que en pantalla se ve idéntico a "no existe esa familia".
-    const buscarPor = async (columna) => {
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('nombre_familia')
-        .eq('tenant_id', req.tenantId)
-        .neq('status', 'inactive')
-        .not('nombre_familia', 'is', null)
-        .ilike(columna, searchTerm)
-      if (error) throw error
-      return (data || []).map(r => r.nombre_familia).filter(Boolean)
-    }
+    // El filtrado se hace en memoria y no con ILIKE porque ILIKE respeta los
+    // acentos: buscar "sarachaga" no encontraría a "Saráchaga", y nadie escribe
+    // los acentos al buscar. Se traen solo las cuatro columnas de texto, así
+    // que es una consulta ligera aunque el padrón tenga miles de contactos.
+    const { data: candidatos, error: cErr } = await supabase
+      .from('contacts')
+      .select('nombre_familia, nombre_alumno, nombre, apellido')
+      .eq('tenant_id', req.tenantId)
+      .neq('status', 'inactive')
+      .not('nombre_familia', 'is', null)
+    if (cErr) throw cErr
 
-    const familias = [...new Set([
-      ...await buscarPor('nombre_familia'),
-      ...await buscarPor('nombre_alumno'),
-      ...await buscarPor('apellido'),
-      ...await buscarPor('nombre')
-    ])]
+    const aguja = sinAcentos(q)
+    const familias = [...new Set(
+      (candidatos || [])
+        .filter(c =>
+          sinAcentos(c.nombre_familia).includes(aguja) ||
+          sinAcentos(c.nombre_alumno).includes(aguja)  ||
+          sinAcentos(c.nombre).includes(aguja)         ||
+          sinAcentos(c.apellido).includes(aguja)
+        )
+        .map(c => c.nombre_familia)
+        .filter(Boolean)
+    )]
     if (familias.length === 0) return res.json({ families: [] })
 
     // Paso 2: traer TODOS los integrantes de esas familias
     const { data: contacts, error } = await supabase
       .from('contacts')
-      .select('id, nombre, apellido, telefono, nombre_alumno, grado, salon, relationship_type, priority, status, nombre_familia')
+      .select('id, nombre, apellido, telefono, nombre_alumno, grado, salon, relationship_type, status, nombre_familia')
       .eq('tenant_id', req.tenantId)
       .in('nombre_familia', familias)
       .neq('status', 'inactive')
-      .order('relationship_type, priority, nombre_alumno', { ascending: true })
+      .order('relationship_type, nombre_alumno', { ascending: true })
 
     if (error) throw error
 
@@ -848,8 +857,7 @@ router.get('/families/search', authMiddleware, inferTenantGuard, async (req, res
           nombre: contact.nombre,
           apellido: contact.apellido,
           telefono: contact.telefono,
-          relationship_type: contact.relationship_type,
-          priority: contact.priority
+          relationship_type: contact.relationship_type
         })
       }
     }
@@ -869,12 +877,12 @@ router.get('/family/by-student/:studentName', authMiddleware, inferTenantGuard, 
     const { studentName } = req.params
     const { data: family, error } = await supabase
       .from('contacts')
-      .select('id, nombre, apellido, telefono, relationship_type, priority, status')
+      .select('id, nombre, apellido, telefono, relationship_type, status')
       .eq('tenant_id', req.tenantId)
       .eq('nombre_alumno', studentName)
       .neq('relationship_type', 'student')
       .not('student_id', 'is', null)
-      .order('priority', { ascending: false })
+      .order('relationship_type', { ascending: true })
 
     if (error) throw error
     return res.json({ family: family || [] })
@@ -889,7 +897,7 @@ router.get('/family/by-student/:studentName', authMiddleware, inferTenantGuard, 
 router.post('/:contactId/link-student', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const { contactId } = req.params
-    const { studentId, relationshipType, priority } = req.body
+    const { studentId, relationshipType } = req.body
 
     if (!studentId || !relationshipType) {
       return res.status(400).json({ error: 'studentId and relationshipType required' })
@@ -914,7 +922,6 @@ router.post('/:contactId/link-student', authMiddleware, inferTenantGuard, async 
       .update({
         student_id: studentId,
         relationship_type: relationshipType,
-        priority: priority || 0,
         updated_at: new Date().toISOString()
       })
       .eq('id', contactId)
@@ -936,10 +943,10 @@ router.get('/:studentId/family', authMiddleware, inferTenantGuard, async (req, r
     const { studentId } = req.params
     const { data: family, error } = await supabase
       .from('contacts')
-      .select('id, nombre, apellido, telefono, relationship_type, priority, status')
+      .select('id, nombre, apellido, telefono, relationship_type, status')
       .eq('tenant_id', req.tenantId)
       .eq('student_id', studentId)
-      .order('priority', { ascending: false })
+      .order('relationship_type', { ascending: true })
 
     if (error) throw error
     return res.json({ family: family || [] })
@@ -960,7 +967,6 @@ router.post('/:contactId/unlink-student', authMiddleware, inferTenantGuard, asyn
       .update({
         student_id: null,
         relationship_type: null,
-        priority: null,
         updated_at: new Date().toISOString()
       })
       .eq('id', contactId)
