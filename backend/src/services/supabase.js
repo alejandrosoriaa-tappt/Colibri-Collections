@@ -328,7 +328,9 @@ export async function getCampaign(campaignId) {
   return data
 }
 
-export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0, seccion, grado, salon } = {}) {
+const SIN_FAMILIA = ' sin-familia'   // centinela: contactos sin nombre_familia
+
+export async function getContactsByTenant(tenantId, { search, status = 'active', limit = 50, offset = 0, seccion, grado, salon, porFamilia = false } = {}) {
   const hasSchoolFilter = seccion || grado || salon
 
   // School filters live on the student contact. We resolve the matching
@@ -349,6 +351,52 @@ export async function getContactsByTenant(tenantId, { search, status = 'active',
     if (sErr) throw sErr
     familyNames = [...new Set((students || []).map(s => s.nombre_familia).filter(Boolean))]
     if (familyNames.length === 0) return { data: [], count: 0 }
+  }
+
+  // ── Vista por familia (colegios) ──────────────────────────────────────────
+  // Aquí NO se puede paginar por contacto: una familia son 3-4 contactos
+  // (mamá, papá, cada alumno) con nombres distintos, así que el corte de
+  // página la parte a la mitad y la pantalla muestra familias incompletas —
+  // se veía como si la importación hubiera perdido papás y alumnos.
+  // Se pagina por FAMILIA y luego se traen todos sus integrantes.
+  if (porFamilia) {
+    let fq = supabase
+      .from('contacts')
+      .select('nombre_familia')
+      .eq('tenant_id', tenantId)
+    if (status !== 'all') fq = fq.eq('status', status)
+    if (search) {
+      fq = fq.or(`nombre.ilike.%${search}%,apellido.ilike.%${search}%,telefono.ilike.%${search}%,nombre_alumno.ilike.%${search}%,nombre_familia.ilike.%${search}%`)
+    }
+    if (familyNames) fq = fq.in('nombre_familia', familyNames)
+
+    const { data: filas, error: fErr } = await fq
+    if (fErr) throw fErr
+
+    // Un contacto suelto sin familia no debe desaparecer de la lista
+    const familias = [...new Set((filas || []).map(r => r.nombre_familia || SIN_FAMILIA))]
+      .sort((a, b) => a.localeCompare(b, 'es'))
+
+    const pagina = familias.slice(offset, offset + limit)
+    if (pagina.length === 0) return { data: [], count: familias.length }
+
+    const conNombre = pagina.filter(f => f !== SIN_FAMILIA)
+    const incluyeSueltos = pagina.includes(SIN_FAMILIA)
+
+    const traer = async (aplicarFiltro) => {
+      let q = supabase.from('contacts').select('*').eq('tenant_id', tenantId)
+      if (status !== 'all') q = q.eq('status', status)
+      q = aplicarFiltro(q)
+      const { data, error } = await q.order('nombre', { ascending: true })
+      if (error) throw error
+      return data || []
+    }
+
+    const lotes = []
+    if (conNombre.length > 0) lotes.push(await traer(q => q.in('nombre_familia', conNombre)))
+    if (incluyeSueltos)       lotes.push(await traer(q => q.is('nombre_familia', null)))
+
+    return { data: lotes.flat(), count: familias.length }
   }
 
   let query = supabase
