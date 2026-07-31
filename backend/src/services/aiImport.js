@@ -40,6 +40,18 @@ function titleCase(str) {
     .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 }
 
+// ── Marcadores de "no hay dato" ──────────────────────────────────────────────
+// Los colegios escriben "NA", "N/A", "-" o "X" cuando no existe ese papá o no
+// dieron el teléfono. Sin esto se daba de alta un contacto llamado "Na".
+const PLACEHOLDERS = new Set(['na', 'n/a', 'n.a.', 'no', 'no aplica', 'ninguno', 'nd', 's/n', '-', '--', 'x', '.'])
+function esPlaceholder(v) {
+  return PLACEHOLDERS.has(tidy(v).toLowerCase())
+}
+function limpioODefault(v) {
+  const s = tidy(v)
+  return esPlaceholder(s) ? '' : s
+}
+
 // ── Teléfonos: soporta varios separados por / , ; ────────────────────────────
 function parsePhones(value) {
   if (value == null) return []
@@ -145,6 +157,10 @@ REGLAS:
 1. Si cada fila tiene alumno + mamá + papá → has_family_structure=true.
 2. Detecta qué columna es cada campo y el header_row (base 0) de las hojas de muestra.
 3. Si el header_row varía entre hojas indicalo; si es igual para todas usa "default".
+4. Si existe una columna GRUPO/SALÓN con el nombre corto del grupo ("CNA",
+   "TI D", "1A"), mapeala como "grupo": tiene prioridad sobre el nombre de la
+   hoja, que suele traer al maestro o guía pegado.
+5. Valores como "NA", "N/A", "-" o "X" significan que ese dato NO existe.
 
 Hojas de muestra:
 ${JSON.stringify(sampleSheets, null, 1)}
@@ -170,6 +186,7 @@ Devuelve EXACTAMENTE este JSON (sin texto extra):
     "papa_email": "K",
     "telefono": "null",
     "email": "null",
+    "grupo": "G",
     "id_externo": "B"
   },
   "default_header_row": 1,
@@ -216,6 +233,7 @@ export function applyMapping(sheets, mapping) {
     papaEmail:colIdx(C.papa_email),
     tel:      colIdx(C.telefono),
     email:    colIdx(C.email),
+    grupo:    colIdx(C.grupo),
     mat:      colIdx(C.id_externo)
   }
 
@@ -242,8 +260,14 @@ export function applyMapping(sheets, mapping) {
 
         const { apellidos, nombres } = splitSurnameName(alumnoFull)
         const familia = titleCase(apellidos)
-        const grado = get(cols.grado) || null
+        const grado = limpioODefault(get(cols.grado)) || null
         alumnos++
+
+        // Si el archivo trae columna GRUPO ("CNA", "TI D") se respeta tal cual:
+        // es el nombre que el colegio ya usa. El nombre de la hoja es el
+        // respaldo, porque suele venir con la guía pegada.
+        const grupoFila = limpioODefault(get(cols.grupo)) || null
+        const salonFinal = grupoFila || salon
 
         contacts.push({
           relationship_type: 'student',
@@ -251,8 +275,8 @@ export function applyMapping(sheets, mapping) {
           apellido: familia,
           nombre_alumno: titleCase(alumnoFull),
           nombre_familia: familia,
-          salon, seccion, grado,
-          grupo: salon || grado || null,
+          salon: salonFinal, seccion, grado,
+          grupo: salonFinal || grado || null,
           id_externo: get(cols.mat) || null,
           telefono: null,
           email: null
@@ -262,9 +286,10 @@ export function applyMapping(sheets, mapping) {
           ['mama', cols.mamaNom, cols.mamaTel, cols.mamaEmail],
           ['papa', cols.papaNom, cols.papaTel, cols.papaEmail]
         ]) {
-          const nom = get(nomI)
-          const emailVal = get(emailI) || null
-          const telefonos = parsePhones(telI == null ? '' : row[telI])
+          const nom = limpioODefault(get(nomI))
+          const emailVal = limpioODefault(get(emailI)) || null
+          const celda = telI == null ? '' : row[telI]
+          const telefonos = esPlaceholder(celda) ? [] : parsePhones(celda)
 
           // La columna viene vacía: esa mamá/papá no existe en el archivo.
           // Ojo: basta el NOMBRE para darla de alta; no exigimos teléfono.
