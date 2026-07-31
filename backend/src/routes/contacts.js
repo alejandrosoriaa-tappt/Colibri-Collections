@@ -755,12 +755,29 @@ router.get('/families/search', authMiddleware, inferTenantGuard, async (req, res
 
     const searchTerm = `%${q.trim()}%`
 
-    // Find all contacts with matching nombre_familia
+    // Paso 1: familias que coinciden por apellido de familia O por nombre de
+    // alumno. Se buscan las FAMILIAS y no los contactos sueltos porque quien
+    // recibe el WhatsApp es el papá/mamá: si alguien busca a un alumno espera
+    // que el mensaje llegue a sus papás, no que no llegue a nadie.
+    const { data: matches, error: matchError } = await supabase
+      .from('contacts')
+      .select('nombre_familia')
+      .eq('tenant_id', req.tenantId)
+      .neq('status', 'inactive')
+      .not('nombre_familia', 'is', null)
+      .or(`nombre_familia.ilike.${searchTerm},nombre_alumno.ilike.${searchTerm}`)
+
+    if (matchError) throw matchError
+
+    const familias = [...new Set((matches || []).map(m => m.nombre_familia).filter(Boolean))]
+    if (familias.length === 0) return res.json({ families: [] })
+
+    // Paso 2: traer TODOS los integrantes de esas familias
     const { data: contacts, error } = await supabase
       .from('contacts')
       .select('id, nombre, apellido, telefono, nombre_alumno, grado, salon, relationship_type, priority, status, nombre_familia')
       .eq('tenant_id', req.tenantId)
-      .ilike('nombre_familia', searchTerm)
+      .in('nombre_familia', familias)
       .neq('status', 'inactive')
       .order('relationship_type, priority, nombre_alumno', { ascending: true })
 

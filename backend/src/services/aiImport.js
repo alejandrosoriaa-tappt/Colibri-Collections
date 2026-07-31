@@ -40,6 +40,18 @@ function titleCase(str) {
     .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
 }
 
+// ── Marcadores de "no hay dato" ──────────────────────────────────────────────
+// Los colegios escriben "NA", "N/A", "-" o "X" cuando no existe ese papá o no
+// dieron el teléfono. Sin esto se daba de alta un contacto llamado "Na".
+const PLACEHOLDERS = new Set(['na', 'n/a', 'n.a.', 'no', 'no aplica', 'ninguno', 'nd', 's/n', '-', '--', 'x', '.'])
+function esPlaceholder(v) {
+  return PLACEHOLDERS.has(tidy(v).toLowerCase())
+}
+function limpioODefault(v) {
+  const s = tidy(v)
+  return esPlaceholder(s) ? '' : s
+}
+
 // ── Teléfonos: soporta varios separados por / , ; ────────────────────────────
 function parsePhones(value) {
   if (value == null) return []
@@ -105,53 +117,63 @@ function detectKollybryTemplate(sheets) {
 
   const normalize = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim()
 
+  const formatoDeFila = (vals) => {
+    // Standard: 8 columnas con FAMILIA primero
+    if (vals.length >= 8 && vals[0] === 'FAMILIA' && vals[1] === normalize(STANDARD_HEADERS[1])) {
+      return 'kollybry-standard'
+    }
+    // Legacy: 7 columnas, empieza con MAMÁ
+    if (vals.length >= 7 && vals[0] === 'MAMA' && vals[2] === 'PAPA' && (vals[4] || '').includes('ALUMNO')) {
+      return 'kollybry-legacy'
+    }
+    return null
+  }
+
+  // El header NO está en la misma fila en todas las hojas: unas traen un título
+  // arriba ("CASA DE NIÑOS \"A\" ROSY - FER") y otras no. Si se asume una sola
+  // fila para todas, en las demás se pierde el primer alumno. Por eso se busca
+  // hoja por hoja.
+  let formato = null
+  const headerRowBySheet = {}
   for (const s of sheets) {
-    for (let r = 0; r < Math.min(s.preview.length, 6); r++) {
-      const row = s._grid[r] || []
-      const vals = row.map(normalize)
-
-      // Standard: 8 columnas con FAMILIA primero
-      if (vals.length >= 8 && vals[0] === 'FAMILIA' && normalize(STANDARD_HEADERS[1]) === vals[1]) {
-        return {
-          _format: 'kollybry-standard',
-          org_type: 'colegio',
-          has_family_structure: true,
-          sheet_is_salon: false,
-          confidence: 1,
-          notes: 'Template estándar Kollybry detectado (con columna FAMILIA)',
-          default_header_row: r,
-          header_row_by_sheet: {},
-          columns: {
-            nombre_familia: 'A', mama_nombre: 'B', mama_telefono: 'C',
-            papa_nombre: 'D', papa_telefono: 'E',
-            nombre_alumno: 'F', grado: 'G', salon_col: 'H',
-            mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
-          }
-        }
-      }
-
-      // Legacy: 7 columnas, empieza con MAMÁ
-      if (vals.length >= 7 && vals[0] === 'MAMA' && vals[2] === 'PAPA' && vals[4].includes('ALUMNO')) {
-        return {
-          _format: 'kollybry-legacy',
-          org_type: 'colegio',
-          has_family_structure: true,
-          sheet_is_salon: true,
-          confidence: 1,
-          notes: 'Formato legacy Kollybry detectado (sin columna FAMILIA)',
-          default_header_row: r,
-          header_row_by_sheet: {},
-          columns: {
-            mama_nombre: 'A', mama_telefono: 'B',
-            papa_nombre: 'C', papa_telefono: 'D',
-            nombre_alumno: 'E', grado: 'F', salon_col: 'G',
-            mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
-          }
-        }
-      }
+    const maxFilas = Math.min(s._grid.length, 6)
+    for (let r = 0; r < maxFilas; r++) {
+      const f = formatoDeFila((s._grid[r] || []).map(normalize))
+      if (!f) continue
+      if (!formato) formato = f          // el primer formato reconocido manda
+      if (f === formato) headerRowBySheet[s.name] = r
+      break
     }
   }
-  return null
+  if (!formato) return null
+
+  const esStandard = formato === 'kollybry-standard'
+  return {
+    _format: formato,
+    org_type: 'colegio',
+    has_family_structure: true,
+    // En el standard el grupo viene en su columna; en el legacy la hoja hace de salón
+    sheet_is_salon: !esStandard,
+    confidence: 1,
+    notes: esStandard
+      ? 'Template estándar Kollybry detectado (con columna FAMILIA)'
+      : 'Formato legacy Kollybry detectado (sin columna FAMILIA)',
+    default_header_row: Object.values(headerRowBySheet)[0] ?? 1,
+    header_row_by_sheet: headerRowBySheet,
+    columns: esStandard
+      ? {
+          nombre_familia: 'A', mama_nombre: 'B', mama_telefono: 'C',
+          papa_nombre: 'D', papa_telefono: 'E',
+          nombre_alumno: 'F', grado: 'G', salon_col: 'H',
+          mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
+        }
+      : {
+          mama_nombre: 'A', mama_telefono: 'B',
+          papa_nombre: 'C', papa_telefono: 'D',
+          nombre_alumno: 'E', grado: 'F', salon_col: 'G',
+          mama_email: 'null', papa_email: 'null', telefono: 'null', email: 'null', id_externo: 'null'
+        }
+  }
 }
 
 // ── Claude mapea columnas y asigna salon/seccion por hoja ────────────────────
@@ -166,6 +188,19 @@ function inferSeccion(sheetName) {
   if (/SECUNDARIA|SEC\b/i.test(n)) return 'Secundaria'
   if (/PREESCOLAR|PREESC\b|KINDER|KG?\b/i.test(n)) return 'Preescolar'
   return null
+}
+
+// El nombre de la hoja de Casa de Niños suele traer a la guía pegada
+// ("CASA DE NIÑOS A - LAURA"), y eso terminaba como nombre del grupo.
+// El salón debe quedar solo como CNA / CNB / CNC.
+function normalizeSalonHoja(sheetName, seccion) {
+  const limpio = tidy(sheetName)
+  if (seccion !== 'Casa de Niños') return limpio
+  const sinPrefijo = limpio
+    .toUpperCase()
+    .replace(/^\s*(INGRESO\s+)?(CASA\s*DE\s*NI[ÑN]OS|CN)\s*/, '')
+  const letra = sinPrefijo.match(/^[-–—\s]*([A-E])\b/)
+  return letra ? `CN${letra[1]}` : limpio
 }
 
 async function askClaudeForMapping(sheets) {
@@ -192,6 +227,11 @@ REGLAS:
 1. Si cada fila tiene alumno + mamá + papá → has_family_structure=true.
 2. Detecta qué columna es cada campo y el header_row (base 0) de las hojas de muestra.
 3. Si el header_row varía entre hojas indicalo; si es igual para todas usa "default".
+4. Si existe una columna GRUPO/SALÓN con el nombre corto del grupo ("CNA",
+   "TI D", "1A"), mapeala como "salon_col": tiene prioridad sobre el nombre de
+   la hoja, que suele traer al maestro o guía pegado.
+   Si existe una columna FAMILIA/APELLIDOS, mapeala como "nombre_familia".
+5. Valores como "NA", "N/A", "-" o "X" significan que ese dato NO existe.
 
 Hojas de muestra:
 ${JSON.stringify(sampleSheets, null, 1)}
@@ -217,6 +257,8 @@ Devuelve EXACTAMENTE este JSON (sin texto extra):
     "papa_email": "K",
     "telefono": "null",
     "email": "null",
+    "salon_col": "G",
+    "nombre_familia": "null",
     "id_externo": "B"
   },
   "default_header_row": 1,
@@ -276,8 +318,10 @@ export function applyMapping(sheets, mapping) {
 
   for (const s of sheets) {
     const headerRow = (mapping.header_row_by_sheet || {})[s.name] ?? (mapping.default_header_row ?? 1)
-    const sheetSalon  = mapping.sheet_is_salon ? tidy(s.name) : null
     const seccion     = inferSeccion(s.name) || null
+    // Respaldo cuando la hoja hace de salón: normaliza "CASA DE NIÑOS A - LAURA"
+    // → "CNA". Si el archivo trae columna GRUPO, esa manda (ver más abajo).
+    const sheetSalon  = mapping.sheet_is_salon ? normalizeSalonHoja(s.name, seccion) : null
 
     for (let r = headerRow + 1; r < s._grid.length; r++) {
       const row = s._grid[r]
@@ -292,8 +336,8 @@ export function applyMapping(sheets, mapping) {
         // FAMILIA: usar columna explícita si existe, si no extraer de apellidos del alumno
         let familia
         if (cols.familiaCol != null) {
-          const fVal = get(cols.familiaCol)
-          familia = (fVal && !/^(na|n\/a)$/i.test(fVal)) ? titleCase(fVal) : null
+          const fVal = limpioODefault(get(cols.familiaCol))
+          familia = fVal ? titleCase(fVal) : null
         }
         if (!familia) {
           const { apellidos } = splitSurnameName(alumnoFull)
@@ -301,9 +345,9 @@ export function applyMapping(sheets, mapping) {
         }
 
         const { nombres } = splitSurnameName(alumnoFull)
-        const grado  = get(cols.grado) || null
+        const grado  = limpioODefault(get(cols.grado)) || null
         // salon: por fila (GRUPO col) > por hoja
-        const salon  = (cols.salonCol != null ? get(cols.salonCol) : null) || sheetSalon
+        const salon  = (cols.salonCol != null ? limpioODefault(get(cols.salonCol)) : null) || sheetSalon
         alumnos++
 
         contacts.push({
@@ -324,11 +368,13 @@ export function applyMapping(sheets, mapping) {
           ['mama', cols.mamaNom, cols.mamaTel, cols.mamaEmail],
           ['papa', cols.papaNom, cols.papaTel, cols.papaEmail]
         ]) {
-          const nom = get(nomI)
-          if (/^(na|n\/a)$/i.test(nom)) continue  // NA explícito → no hay mamá/papá
-
-          const emailVal = get(emailI) || null
-          const telefonos = parsePhones(telI == null ? '' : row[telI])
+          // "NA", "N/A", "-", "X"… significan que ese papá/mamá no existe o no
+          // dieron el dato. Se limpian en nombre, correo Y teléfono: si no, se
+          // daba de alta un contacto llamado "Na".
+          const nom = limpioODefault(get(nomI))
+          const emailVal = limpioODefault(get(emailI)) || null
+          const celda = telI == null ? '' : row[telI]
+          const telefonos = esPlaceholder(celda) ? [] : parsePhones(celda)
 
           if (!nom && telefonos.length === 0) continue
 

@@ -2,9 +2,9 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Radio, Plus, X, Loader2, AlertCircle, CheckCircle2,
-  Users, Send, FileText, Eye, ChevronDown, Check
+  Users, Send, FileText, Eye, ChevronDown, Check, Search
 } from 'lucide-react'
-import { broadcastsAPI } from '../lib/api.js'
+import { broadcastsAPI, contactsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 
 const VARIABLES_HELP = [
@@ -15,8 +15,17 @@ const VARIABLES_HELP = [
 const EMPTY_FORM = {
   title: '',
   message: '',
-  group_filters: [],   // array of selected groups (empty = todos)
+  group_filters: [],   // grupos seleccionados
+  contactos: [],       // [{ id, label }] destinatarios individuales
   media_url: '',
+}
+
+// A quién va dirigido el envío. Mensajes permite grupo o familia/alumno;
+// Comunicados permite toda la comunidad o grupo.
+const DESTINOS = {
+  todos:      { label: 'Toda la comunidad' },
+  grupos:     { label: 'Por grupo' },
+  individual: { label: 'Por familia o alumno' },
 }
 
 // School sections in display order; anything else falls into "Otros grupos"
@@ -127,6 +136,15 @@ export default function BroadcastsPage() {
   // "grupos"  = dirigido a salones concretos (exige elegir al menos uno)
   const modo = searchParams.get('modo') === 'general' ? 'general' : 'grupos'
   const esGeneral = modo === 'general'
+
+  // Opciones de destinatario disponibles en cada pantalla
+  const destinosDisponibles = esGeneral ? ['todos', 'grupos'] : ['grupos', 'individual']
+  const [destino, setDestino] = useState(destinosDisponibles[0])
+
+  // Búsqueda de familias/alumnos para el destinatario individual
+  const [busqueda, setBusqueda] = useState('')
+  const [resultados, setResultados] = useState([])
+  const [buscando, setBuscando] = useState(false)
   const copy = esGeneral
     ? { titulo: 'Comunicados', nuevo: 'Nuevo comunicado', label: 'comunicado', volver: '/comunicados',
         sub: 'Avisos para toda la comunidad' }
@@ -176,14 +194,59 @@ export default function BroadcastsPage() {
     setPreviewCount(null)
     setPreviewContacts([])
     setShowRecipients(false)
-    const groupParam = form.group_filters.length > 0 ? form.group_filters.join(',') : undefined
+
+    // Con destinatarios individuales ya sabemos a quién va: no hace falta
+    // preguntarle al backend.
+    if (destino === 'individual') {
+      setPreviewCount(form.contactos.length)
+      setPreviewContacts(form.contactos.map(c => ({ id: c.id, nombre: c.label, grupo: c.familia })))
+      return
+    }
+
+    const groupParam = destino === 'grupos' && form.group_filters.length > 0
+      ? form.group_filters.join(',')
+      : undefined
     broadcastsAPI.preview(groupParam)
       .then(res => {
         setPreviewCount(res.data.count)
         setPreviewContacts(res.data.contacts || [])
       })
       .catch(() => setPreviewCount(null))
-  }, [form.group_filters, showForm])
+  }, [form.group_filters, form.contactos, destino, showForm])
+
+  // Busca familias por apellido o por nombre de alumno (debounce)
+  useEffect(() => {
+    if (destino !== 'individual') return
+    const q = busqueda.trim()
+    if (q.length < 2) { setResultados([]); return }
+    setBuscando(true)
+    const t = setTimeout(() => {
+      contactsAPI.getFamilies(q)
+        .then(res => setResultados(res.data.families || []))
+        .catch(() => setResultados([]))
+        .finally(() => setBuscando(false))
+    }, 300)
+    return () => clearTimeout(t)
+  }, [busqueda, destino])
+
+  // Agrega a los papás de una familia: son quienes tienen teléfono y por
+  // tanto los que realmente reciben el WhatsApp.
+  const agregarFamilia = (fam) => {
+    const conTelefono = (fam.papas || []).filter(p => p.telefono)
+    if (conTelefono.length === 0) return
+    setForm(f => {
+      const yaIds = new Set(f.contactos.map(c => c.id))
+      const nuevos = conTelefono
+        .filter(p => !yaIds.has(p.id))
+        .map(p => ({ id: p.id, label: `${p.nombre} ${p.apellido || ''}`.trim(), familia: fam.nombre_familia }))
+      return { ...f, contactos: [...f.contactos, ...nuevos] }
+    })
+    setBusqueda('')
+    setResultados([])
+  }
+
+  const quitarContacto = (id) =>
+    setForm(f => ({ ...f, contactos: f.contactos.filter(c => c.id !== id) }))
 
   const toggleGroup = (g) => {
     setForm(f => ({
@@ -208,10 +271,15 @@ export default function BroadcastsPage() {
   const handleSend = async (e) => {
     e.preventDefault()
     if (!form.title.trim() || !form.message.trim()) return
-    // En modo grupos el destinatario es obligatorio: sin esto el envío se iría
-    // a TODA la comunidad, que es justo lo contrario de lo que se pidió.
-    if (!esGeneral && form.group_filters.length === 0) {
-      setFormError('Elige al menos un salón o grupo. Para enviar a toda la comunidad usa Comunicados.')
+    // El destinatario es obligatorio salvo cuando es explícitamente "todos":
+    // sin esta validación un envío sin selección se iría en silencio a TODA
+    // la comunidad, que suele ser lo contrario de lo que se quería.
+    if (destino === 'grupos' && form.group_filters.length === 0) {
+      setFormError('Elige al menos un salón o grupo.')
+      return
+    }
+    if (destino === 'individual' && form.contactos.length === 0) {
+      setFormError('Busca y elige al menos una familia o alumno.')
       return
     }
     setFormError(null)
@@ -220,7 +288,12 @@ export default function BroadcastsPage() {
       await broadcastsAPI.send({
         title: form.title.trim(),
         message: form.message.trim(),
-        group_filters: esGeneral || form.group_filters.length === 0 ? null : form.group_filters,
+        group_filters: destino === 'grupos' ? form.group_filters : null,
+        contact_ids: destino === 'individual' ? form.contactos.map(c => c.id) : null,
+        // Etiqueta con la que se muestra el envío en la lista
+        group_filter: destino === 'individual'
+          ? [...new Set(form.contactos.map(c => c.familia).filter(Boolean))].join(', ')
+          : undefined,
         media_url: form.media_url.trim() || null,
         media_type: form.media_url ? 'document' : null,
         media_filename: form.media_url ? form.media_url.split('/').pop() : null
@@ -246,6 +319,9 @@ export default function BroadcastsPage() {
     setForm(EMPTY_FORM)
     setFormError(null)
     setPreviewCount(null)
+    setDestino(destinosDisponibles[0])
+    setBusqueda('')
+    setResultados([])
     setShowForm(true)
   }
 
@@ -376,14 +452,97 @@ export default function BroadcastsPage() {
               <div>
                 <label className="label">Destinatarios</label>
 
-                {esGeneral && (
+                {/* Selector de a quién va dirigido */}
+                <div className="flex gap-2 mb-2">
+                  {destinosDisponibles.map(d => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setDestino(d)}
+                      className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+                        destino === d
+                          ? 'bg-colibri text-white border-colibri'
+                          : 'bg-white text-gray-600 border-gray-200 hover:border-colibri hover:text-colibri'
+                      }`}
+                    >
+                      {DESTINOS[d].label}
+                    </button>
+                  ))}
+                </div>
+
+                {destino === 'todos' && (
                   <div className="flex items-center gap-2 p-3 bg-colibri/10 rounded-xl">
                     <Users size={15} className="text-colibri flex-shrink-0" />
-                    <p className="text-sm text-gray-700">Toda la comunidad</p>
+                    <p className="text-sm text-gray-700">Se enviará a toda la comunidad</p>
                   </div>
                 )}
 
-                <div className={`relative ${esGeneral ? 'hidden' : ''}`} ref={groupsRef}>
+                {/* Búsqueda de familia o alumno */}
+                {destino === 'individual' && (
+                  <div>
+                    <div className="relative">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        className="input pl-9"
+                        placeholder="Busca por apellido de familia o nombre del alumno…"
+                        value={busqueda}
+                        onChange={e => setBusqueda(e.target.value)}
+                      />
+                      {buscando && (
+                        <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                      )}
+                    </div>
+
+                    {resultados.length > 0 && (
+                      <div className="mt-1 border border-gray-200 rounded-xl max-h-56 overflow-y-auto divide-y divide-gray-100">
+                        {resultados.map(fam => {
+                          const conTel = (fam.papas || []).filter(p => p.telefono)
+                          const alumnos = (fam.estudiantes || [])
+                            .map(a => a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim())
+                            .filter(Boolean)
+                          return (
+                            <button
+                              key={fam.nombre_familia}
+                              type="button"
+                              disabled={conTel.length === 0}
+                              onClick={() => agregarFamilia(fam)}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <p className="text-sm font-medium text-gray-900">Familia {fam.nombre_familia}</p>
+                              {alumnos.length > 0 && (
+                                <p className="text-xs text-gray-500 truncate">{alumnos.join(' · ')}</p>
+                              )}
+                              <p className="text-xs text-gray-400">
+                                {conTel.length > 0
+                                  ? `${conTel.length} ${conTel.length === 1 ? 'contacto' : 'contactos'} con WhatsApp`
+                                  : 'Sin teléfono registrado'}
+                              </p>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    {busqueda.trim().length >= 2 && !buscando && resultados.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-1.5">Sin resultados para "{busqueda.trim()}"</p>
+                    )}
+
+                    {form.contactos.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {form.contactos.map(c => (
+                          <span key={c.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-colibri/10 text-colibri rounded-lg text-xs font-medium">
+                            {c.label}
+                            <button type="button" onClick={() => quitarContacto(c.id)} className="hover:text-red-500">
+                              <X size={11} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className={`relative ${destino === 'grupos' ? '' : 'hidden'}`} ref={groupsRef}>
                   <button
                     type="button"
                     onClick={() => setGroupsOpen(o => !o)}
@@ -391,7 +550,7 @@ export default function BroadcastsPage() {
                   >
                     <span className={form.group_filters.length === 0 ? 'text-gray-500' : 'text-gray-900'}>
                       {form.group_filters.length === 0
-                        ? 'Todos los contactos'
+                        ? 'Elige uno o varios grupos'
                         : form.group_filters.length === 1
                         ? form.group_filters[0]
                         : `${form.group_filters.length} grupos seleccionados`}
@@ -401,16 +560,6 @@ export default function BroadcastsPage() {
 
                   {groupsOpen && (
                     <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-lg max-h-72 overflow-y-auto py-1">
-                      {/* Todos */}
-                      <button
-                        type="button"
-                        onClick={() => { setForm(f => ({ ...f, group_filters: [] })); setGroupsOpen(false) }}
-                        className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-gray-50"
-                      >
-                        <span className="font-medium text-gray-900">Todos los contactos</span>
-                        {form.group_filters.length === 0 && <Check size={15} className="text-colibri" />}
-                      </button>
-
                       {organizeGroups(groups).map(sec => {
                         const allSelected = sec.groups.every(g => form.group_filters.includes(g))
                         return (
@@ -454,7 +603,7 @@ export default function BroadcastsPage() {
                 </div>
 
                 {/* Selected groups as removable chips */}
-                {!esGeneral && form.group_filters.length > 0 && (
+                {destino === 'grupos' && form.group_filters.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {form.group_filters.map(g => (
                       <span key={g} className="inline-flex items-center gap-1 px-2 py-0.5 bg-colibri/10 text-colibri rounded-lg text-xs font-medium">
