@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, MessageSquare, Radio,
   ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
@@ -315,6 +315,16 @@ export default function MensajesPage({ modo = 'grupos' }) {
   const [selectedBroadcast, setSelectedBroadcast] = useState(null)
   const [showCompositor, setShowCompositor] = useState(false)
   const [aviso, setAviso] = useState(null)
+  const [gruposPre, setGruposPre] = useState([])
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  // Contactos manda aquí con los salones ya filtrados: ?nuevo=1&grupos=A,B
+  useEffect(() => {
+    if (searchParams.get('nuevo') !== '1') return
+    setGruposPre((searchParams.get('grupos') || '').split(',').map(g => g.trim()).filter(Boolean))
+    setShowCompositor(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams])
 
   useEffect(() => {
     setIsLoading(true)
@@ -388,9 +398,11 @@ export default function MensajesPage({ modo = 'grupos' }) {
       {showCompositor && (
         <CompositorMensaje
           modo={modo}
-          onClose={() => setShowCompositor(false)}
+          gruposIniciales={gruposPre}
+          onClose={() => { setShowCompositor(false); setGruposPre([]) }}
           onSent={(msg) => {
             setShowCompositor(false)
+            setGruposPre([])
             setAviso(msg)
             setTimeout(() => setAviso(null), 5000)
             setIsLoading(true)

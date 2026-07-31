@@ -1659,7 +1659,7 @@ export default function ContactsPage() {
                       .map(c => c.salon)
                   )
                   if (grupos.length > 0) {
-                    navigate(`/broadcasts?new=1&groups=${encodeURIComponent(grupos.join(','))}`)
+                    navigate(`/mensajes?nuevo=1&grupos=${encodeURIComponent(grupos.join(','))}`)
                   }
                 }}
                 className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-md-primary text-white rounded-full hover:opacity-90 transition-opacity ml-auto"
