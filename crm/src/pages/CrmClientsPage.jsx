@@ -349,51 +349,53 @@ function ClientRow({ client, onDelete, deleting }) {
   return (
     <Link
       to={`/crm/clients/${client.id}`}
-      className="flex items-center gap-4 bg-crm-surface rounded-2xl border border-crm-outline-variant p-4 hover:bg-crm-surface-container-low hover:shadow-md3-2 transition-all group"
+      className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 bg-crm-surface rounded-2xl border border-crm-outline-variant p-4 hover:bg-crm-surface-container-low hover:shadow-md3-2 transition-all group"
     >
-      <div className="w-10 h-10 rounded-full bg-crm-primary-container flex items-center justify-center flex-shrink-0 font-bold text-crm-on-primary-container text-sm">
-        {client.razon_social?.charAt(0)?.toUpperCase() || '?'}
+      <div className="flex items-center gap-3 sm:contents">
+        <div className="w-10 h-10 rounded-full bg-crm-primary-container flex items-center justify-center flex-shrink-0 font-bold text-crm-on-primary-container text-sm">
+          {client.razon_social?.charAt(0)?.toUpperCase() || '?'}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-crm-on-surface text-sm leading-tight">{client.razon_social}</span>
+            {client.giro && (
+              <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2 py-0.5 rounded-full">
+                {client.giro}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {client.nombre_contacto && (
+              <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
+                <Building2 size={10} /> {client.nombre_contacto}
+                {client.cargo && <span className="text-crm-outline">· {client.cargo}</span>}
+              </span>
+            )}
+            {client.telefono && (
+              <span className="text-xs text-crm-on-surface-variant flex items-center gap-1 whitespace-nowrap">
+                <Phone size={10} /> {client.telefono}
+              </span>
+            )}
+            {client.ciudad && (
+              <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
+                <MapPin size={10} /> {client.ciudad}
+              </span>
+            )}
+            {timeAgo && (
+              <span className="text-xs text-crm-on-surface-variant/60 flex items-center gap-1 whitespace-nowrap">
+                <Clock size={10} /> {timeAgo}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-semibold text-crm-on-surface text-sm leading-tight line-clamp-2">{client.razon_social}</span>
-          {client.giro && (
-            <span className="text-xs text-crm-on-surface-variant bg-crm-surface-container px-2 py-0.5 rounded-full">
-              {client.giro}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-3 mt-1 flex-wrap">
-          {client.nombre_contacto && (
-            <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
-              <Building2 size={10} /> {client.nombre_contacto}
-              {client.cargo && <span className="text-crm-outline">· {client.cargo}</span>}
-            </span>
-          )}
-          {client.telefono && (
-            <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
-              <Phone size={10} /> {client.telefono}
-            </span>
-          )}
-          {client.ciudad && (
-            <span className="text-xs text-crm-on-surface-variant flex items-center gap-1">
-              <MapPin size={10} /> {client.ciudad}
-            </span>
-          )}
-          {timeAgo && (
-            <span className="text-xs text-crm-on-surface-variant/60 flex items-center gap-1">
-              <Clock size={10} /> {timeAgo}
-            </span>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="flex items-center gap-2 flex-shrink-0 pl-[52px] sm:pl-0">
         <span className="text-xs font-bold" title={`Prioridad ${prioridadCfg.label}`}>
           {prioridadCfg.iconOff}
         </span>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 ${statusCfg.badge}`}>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 whitespace-nowrap ${statusCfg.badge}`}>
           <div className={`w-1.5 h-1.5 rounded-full ${statusCfg.dot}`} />
           {statusCfg.label}
         </span>
