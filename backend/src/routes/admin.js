@@ -310,6 +310,52 @@ router.post('/tenants/:id/add-user', authMiddleware, adminOnly, async (req, res)
 })
 
 // POST /api/admin/onboard — create tenant + user + send welcome WhatsApp in one shot
+
+/**
+ * Toma un número libre de la bolsa y se lo asigna al colegio.
+ *
+ * Meta no permite crear y verificar un número al instante —hay que pedir
+ * código y esperar la aprobación del nombre para mostrar—, así que se
+ * mantienen números ya registrados esperando. Al dar de alta un colegio se le
+ * asigna uno de inmediato y puede enviar desde el día uno.
+ *
+ * Si la bolsa está vacía NO se rompe el alta: el colegio queda sin número
+ * propio y usa el compartido hasta que le asignes uno. Se avisa en la
+ * respuesta para que el panel lo muestre.
+ */
+async function asignarNumeroLibre(tenantId, displayName) {
+  const { data: libre, error } = await supabase
+    .from('waba_numeros')
+    .select('id, phone_number_id, display_phone')
+    .eq('estado', 'libre')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error || !libre) return { asignado: false, motivo: 'sin números libres en la bolsa' }
+
+  // Condición de carrera: si dos altas ocurren a la vez, solo una debe ganar
+  // el número. El filtro por estado='libre' hace que la segunda no actualice
+  // nada y se quede sin asignar, en vez de que ambas crean tenerlo.
+  const { data: tomado, error: eTomar } = await supabase
+    .from('waba_numeros')
+    .update({ estado: 'asignado', tenant_id: tenantId, asignado_en: new Date().toISOString(), display_name: displayName })
+    .eq('id', libre.id)
+    .eq('estado', 'libre')
+    .select('id')
+
+  if (eTomar || !tomado?.length) return { asignado: false, motivo: 'el número lo tomó otra alta' }
+
+  const { error: eTenant } = await supabase
+    .from('tenants')
+    .update({ waba_phone_number_id: libre.phone_number_id })
+    .eq('id', tenantId)
+
+  if (eTenant) return { asignado: false, motivo: eTenant.message }
+
+  return { asignado: true, phone_number_id: libre.phone_number_id, display_phone: libre.display_phone }
+}
+
 router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
   const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true } = req.body
 
@@ -355,6 +401,13 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
     if (linkErr) throw new Error(`Error vinculando usuario: ${linkErr.message}`)
 
     // 4. Send welcome WhatsApp using approved template (required for first contact with new numbers)
+    // Número propio del colegio, asignado en el mismo momento del alta para
+    // que pueda enviar desde el día uno.
+    const numero = await asignarNumeroLibre(tenant.id, display_name || org_name)
+    if (!numero.asignado) {
+      console.warn(`Onboard: ${org_name} quedó sin número propio — ${numero.motivo}`)
+    }
+
     let whatsappSent = false
     if (send_whatsapp && admin_phone) {
       // Step 1: Send bienvenida template (Meta requires templates for first contact)
@@ -375,7 +428,15 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       }
     }
 
-    return res.json({ tenant, user: { id: authUser.id, email }, whatsapp_sent: whatsappSent })
+    return res.json({
+      tenant,
+      user: { id: authUser.id, email },
+      whatsapp_sent: whatsappSent,
+      // El panel debe avisar si quedó sin número: usaría el compartido y
+      // perdería el aislamiento de calidad frente a los demás colegios.
+      numero_asignado: numero.asignado ? numero.display_phone : null,
+      numero_aviso: numero.asignado ? null : numero.motivo
+    })
 
   } catch (err) {
     // Rollback: delete auth user if tenant creation failed
