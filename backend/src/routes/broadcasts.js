@@ -240,7 +240,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     const tenant = await getTenant(req.tenantId)
     orgName = tenant?.display_name || tenant?.name || ''
-    desdeNumero = tenant?.waba_phone_number_id || null
+    desdeNumero = tenant?.waba_phone_id || null
   } catch (e) {
     console.warn('Broadcast: no se pudo cargar el colegio:', e.message)
   }

@@ -63,9 +63,10 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
       'email',
       'website',
       'address',
-      'waba_phone_id',
-      'waba_token',
-      'waba_business_id',
+      // OJO: waba_phone_id / waba_token / waba_business_id NO van aquí.
+      // Ahora el envío usa el número del colegio, así que dejar que el propio
+      // colegio los edite le permitiría poner el número de OTRO y mandar
+      // mensajes suplantándolo. Solo se tocan desde el panel de Admin.
       // Contact management
       'contact_grace_period_days',
       // Google Sheets integration

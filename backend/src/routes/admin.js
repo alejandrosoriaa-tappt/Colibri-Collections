@@ -332,7 +332,7 @@ async function vincularNumero(tenantId, phoneNumberId, displayName) {
 
   const { error: eTenant } = await supabase
     .from('tenants')
-    .update({ waba_phone_number_id: phoneNumberId })
+    .update({ waba_phone_id: phoneNumberId })
     .eq('id', tenantId)
   if (eTenant) return { vinculado: false, motivo: eTenant.message }
 
@@ -340,7 +340,7 @@ async function vincularNumero(tenantId, phoneNumberId, displayName) {
 }
 
 router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
-  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true, waba_phone_number_id } = req.body
+  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true, waba_phone_id } = req.body
 
   if (!org_name || !email || !password) {
     return res.status(400).json({ error: 'org_name, email y password son requeridos' })
@@ -386,7 +386,7 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
     // 4. Send welcome WhatsApp using approved template (required for first contact with new numbers)
     // Número propio del colegio. Se registra antes en la WABA (el director
     // dicta el código que le llega) y aquí solo se vincula al colegio.
-    const numero = await vincularNumero(tenant.id, waba_phone_number_id, display_name || org_name)
+    const numero = await vincularNumero(tenant.id, waba_phone_id, display_name || org_name)
     if (!numero.vinculado) {
       console.warn(`Onboard: ${org_name} sin número propio — ${numero.motivo}`)
     }

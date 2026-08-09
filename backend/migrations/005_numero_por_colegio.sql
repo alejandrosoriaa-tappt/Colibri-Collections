@@ -41,14 +41,15 @@ COMMENT ON TABLE waba_numeros IS
 COMMENT ON COLUMN waba_numeros.recarga_vence_en IS
   'Prepago: pasada esta fecha la compañía puede reciclar el número. Avisar al colegio antes.';
 
--- ── El colegio guarda su número ─────────────────────────────────────────────
--- Nullable a propósito: si un colegio todavía no tiene número registrado, el
--- envío cae al número compartido en vez de fallar.
-ALTER TABLE tenants
-  ADD COLUMN IF NOT EXISTS waba_phone_number_id text;
-
-COMMENT ON COLUMN tenants.waba_phone_number_id IS
-  'Número desde el que este colegio envía. NULL = usa el número compartido de Kollybry.';
+-- ── El colegio ya tiene dónde guardar su número ─────────────────────────────
+-- NO se agrega columna: tenants.waba_phone_id YA EXISTE (la usa settings.js
+-- en su TENANT_SELECT). La infraestructura de número por colegio estaba en el
+-- esquema desde antes; lo que faltaba era conectarla al envío, que es lo que
+-- hace este cambio en el código.
+--
+-- Solo se documenta para que quede claro qué significa ahora:
+COMMENT ON COLUMN tenants.waba_phone_id IS
+  'Número desde el que este colegio envía sus comunicados. NULL = usa el número compartido de Kollybry. Solo editable desde el panel de Admin.';
 
 -- ── Verificación ────────────────────────────────────────────────────────────
 -- SELECT t.display_name AS colegio, n.display_phone, n.display_name,
