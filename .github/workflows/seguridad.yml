@@ -1,0 +1,28 @@
+name: Seguridad
+
+# Corre en cada push y cada semana. Falla solo ante vulnerabilidades ALTAS o
+# CRÍTICAS: si fallara con cualquier hallazgo, el equipo se acostumbra a verlo
+# en rojo y deja de mirarlo.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 13 * * 1'   # lunes 7am hora de México
+
+jobs:
+  auditoria:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        proyecto: [backend, dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Auditar dependencias de ${{ matrix.proyecto }}
+        working-directory: ${{ matrix.proyecto }}
+        run: npm audit --audit-level=high --omit=dev
