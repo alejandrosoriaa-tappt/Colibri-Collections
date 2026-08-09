@@ -1,0 +1,29 @@
+{
+  "_comentario": [
+    "Vulnerabilidades aceptadas a conciencia, con fecha de revisión.",
+    "Sin esto el workflow se queda en rojo permanente por un fallo que no se",
+    "puede corregir desde npm, y un check siempre rojo es un check que nadie",
+    "mira. Las excepciones CADUCAN a propósito: pasada la fecha, la auditoría",
+    "vuelve a fallar y obliga a reevaluar."
+  ],
+  "excepciones": [
+    {
+      "advisory": "GHSA-4r6h-8v6p-xvw6",
+      "paquete": "xlsx",
+      "titulo": "Prototype Pollution in sheetJS",
+      "proyecto": "backend",
+      "motivo": "SheetJS dejó de publicar en npm; su versión sigue congelada en 0.18.5 y la corrección solo existe en cdn.sheetjs.com. Se aplica con: npm i https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+      "mitigacion": "Solo usuarios autenticados de un colegio pueden subir archivos; no es explotable de forma anónima.",
+      "revisar_antes_de": "2026-11-01"
+    },
+    {
+      "advisory": "GHSA-5pgg-2g8v-p4x9",
+      "paquete": "xlsx",
+      "titulo": "SheetJS Regular Expression Denial of Service (ReDoS)",
+      "proyecto": "backend",
+      "motivo": "Mismo caso que el anterior: no hay versión corregida en npm.",
+      "mitigacion": "El parseo corre en el request de importación, autenticado y con límite de 10 MB por archivo.",
+      "revisar_antes_de": "2026-11-01"
+    }
+  ]
+}
