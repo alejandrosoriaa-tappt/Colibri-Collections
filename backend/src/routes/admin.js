@@ -10,6 +10,7 @@ import supabase, {
 import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.js'
 import { sendOperationalNotification } from '../services/notifier.js'
 import { bienvenidaTenantComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
+import { crearActivacion } from './activacion.js'
 
 const router = Router()
 
@@ -340,28 +341,19 @@ async function vincularNumero(tenantId, phoneNumberId, displayName) {
 }
 
 router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
-  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true, waba_phone_id } = req.body
+  const { org_name, display_name, slug, plan = 'basic', org_type = 'general',
+          admin_phone, nombre_director, waba_phone_id } = req.body
 
-  if (!org_name || !email || !password) {
-    return res.status(400).json({ error: 'org_name, email y password son requeridos' })
+  // Ya NO se pide correo ni contraseña: los define el director al activar. El
+  // admin nunca conoce la contraseña, y así no queda en ningún WhatsApp.
+  if (!org_name || !admin_phone || !nombre_director) {
+    return res.status(400).json({ error: 'org_name, nombre_director y admin_phone son requeridos' })
   }
 
-  let authUser = null
   let tenant = null
-
   try {
-    // 1. Create Supabase Auth user
-    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true   // skip confirmation email, we handle welcome manually
-    })
-    if (authErr) throw new Error(`Error creando usuario: ${authErr.message}`)
-    authUser = authData.user
-
-    // 2. Create tenant
     const tenantSlug = slug || org_name.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-')
-    const { data: tenantData, error: tenantErr } = await supabase
+    const { data, error } = await supabase
       .from('tenants')
       .insert({
         name: org_name.toLowerCase().replace(/\s+/g, '-'),
@@ -369,64 +361,72 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
         slug: tenantSlug,
         plan,
         org_type,
-        status: 'trial',
-        admin_phone: admin_phone || null
+        admin_phone,
+        status: 'active'
       })
       .select()
       .single()
-    if (tenantErr) throw new Error(`Error creando tenant: ${tenantErr.message}`)
-    tenant = tenantData
+    if (error) throw new Error(`Error creando colegio: ${error.message}`)
+    tenant = data
 
-    // 3. Link user → tenant (as owner)
-    const { error: linkErr } = await supabase
-      .from('tenant_users')
-      .insert({ tenant_id: tenant.id, user_id: authUser.id, role: 'owner' })
-    if (linkErr) throw new Error(`Error vinculando usuario: ${linkErr.message}`)
-
-    // 4. Send welcome WhatsApp using approved template (required for first contact with new numbers)
-    // Número propio del colegio. Se registra antes en la WABA (el director
-    // dicta el código que le llega) y aquí solo se vincula al colegio.
     const numero = await vincularNumero(tenant.id, waba_phone_id, display_name || org_name)
     if (!numero.vinculado) {
       console.warn(`Onboard: ${org_name} sin número propio — ${numero.motivo}`)
     }
 
-    let whatsappSent = false
-    if (send_whatsapp && admin_phone) {
-      // Step 1: Send bienvenida template (Meta requires templates for first contact)
-      // {{1}} = org name (who's being welcomed), {{2}} = "Kollybry" (the platform)
-      const welcomeResult = await sendWhatsAppTemplate(
-        admin_phone,
-        TEMPLATE_NAMES.BIENVENIDA_TENANT.name,
-        TEMPLATE_NAMES.BIENVENIDA_TENANT.lang,
-        bienvenidaTenantComponents({ nombre: org_name, orgName: 'Kollybry' })
-      )
-      whatsappSent = welcomeResult.success
-
-      // Step 2: If template sent successfully, follow up with credentials as free-form
-      // (now allowed because the template opened a 24h session window)
-      if (welcomeResult.success) {
-        const credText = `Aquí están tus credenciales de acceso:\n\n📧 Usuario: ${email}\n🔑 Contraseña temporal: ${password}\n\n🔗 https://app.kollybry.com\n\n⚠️ Cambia tu contraseña en Configuración al entrar por primera vez.`
-        await sendWhatsAppMessage(admin_phone, credText)
-      }
-    }
+    const activacion = await crearActivacion({
+      tenantId: tenant.id,
+      nombreDirector: nombre_director,
+      telefono: admin_phone,
+      nombreColegio: display_name || org_name
+    })
 
     return res.json({
       tenant,
-      user: { id: authUser.id, email },
-      whatsapp_sent: whatsappSent,
-      // El panel debe avisar si quedó sin número: usaría el compartido y
-      // perdería el aislamiento de calidad frente a los demás colegios.
+      // La liga se devuelve siempre: si el WhatsApp no salió, el admin la
+      // copia y la manda por donde pueda en vez de quedarse atorado.
+      activacion_liga: activacion.liga,
+      activacion_enviada: activacion.enviado,
+      activacion_aviso: activacion.motivo,
+      expira_en: activacion.expira_en,
       numero_asignado: numero.vinculado ? numero.phone_number_id : null,
       numero_aviso: numero.vinculado ? null : numero.motivo
     })
-
   } catch (err) {
-    // Rollback: delete auth user if tenant creation failed
-    if (authUser && !tenant) {
-      await supabase.auth.admin.deleteUser(authUser.id).catch(() => {})
-    }
+    // Sin usuario que borrar: el rollback es solo el colegio.
+    if (tenant) await supabase.from('tenants').delete().eq('id', tenant.id).catch(() => {})
     console.error('POST /admin/onboard error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/tenants/:id/reenviar-activacion
+router.post('/tenants/:id/reenviar-activacion', authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const tenant = await getTenant(req.params.id)
+    if (!tenant) return res.status(404).json({ error: 'Colegio no encontrado' })
+
+    const { data: previa } = await supabase
+      .from('activaciones')
+      .select('nombre_director, telefono, usado_en')
+      .eq('tenant_id', tenant.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (previa?.usado_en) {
+      return res.status(400).json({ error: 'Este colegio ya activó su cuenta.' })
+    }
+
+    const r = await crearActivacion({
+      tenantId: tenant.id,
+      nombreDirector: previa?.nombre_director || 'Director',
+      telefono: previa?.telefono || tenant.admin_phone,
+      nombreColegio: tenant.display_name || tenant.name
+    })
+    return res.json({ liga: r.liga, enviada: r.enviado, aviso: r.motivo, expira_en: r.expira_en })
+  } catch (err) {
+    console.error('POST /admin/reenviar-activacion error:', err)
     return res.status(500).json({ error: err.message })
   }
 })

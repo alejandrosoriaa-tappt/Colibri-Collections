@@ -31,6 +31,13 @@ export const TEMPLATE_NAMES = {
   // Adjuntos reales (PDF y demás). EN ESPERA: la plantilla todavía no existe
   // en Meta. Se activa poniendo KOLLYBRY_DOC_TEMPLATE con su nombre una vez
   // aprobada; mientras esté vacía, el envío sigue pegando el link al cuerpo.
+  // Activación de cuenta. EN ESPERA hasta que exista en Meta: se activa
+  // poniendo KOLLYBRY_ACTIVACION_TEMPLATE con el nombre aprobado. Mientras
+  // tanto la liga se copia desde el panel de Admin.
+  ACTIVACION:           {
+    name: process.env.KOLLYBRY_ACTIVACION_TEMPLATE || null,
+    lang: process.env.KOLLYBRY_ACTIVACION_TEMPLATE_LANG || 'es_MX'
+  },
   COMUNICADO_DOC:       {
     name: process.env.KOLLYBRY_DOC_TEMPLATE || 'kollybry_comunicado_doc',
     lang: process.env.KOLLYBRY_DOC_TEMPLATE_LANG || 'es_MX'
@@ -148,6 +155,17 @@ export function comunicadoImagenComponents({ titulo, orgName, cuerpo, imageUrl }
       parameters: [titulo, orgName, cuerpo].map(textParam)
     }
   ]
+}
+
+/**
+ * Activación de cuenta  (ACTIVACION)
+ * {{1}} nombre del director  {{2}} nombre del colegio  {{3}} liga
+ *
+ * Meta no permite que el cuerpo empiece ni termine con variable, así que la
+ * plantilla debe llevar texto antes de {{1}} y después de {{3}}.
+ */
+export function activacionComponents({ nombre, orgName, liga }) {
+  return bodyOnly(nombre, orgName, liga)
 }
 
 /**

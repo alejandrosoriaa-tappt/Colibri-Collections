@@ -6,6 +6,7 @@ import { canAccess } from './lib/permissions.js'
 import AppLayout from './components/layout/AppLayout.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
+import ActivarPage from './pages/ActivarPage.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import ContactsPage from './pages/ContactsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
@@ -46,6 +47,8 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        {/* Pública: el director todavía no tiene cuenta cuando la abre */}
+        <Route path="/activar" element={<ActivarPage />} />
 
         <Route element={<AppLayout />}>
           {/* Accessible by all roles */}

@@ -14,6 +14,7 @@ import uploadRouter from './routes/upload.js'
 import messagesRouter from './routes/messages.js'
 import notificationsRouter from './routes/notifications.js'
 import webhooksRouter from './routes/webhooks.js'
+import activacionRouter from './routes/activacion.js'
 import adminRouter from './routes/admin.js'
 import broadcastsRouter from './routes/broadcasts.js'
 import settingsRouter from './routes/settings.js'
@@ -101,6 +102,7 @@ app.use('/api/upload', uploadRouter)
 app.use('/api/messages', messagesRouter)
 app.use('/api/notifications', notificationsRouter)
 app.use('/api/webhooks', webhooksRouter)
+app.use('/api/activacion', activacionRouter)
 app.use('/api/admin', adminRouter)
 app.use('/api/broadcasts', broadcastsRouter)
 app.use('/api/settings', settingsRouter)
