@@ -310,8 +310,37 @@ router.post('/tenants/:id/add-user', authMiddleware, adminOnly, async (req, res)
 })
 
 // POST /api/admin/onboard — create tenant + user + send welcome WhatsApp in one shot
+
+/**
+ * Vincula al colegio el número de WhatsApp que ya se registró para él.
+ *
+ * El chip lo compra y mantiene el COLEGIO; Kollybry lo registra en su WABA
+ * (el director dicta por teléfono el código que le llega). Este paso solo
+ * conecta ese número ya registrado con el colegio recién creado.
+ *
+ * Si al dar de alta todavía no hay número, el alta NO falla: el colegio usa el
+ * número compartido hasta que se le asigne el suyo.
+ */
+async function vincularNumero(tenantId, phoneNumberId, displayName) {
+  if (!phoneNumberId) return { vinculado: false, motivo: 'sin número registrado todavía' }
+
+  const { error: eNum } = await supabase
+    .from('waba_numeros')
+    .update({ tenant_id: tenantId, display_name: displayName })
+    .eq('phone_number_id', phoneNumberId)
+  if (eNum) return { vinculado: false, motivo: eNum.message }
+
+  const { error: eTenant } = await supabase
+    .from('tenants')
+    .update({ waba_phone_id: phoneNumberId })
+    .eq('id', tenantId)
+  if (eTenant) return { vinculado: false, motivo: eTenant.message }
+
+  return { vinculado: true, phone_number_id: phoneNumberId }
+}
+
 router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
-  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true } = req.body
+  const { org_name, display_name, slug, plan = 'basic', org_type = 'general', admin_phone, email, password, send_whatsapp = true, waba_phone_id } = req.body
 
   if (!org_name || !email || !password) {
     return res.status(400).json({ error: 'org_name, email y password son requeridos' })
@@ -355,6 +384,13 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
     if (linkErr) throw new Error(`Error vinculando usuario: ${linkErr.message}`)
 
     // 4. Send welcome WhatsApp using approved template (required for first contact with new numbers)
+    // Número propio del colegio. Se registra antes en la WABA (el director
+    // dicta el código que le llega) y aquí solo se vincula al colegio.
+    const numero = await vincularNumero(tenant.id, waba_phone_id, display_name || org_name)
+    if (!numero.vinculado) {
+      console.warn(`Onboard: ${org_name} sin número propio — ${numero.motivo}`)
+    }
+
     let whatsappSent = false
     if (send_whatsapp && admin_phone) {
       // Step 1: Send bienvenida template (Meta requires templates for first contact)
@@ -375,7 +411,15 @@ router.post('/onboard', authMiddleware, adminOnly, async (req, res) => {
       }
     }
 
-    return res.json({ tenant, user: { id: authUser.id, email }, whatsapp_sent: whatsappSent })
+    return res.json({
+      tenant,
+      user: { id: authUser.id, email },
+      whatsapp_sent: whatsappSent,
+      // El panel debe avisar si quedó sin número: usaría el compartido y
+      // perdería el aislamiento de calidad frente a los demás colegios.
+      numero_asignado: numero.vinculado ? numero.phone_number_id : null,
+      numero_aviso: numero.vinculado ? null : numero.motivo
+    })
 
   } catch (err) {
     // Rollback: delete auth user if tenant creation failed

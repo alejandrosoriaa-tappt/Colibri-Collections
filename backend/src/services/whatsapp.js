@@ -3,12 +3,29 @@ import { normalizePhone } from '../utils/phone.js'
 
 const GRAPH_URL = 'https://graph.facebook.com/v20.0'
 
-export async function sendWhatsAppMessage(phone, text) {
-  const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID
+/**
+ * Desde qué número sale el mensaje.
+ *
+ * Cada colegio envía desde el SUYO: Meta califica la calidad por número, así
+ * que si los papás de un colegio bloquean, no se degrada la entrega del resto.
+ *
+ * El número de Kollybry (WABA_PHONE_NUMBER_ID) queda para lo que es de la
+ * plataforma y no del colegio: onboarding, códigos de acceso, recuperación de
+ * contraseña y —cuando existan— los cobros de membresía.
+ *
+ * Si un colegio todavía no tiene número asignado se cae al compartido, para
+ * que un alta a medias no deje al colegio sin poder enviar.
+ */
+function resolverRemitente(desdeNumero) {
+  return desdeNumero || process.env.WABA_PHONE_NUMBER_ID
+}
+
+export async function sendWhatsAppMessage(phone, text, desdeNumero) {
+  const phoneNumberId = resolverRemitente(desdeNumero)
   const accessToken = process.env.WABA_ACCESS_TOKEN
 
   if (!phoneNumberId || !accessToken) {
-    console.error('WhatsApp: Missing WABA_PHONE_NUMBER_ID or WABA_ACCESS_TOKEN')
+    console.error('WhatsApp: falta el número remitente o WABA_ACCESS_TOKEN')
     return { success: false, error: 'WhatsApp credentials not configured' }
   }
 
@@ -47,12 +64,12 @@ export async function sendWhatsAppMessage(phone, text) {
   }
 }
 
-export async function sendWhatsAppTemplate(phone, templateName, languageCode, components) {
-  const phoneNumberId = process.env.WABA_PHONE_NUMBER_ID
+export async function sendWhatsAppTemplate(phone, templateName, languageCode, components, desdeNumero) {
+  const phoneNumberId = resolverRemitente(desdeNumero)
   const accessToken = process.env.WABA_ACCESS_TOKEN
 
   if (!phoneNumberId || !accessToken) {
-    console.error('WhatsApp: Missing credentials')
+    console.error('WhatsApp: falta el número remitente o WABA_ACCESS_TOKEN')
     return { success: false, error: 'WhatsApp credentials not configured' }
   }
 

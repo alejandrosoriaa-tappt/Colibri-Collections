@@ -41,7 +41,8 @@ function OnboardModal({ onClose, onSuccess }) {
     plan: 'basic',
     org_type: 'general',
     password: generatePassword(),
-    send_whatsapp: true
+    send_whatsapp: true,
+    waba_phone_id: ''
   })
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -71,7 +72,8 @@ function OnboardModal({ onClose, onSuccess }) {
         admin_phone: form.admin_phone.trim() || null,
         email: form.email.trim(),
         password: form.password,
-        send_whatsapp: form.send_whatsapp
+        send_whatsapp: form.send_whatsapp,
+        waba_phone_id: form.waba_phone_id.trim() || null
       })
       setResult(res.data)
     } catch (err) {
@@ -173,6 +175,24 @@ function OnboardModal({ onClose, onSuccess }) {
             placeholder="+521XXXXXXXXXX"
           />
         </div>
+      </div>
+
+      {/* Número propio del colegio. Este campo SOLO vive aquí, en el panel de
+          Admin: si el colegio pudiera editarlo desde su Configuración, podría
+          poner el número de otro colegio y suplantarlo. */}
+      <div>
+        <label className="label">ID del número de WhatsApp (Meta)</label>
+        <input
+          className="input font-mono"
+          value={form.waba_phone_id}
+          onChange={set('waba_phone_id')}
+          placeholder="Ej. 123456789012345"
+        />
+        <p className="text-xs text-md-on-surface-variant mt-1">
+          El <strong>Phone number ID</strong> que da Meta al registrar el chip del colegio
+          (WhatsApp Manager → Números de teléfono). Si lo dejas vacío, el colegio enviará
+          desde el número compartido de Kollybry hasta que le asignes el suyo.
+        </p>
       </div>
 
       <div>

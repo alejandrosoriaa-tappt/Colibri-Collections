@@ -232,13 +232,22 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
     return
   }
 
-  // Get tenant name for template
+  // Nombre del colegio para la plantilla, y el número desde el que envía.
+  // Cada colegio manda desde el suyo: Meta califica la calidad por número, así
+  // que los bloqueos de un colegio no degradan la entrega de los demás.
   let orgName = ''
+  let desdeNumero = null
   try {
     const tenant = await getTenant(req.tenantId)
     orgName = tenant?.display_name || tenant?.name || ''
+    desdeNumero = tenant?.waba_phone_id || null
   } catch (e) {
-    console.warn('Broadcast: could not load tenant name:', e.message)
+    console.warn('Broadcast: no se pudo cargar el colegio:', e.message)
+  }
+  if (!desdeNumero) {
+    // No es un error: se cae al número compartido para no dejar al colegio sin
+    // poder enviar, pero conviene verlo porque pierde el aislamiento.
+    console.warn(`Broadcast: el colegio ${req.tenantId} no tiene número propio; usando el compartido`)
   }
 
   // Qué plantilla usar. El texto sale como UTILITY (kollybry_comunicado_util)
@@ -286,7 +295,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         : comunicadoComponents({ titulo: title, orgName, cuerpo: personalizedMessage })
 
       // Each template carries its own Meta-registered language code (tpl.lang)
-      const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components)
+      const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components, desdeNumero)
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ enviado a ${telLog(contact.telefono)}`)
