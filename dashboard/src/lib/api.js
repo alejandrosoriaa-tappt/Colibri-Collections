@@ -158,7 +158,17 @@ export const adminAPI = {
   listMessages: (params) => api.get('/api/admin/messages', { params }),
   addUserToTenant: (tenantId, data) => api.post(`/api/admin/tenants/${tenantId}/add-user`, data),
   reenviarActivacion: (id) => api.post(`/api/admin/tenants/${id}/reenviar-activacion`),
-  onboard: (data) => api.post('/api/admin/onboard', data)
+  onboard: (data) => api.post('/api/admin/onboard', data),
+
+  // Alta del número de WhatsApp del colegio, paso por paso contra Meta
+  numeros: {
+    listar:    ()             => api.get('/api/admin/numeros'),
+    estado:    (id)           => api.get(`/api/admin/numeros/${id}`),
+    agregar:   (data)         => api.post('/api/admin/numeros', data),
+    codigo:    (id, metodo)   => api.post(`/api/admin/numeros/${id}/codigo`, { metodo }),
+    verificar: (id, codigo)   => api.post(`/api/admin/numeros/${id}/verificar`, { codigo }),
+    registrar: (id)           => api.post(`/api/admin/numeros/${id}/registrar`)
+  }
 }
 
 export default api
