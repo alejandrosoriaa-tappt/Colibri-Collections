@@ -11,6 +11,11 @@ import { sendWhatsAppMessage, sendWhatsAppTemplate } from '../services/whatsapp.
 import { sendOperationalNotification } from '../services/notifier.js'
 import { bienvenidaTenantComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
 import { crearActivacion } from './activacion.js'
+import {
+  credencialesListas, agregarNumero, pedirCodigo, verificarCodigo,
+  registrarNumero, estadoNumero, listarNumeros
+} from '../services/wabaNumeros.js'
+import { randomInt } from 'crypto'
 
 const router = Router()
 
@@ -307,6 +312,163 @@ router.post('/tenants/:id/add-user', authMiddleware, adminOnly, async (req, res)
   } catch (err) {
     console.error('POST /admin/tenants/:id/add-user error:', err)
     return res.status(500).json({ error: err.message })
+  }
+})
+
+// ─── Alta del número de WhatsApp del colegio ────────────────────────────────
+//
+// Los cuatro pasos de Meta, desde el panel. El único que no se automatiza es
+// recibir el SMS: llega al chip físico del colegio y el director lo dicta.
+//
+// Estas rutas son admin-only a propósito: quien pueda mover números puede
+// hacer que un colegio envíe desde el número de otro.
+
+// Traduce el vocabulario de Meta al de la tabla, para no guardar dos verdades.
+const ESTADO_NOMBRE = {
+  APPROVED: 'aprobado',
+  DECLINED: 'rechazado',
+  PENDING_REVIEW: 'pendiente',
+  AVAILABLE_WITHOUT_REVIEW: 'aprobado'
+}
+
+function exigirCredenciales(res) {
+  if (credencialesListas()) return false
+  res.status(503).json({
+    error: 'Faltan WABA_ACCESS_TOKEN o WABA_BUSINESS_ID en el servidor. ' +
+           'Configúralas en Railway para dar de alta números desde aquí.'
+  })
+  return true
+}
+
+// POST /api/admin/numeros — paso 1: agregar el número a la WABA
+router.post('/numeros', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+
+  const { cc = '52', telefono, nombre_visible, tenant_id, responsable_chip, recarga_vence_en } = req.body || {}
+  if (!telefono || !nombre_visible) {
+    return res.status(400).json({ error: 'Faltan el teléfono y el nombre que verán los papás.' })
+  }
+
+  try {
+    const { phone_number_id } = await agregarNumero({
+      cc, telefono: String(telefono).replace(/\D/g, ''), nombreVisible: nombre_visible
+    })
+
+    // Se guarda de inmediato: si el proceso se interrumpe entre el paso 1 y el
+    // 4, el número ya existe en Meta y no debe quedar sin rastro de este lado.
+    const { error } = await supabase.from('waba_numeros').insert({
+      phone_number_id,
+      display_phone: `+${cc}${String(telefono).replace(/\D/g, '')}`,
+      display_name: nombre_visible,
+      display_name_estado: 'pendiente',
+      tenant_id: tenant_id || null,
+      responsable_chip: responsable_chip || null,
+      recarga_vence_en: recarga_vence_en || null
+    })
+    if (error) console.error('waba_numeros insert:', error.message)
+
+    return res.status(201).json({
+      phone_number_id,
+      guardado: !error,
+      aviso: error ? `El número se creó en Meta pero no se guardó aquí: ${error.message}` : null
+    })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/numeros/:id/codigo — paso 2: pedir el SMS
+router.post('/numeros/:id/codigo', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+  try {
+    await pedirCodigo({ phoneNumberId: req.params.id, metodo: req.body?.metodo || 'SMS' })
+    return res.json({ enviado: true })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/numeros/:id/verificar — paso 3: el código que dicta el director
+router.post('/numeros/:id/verificar', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+  const codigo = String(req.body?.codigo || '').replace(/\D/g, '')
+  if (!codigo) return res.status(400).json({ error: 'Falta el código.' })
+  try {
+    await verificarCodigo({ phoneNumberId: req.params.id, codigo })
+    return res.json({ verificado: true })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// POST /api/admin/numeros/:id/registrar — paso 4: queda listo para enviar
+router.post('/numeros/:id/registrar', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+  try {
+    // El PIN lo genera el servidor: un PIN elegido a mano acaba siendo 123456
+    // en todos los colegios. Se devuelve una sola vez y NO se guarda —quien lea
+    // la base no debe poder reverificar el número por su cuenta—.
+    const pin = String(randomInt(0, 1_000_000)).padStart(6, '0')
+    await registrarNumero({ phoneNumberId: req.params.id, pin })
+
+    const estado = await estadoNumero(req.params.id).catch(() => null)
+    if (estado) {
+      await supabase.from('waba_numeros').update({
+        display_phone: estado.display_phone_number || undefined,
+        display_name_estado: ESTADO_NOMBRE[estado.name_status] || 'pendiente'
+      }).eq('phone_number_id', req.params.id)
+    }
+
+    return res.json({ registrado: true, pin, estado })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// GET /api/admin/numeros — lo que Meta reporta, cruzado con lo que tenemos
+router.get('/numeros', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+  try {
+    const [enMeta, { data: enBase }] = await Promise.all([
+      listarNumeros(),
+      supabase.from('waba_numeros').select('phone_number_id, tenant_id, recarga_vence_en, responsable_chip, tenants(display_name)')
+    ])
+    const porId = new Map((enBase || []).map(n => [n.phone_number_id, n]))
+
+    return res.json({
+      numeros: enMeta.map(n => ({
+        phone_number_id: n.id,
+        display_phone: n.display_phone_number,
+        nombre_visible: n.verified_name,
+        nombre_estado: ESTADO_NOMBRE[n.name_status] || 'pendiente',
+        calidad: n.quality_rating || null,
+        verificado: n.code_verification_status === 'VERIFIED',
+        colegio: porId.get(n.id)?.tenants?.display_name || null,
+        tenant_id: porId.get(n.id)?.tenant_id || null,
+        recarga_vence_en: porId.get(n.id)?.recarga_vence_en || null,
+        responsable_chip: porId.get(n.id)?.responsable_chip || null
+      }))
+    })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
+  }
+})
+
+// GET /api/admin/numeros/:id — estado de uno solo (para refrescar el nombre)
+router.get('/numeros/:id', authMiddleware, adminOnly, async (req, res) => {
+  if (exigirCredenciales(res)) return
+  try {
+    const estado = await estadoNumero(req.params.id)
+    return res.json({
+      phone_number_id: estado.id,
+      display_phone: estado.display_phone_number,
+      nombre_visible: estado.verified_name,
+      nombre_estado: ESTADO_NOMBRE[estado.name_status] || 'pendiente',
+      calidad: estado.quality_rating || null,
+      verificado: estado.code_verification_status === 'VERIFIED'
+    })
+  } catch (err) {
+    return res.status(err.status || 500).json({ error: err.message })
   }
 })
 

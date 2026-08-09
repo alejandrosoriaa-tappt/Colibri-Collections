@@ -8,6 +8,7 @@ import {
 import StatusBadge from '../../components/shared/StatusBadge.jsx'
 import { adminAPI } from '../../lib/api.js'
 import { ORG_TYPE_OPTIONS } from '../../config/orgTypeConfig.js'
+import AltaNumeroWhatsApp from '../../components/admin/AltaNumeroWhatsApp.jsx'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -36,6 +37,9 @@ function OnboardModal({ onClose, onSuccess }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  // Salida de emergencia: si el número ya se registró antes (o por consola),
+  // se pega el ID y ya. El camino normal es el asistente.
+  const [altaManual, setAltaManual] = useState(false)
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -166,23 +170,40 @@ function OnboardModal({ onClose, onSuccess }) {
         </div>
       </div>
 
-      {/* Número propio del colegio. Este campo SOLO vive aquí, en el panel de
-          Admin: si el colegio pudiera editarlo desde su Configuración, podría
-          poner el número de otro colegio y suplantarlo. */}
-      <div>
-        <label className="label">ID del número de WhatsApp (Meta)</label>
-        <input
-          className="input font-mono"
-          value={form.waba_phone_id}
-          onChange={set('waba_phone_id')}
-          placeholder="Ej. 123456789012345"
-        />
-        <p className="text-xs text-md-on-surface-variant mt-1">
-          El <strong>Phone number ID</strong> que da Meta al registrar el chip del colegio
-          (WhatsApp Manager → Números de teléfono). Si lo dejas vacío, el colegio enviará
-          desde el número compartido de Kollybry hasta que le asignes el suyo.
-        </p>
-      </div>
+      {/* Número propio del colegio. El alta corre aquí contra Meta, sin consola
+          y sin entrar al WhatsApp Manager. Vive SOLO en el panel de Admin: si
+          el colegio pudiera editarlo desde su Configuración, podría poner el
+          número de otro colegio y suplantarlo. */}
+      {altaManual ? (
+        <div>
+          <label className="label">ID del número de WhatsApp (Meta)</label>
+          <input
+            className="input font-mono"
+            value={form.waba_phone_id}
+            onChange={set('waba_phone_id')}
+            placeholder="Ej. 123456789012345"
+          />
+          <button type="button" onClick={() => setAltaManual(false)}
+            className="text-xs text-md-primary underline mt-1">
+            Mejor darlo de alta desde aquí
+          </button>
+        </div>
+      ) : (
+        <>
+          <AltaNumeroWhatsApp
+            nombreSugerido={form.org_name}
+            onListo={(id) => setForm(f => ({ ...f, waba_phone_id: id }))}
+          />
+          <p className="text-xs text-md-on-surface-variant">
+            Si lo dejas sin número, el colegio enviará desde el número compartido de
+            Kollybry hasta que le asignes el suyo.{' '}
+            <button type="button" onClick={() => setAltaManual(true)}
+              className="text-md-primary underline">
+              Ya tengo el ID de Meta
+            </button>
+          </p>
+        </>
+      )}
 
       <div>
         <label className="label">Plan</label>
@@ -205,23 +226,14 @@ function OnboardModal({ onClose, onSuccess }) {
       </div>
 
 
-      {/* Send WhatsApp toggle */}
-      <label className="flex items-center gap-3 p-3 rounded-2xl bg-md-surface-container cursor-pointer">
-        <div
-          onClick={() => setForm(f => ({ ...f, send_whatsapp: !f.send_whatsapp }))}
-          className={`w-10 h-6 rounded-full transition-colors flex-shrink-0 relative ${
-            form.send_whatsapp ? 'bg-md-primary' : 'bg-md-outline'
-          }`}
-        >
-          <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
-            form.send_whatsapp ? 'translate-x-5' : 'translate-x-1'
-          }`} />
-        </div>
-        <div>
-          <p className="text-sm font-medium text-md-on-surface">Enviar WhatsApp de bienvenida</p>
-          <p className="text-xs text-md-on-surface-variant">Manda credenciales al número del admin</p>
-        </div>
-      </label>
+      {/* El interruptor de "enviar credenciales por WhatsApp" ya no existe: la
+          liga de activación sale sola al guardar, y la contraseña la define el
+          director. Nadie más la conoce ni queda en un chat. */}
+      <p className="text-xs text-md-on-surface-variant flex items-start gap-2 p-3 rounded-2xl bg-md-surface-container">
+        <MessageSquare size={14} className="flex-shrink-0 mt-0.5" />
+        Al guardar se manda la liga de activación al WhatsApp del director. Él define
+        su correo y su contraseña; tú nunca la ves.
+      </p>
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onClose} className="btn-outline flex-1">
