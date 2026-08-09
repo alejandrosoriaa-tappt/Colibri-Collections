@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { randomUUID } from 'crypto'
+import { telLog } from '../utils/phone.js'
 import multer from 'multer'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
@@ -39,7 +41,10 @@ router.post('/media', authMiddleware, inferTenantGuard, mediaUpload.single('file
     }
 
     const safeName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
-    const path = `${req.tenantId}/${Date.now()}-${safeName}`
+    // El bucket es público porque WhatsApp tiene que poder descargar el
+    // archivo. Por eso la ruta no puede ser adivinable: con tenant + fecha
+    // cualquiera podría tantear URLs de circulares de otro colegio.
+    const path = `${req.tenantId}/${randomUUID()}-${safeName}`
 
     const { error: upErr } = await supabase.storage
       .from('broadcast-media')
@@ -284,7 +289,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
       const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components)
       if (result.success) {
         sentCount++
-        console.log(`Broadcast: ✓ sent to ${contact.telefono} (${contact.nombre})`)
+        console.log(`Broadcast: ✓ enviado a ${telLog(contact.telefono)}`)
 
         // Log the message in message_logs table
         // OJO: supabase-js NO lanza en error, resuelve con { error }. Hay que
@@ -304,11 +309,11 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         })
         if (logErr) {
           logErrors++
-          console.error(`Broadcast: NO se pudo registrar el envío a ${contact.telefono} — ${logErr.message}`)
+          console.error(`Broadcast: NO se pudo registrar el envío a ${telLog(contact.telefono)} — ${logErr.message}`)
         }
       } else {
         failedCount++
-        console.error(`Broadcast: ✗ failed ${contact.telefono} — code:${result.error_code} msg:${result.error}`)
+        console.error(`Broadcast: ✗ falló ${telLog(contact.telefono)} — code:${result.error_code} msg:${result.error}`)
 
         // Log the failed message
         const { error: logErr } = await supabase.from('message_logs').insert({
@@ -324,7 +329,7 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         })
         if (logErr) {
           logErrors++
-          console.error(`Broadcast: NO se pudo registrar el fallo de ${contact.telefono} — ${logErr.message}`)
+          console.error(`Broadcast: NO se pudo registrar el fallo de ${telLog(contact.telefono)} — ${logErr.message}`)
         }
       }
 

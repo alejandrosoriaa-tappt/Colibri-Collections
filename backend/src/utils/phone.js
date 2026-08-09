@@ -43,3 +43,14 @@ export function normalizePhone(raw) {
   // Unknown format — return null so the caller can decide (skip or flag)
   return null
 }
+
+/**
+ * Enmascara un teléfono para logs: +5214425610078 → +52·····0078
+ * Los logs de Railway se conservan y los ve cualquiera con acceso al proyecto;
+ * no tienen por qué guardar el padrón completo de un colegio.
+ */
+export function telLog(tel) {
+  const s = String(tel ?? '')
+  if (s.length < 6) return '···'
+  return `${s.slice(0, 3)}·····${s.slice(-4)}`
+}
