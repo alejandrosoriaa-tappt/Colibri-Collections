@@ -1,0 +1,25 @@
+# Revisa semanalmente si alguna dependencia tiene vulnerabilidades conocidas y
+# abre un PR con la actualización. Es gratis y es lo que de verdad protege a
+# una app como esta: el riesgo no es que "inyecten malware en el sitio" —el
+# dashboard es estático— sino que una librería de npm traiga un fallo. El
+# ejemplo real: xlsx, que parsea los Excel que suben los colegios.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias, seguridad]
+
+  - package-ecosystem: npm
+    directory: /dashboard
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    labels: [dependencias, seguridad]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
