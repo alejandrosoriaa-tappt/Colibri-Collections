@@ -1,8 +1,15 @@
 name: Seguridad
 
-# Corre en cada push y cada semana. Falla solo ante vulnerabilidades ALTAS o
-# CRÍTICAS: si fallara con cualquier hallazgo, el equipo se acostumbra a verlo
-# en rojo y deja de mirarlo.
+# Corre en cada push, cada PR y los lunes por la mañana.
+#
+# No usa `npm audit --audit-level=high` directo: xlsx tiene un fallo alto sin
+# corrección publicada en npm, así que ese comando falla SIEMPRE. Un check
+# permanentemente en rojo deja de leerse, y además bloquea los PRs de
+# Dependabot, que son justo los que traen las correcciones.
+#
+# scripts/auditoria.mjs falla solo ante vulnerabilidades altas o críticas que
+# no estén documentadas en .github/auditoria-excepciones.json, y las
+# excepciones caducan.
 on:
   push:
     branches: [main]
@@ -18,11 +25,10 @@ jobs:
       matrix:
         proyecto: [backend, dashboard]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Auditar dependencias de ${{ matrix.proyecto }}
-        working-directory: ${{ matrix.proyecto }}
-        run: npm audit --audit-level=high --omit=dev
+      - name: Auditar ${{ matrix.proyecto }}
+        run: node scripts/auditoria.mjs ${{ matrix.proyecto }}
