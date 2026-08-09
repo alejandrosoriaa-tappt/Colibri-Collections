@@ -51,6 +51,14 @@ export const authAPI = {
 }
 
 // ================================================================
+// ACTIVACIÓN (público: quien la usa todavía no tiene cuenta)
+// ================================================================
+export const activacionAPI = {
+  verificar: (token) => api.get(`/api/activacion/${encodeURIComponent(token)}`),
+  activar: (data) => api.post('/api/activacion', data)
+}
+
+// ================================================================
 // CONTACTS
 // ================================================================
 export const contactsAPI = {
@@ -149,6 +157,7 @@ export const adminAPI = {
   resendWelcome: (id) => api.post(`/api/admin/tenants/${id}/resend-welcome`),
   listMessages: (params) => api.get('/api/admin/messages', { params }),
   addUserToTenant: (tenantId, data) => api.post(`/api/admin/tenants/${tenantId}/add-user`, data),
+  reenviarActivacion: (id) => api.post(`/api/admin/tenants/${id}/reenviar-activacion`),
   onboard: (data) => api.post('/api/admin/onboard', data)
 }
 

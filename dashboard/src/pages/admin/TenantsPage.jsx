@@ -11,15 +11,6 @@ import { ORG_TYPE_OPTIONS } from '../../config/orgTypeConfig.js'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-function generatePassword() {
-  const words = ['Kolibri', 'Kllybry', 'Mensajes', 'Aviso', 'Comunica']
-  const word = words[Math.floor(Math.random() * words.length)]
-  const num = Math.floor(100 + Math.random() * 900)
-  const symbols = ['!', '@', '#', '*']
-  const sym = symbols[Math.floor(Math.random() * symbols.length)]
-  return `${word}${num}${sym}`
-}
-
 function slugify(str) {
   return str.toLowerCase().replace(/[áàä]/g, 'a').replace(/[éèë]/g, 'e')
     .replace(/[íìï]/g, 'i').replace(/[óòö]/g, 'o').replace(/[úùü]/g, 'u')
@@ -36,27 +27,18 @@ const ORG_TYPES = ORG_TYPE_OPTIONS
 function OnboardModal({ onClose, onSuccess }) {
   const [form, setForm] = useState({
     org_name: '',
-    email: '',
+    nombre_director: '',
     admin_phone: '',
     plan: 'basic',
     org_type: 'general',
-    password: generatePassword(),
-    send_whatsapp: true,
     waba_phone_id: ''
   })
-  const [showPassword, setShowPassword] = useState(false)
-  const [copied, setCopied] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(form.password)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -65,14 +47,12 @@ function OnboardModal({ onClose, onSuccess }) {
     try {
       const res = await adminAPI.onboard({
         org_name: form.org_name.trim(),
+        nombre_director: form.nombre_director.trim(),
         display_name: form.org_name.trim(),
         slug: slugify(form.org_name),
         plan: form.plan,
         org_type: form.org_type,
         admin_phone: form.admin_phone.trim() || null,
-        email: form.email.trim(),
-        password: form.password,
-        send_whatsapp: form.send_whatsapp,
         waba_phone_id: form.waba_phone_id.trim() || null
       })
       setResult(res.data)
@@ -99,20 +79,30 @@ function OnboardModal({ onClose, onSuccess }) {
 
         <div className="bg-md-surface-container rounded-2xl p-4 space-y-2 text-sm">
           <Row label="Organización" value={result.tenant.display_name} />
-          <Row label="Email" value={result.user.email} />
-          <Row label="Contraseña temporal" value={form.password} mono />
+          <Row label="Director" value={form.nombre_director} />
           <Row label="Plan" value={result.tenant.plan} />
-          {result.whatsapp_sent && (
+          {result.activacion_enviada ? (
             <div className="flex items-center gap-2 pt-2 border-t border-md-outline-variant text-green-700">
               <MessageSquare size={14} />
-              <span className="text-xs">WhatsApp de bienvenida enviado ✓</span>
+              <span className="text-xs">Liga de activación enviada por WhatsApp ✓</span>
+            </div>
+          ) : (
+            <div className="pt-2 border-t border-md-outline-variant space-y-1.5">
+              <p className="text-xs text-md-on-surface-variant">
+                No se pudo enviar por WhatsApp{result.activacion_aviso ? `: ${result.activacion_aviso}` : ''}.
+                Cópiala y mándasela tú:
+              </p>
+              <div className="flex gap-2">
+                <input readOnly className="input text-xs font-mono flex-1" value={result.activacion_liga || ''} />
+                <button type="button" onClick={() => navigator.clipboard.writeText(result.activacion_liga)}
+                  className="btn-tonal text-xs px-3">Copiar</button>
+              </div>
             </div>
           )}
-          {!result.whatsapp_sent && form.admin_phone && (
-            <div className="flex items-center gap-2 pt-2 border-t border-md-outline-variant text-md-on-surface-variant">
-              <MessageSquare size={14} />
-              <span className="text-xs">WhatsApp no enviado (verifica credenciales WA)</span>
-            </div>
+          {result.numero_aviso && (
+            <p className="text-xs text-amber-700 pt-2 border-t border-md-outline-variant">
+              Sin número propio ({result.numero_aviso}). Enviará desde el número compartido.
+            </p>
           )}
         </div>
 
@@ -156,13 +146,12 @@ function OnboardModal({ onClose, onSuccess }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="label">Email del admin *</label>
+          <label className="label">Nombre del director *</label>
           <input
             className="input"
-            type="email"
-            value={form.email}
-            onChange={set('email')}
-            placeholder="director@empresa.com"
+            value={form.nombre_director}
+            onChange={set('nombre_director')}
+            placeholder="Ana Martínez"
             required
           />
         </div>
@@ -215,41 +204,6 @@ function OnboardModal({ onClose, onSuccess }) {
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="label mb-0">Contraseña temporal *</label>
-          <button
-            type="button"
-            onClick={() => setForm(f => ({ ...f, password: generatePassword() }))}
-            className="text-xs text-md-primary flex items-center gap-1 hover:underline"
-          >
-            <RefreshCw size={11} /> Generar nueva
-          </button>
-        </div>
-        <div className="relative">
-          <input
-            className="input pr-20 font-mono text-sm"
-            type={showPassword ? 'text' : 'password'}
-            value={form.password}
-            onChange={set('password')}
-            required
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1">
-            <button type="button" onClick={handleCopy}
-              className="p-1.5 rounded-lg text-md-on-surface-variant hover:text-md-on-surface transition-colors"
-              title="Copiar">
-              {copied ? <Check size={14} className="text-green-600" /> : <Copy size={14} />}
-            </button>
-            <button type="button" onClick={() => setShowPassword(v => !v)}
-              className="p-1.5 rounded-lg text-md-on-surface-variant hover:text-md-on-surface transition-colors">
-              {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-            </button>
-          </div>
-        </div>
-        <p className="text-xs text-md-on-surface-variant mt-1.5">
-          El cliente la cambia en Configuración al primer acceso
-        </p>
-      </div>
 
       {/* Send WhatsApp toggle */}
       <label className="flex items-center gap-3 p-3 rounded-2xl bg-md-surface-container cursor-pointer">

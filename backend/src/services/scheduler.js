@@ -18,6 +18,8 @@ import {
   avisoVencidoComponents
 } from '../templates/whatsappTemplates.js'
 import { sendOperationalNotification } from './notifier.js'
+import { crearActivacion } from '../routes/activacion.js'
+import { telLog } from '../utils/phone.js'
 
 function getDaysSince(dateStr) {
   if (!dateStr) return 0
@@ -49,7 +51,74 @@ export function initScheduler() {
     { timezone: 'America/Mexico_City' }
   )
 
-  console.log('Scheduler: Daily cron job registered (9am Mexico City)')
+  // Recordatorio de activación. Cada 6 horas y no una vez al día porque la
+  // liga vive 48 horas: con un solo barrido diario, un alta hecha justo
+  // después del corte se quedaría casi sin margen para recordar.
+  cron.schedule(
+    '0 */6 * * *',
+    async () => {
+      try {
+        await recordarActivacionesPendientes()
+      } catch (err) {
+        console.error('Scheduler: error en recordatorios de activación:', err)
+      }
+    },
+    { timezone: 'America/Mexico_City' }
+  )
+
+  console.log('Scheduler: cron diario (9am) y recordatorios de activación (cada 6h) registrados')
+}
+
+/**
+ * Le recuerda al director que no ha activado su cuenta.
+ *
+ * Se manda UNA sola vez, ~24h después del alta y solo si la liga sigue viva.
+ * El campo recordatorio_en evita repetirlo en cada barrido: insistir cada 6
+ * horas sería spam desde el número del que después dependen sus comunicados.
+ */
+export async function recordarActivacionesPendientes() {
+  const hace24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString()
+  const ahora = new Date().toISOString()
+
+  const { data: pendientes, error } = await supabase
+    .from('activaciones')
+    .select('id, tenant_id, telefono, nombre_director, expira_en, tenants(display_name)')
+    .is('usado_en', null)
+    .is('recordatorio_en', null)
+    .lt('created_at', hace24h)
+    .gt('expira_en', ahora)
+
+  if (error) {
+    console.error('Recordatorios: no se pudieron consultar:', error.message)
+    return { enviados: 0 }
+  }
+  if (!pendientes?.length) return { enviados: 0 }
+
+  let enviados = 0
+  for (const a of pendientes) {
+    // Se marca ANTES de enviar: si el envío falla, preferimos no recordarle a
+    // que un fallo repetido lo haga sonar cada 6 horas.
+    await supabase.from('activaciones').update({ recordatorio_en: ahora }).eq('id', a.id)
+
+    // Se manda una liga NUEVA, no la original: el token se guarda hasheado y
+    // no se puede recuperar. De paso sirve si perdió el primer mensaje.
+    try {
+      const r = await crearActivacion({
+        tenantId: a.tenant_id,
+        nombreDirector: a.nombre_director,
+        telefono: a.telefono,
+        nombreColegio: a.tenants?.display_name || '',
+        yaRecordado: true
+      })
+      if (r.enviado) enviados++
+      else console.warn(`Recordatorio no enviado a ${telLog(a.telefono)}: ${r.motivo}`)
+    } catch (err) {
+      console.error(`Recordatorio falló para ${telLog(a.telefono)}: ${err.message}`)
+    }
+  }
+
+  console.log(`Recordatorios de activación: ${enviados} de ${pendientes.length}`)
+  return { enviados }
 }
 
 export async function runDailyMessages() {
