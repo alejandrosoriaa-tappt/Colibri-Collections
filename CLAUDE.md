@@ -10,7 +10,15 @@ Monorepo con tres proyectos independientes:
 | `dashboard/` | Kollybry SaaS (escuelas/condos) | — | Railway "Colibri" |
 | `crm/` | NKUVO CRM (personal de Alejandro) | crm.nkuvo.com | Railway "zestful-embrace" servicio Colibri-Collections |
 
-- **Auth**: Supabase (proyecto compartido con Tappt). JWT validado en backend. `tenant_id = req.user.id`.
+- **Auth**: Supabase, proyecto **`jklqukssyxbfzefwpgaw`** (org Tappt). JWT validado en backend. `tenant_id = req.user.id`.
+  - **NO es el mismo proyecto que Tappt**, que vive en `jdoxodoyerjthyysaykp` (ver `tappt-backend/.env.example`).
+    Comparten la organización de facturación, nada más. Las migraciones de este repo se corren
+    en `jklqukssyxbfzefwpgaw` — el ID está en el encabezado de cada archivo de `backend/src/db/migrations/`.
+  - ⚠️ **Ese proyecto está en plan gratuito y Supabase lo pausa tras 7 días sin actividad**
+    (llegó el aviso el 11-ago-2026). Un proyecto pausado deja de responder hasta que alguien
+    lo despausa a mano: incompatible con producción. Subir a Pro antes de arrancar con el
+    primer colegio. Los commits y los deploys de Railway NO cuentan como actividad; solo
+    cuentan las peticiones contra la base.
 - **CRM data**: Railway PostgreSQL propio (NO Supabase DB). Pool en `backend/src/services/railwayPg.js`.
 - **CRM access guard**: `CRM_ALLOWED_EMAILS` env var restringe acceso.
 - **Supabase user de Alejandro**: `asoria@tappt.lat` / `b05f6fb3-e389-4943-a61e-87c189d0ccb5`
@@ -92,10 +100,13 @@ Variables a configurar en Railway (CRM NKUVO backend) cuando Tappt esté listo:
 
 ### Variables de entorno Railway (zestful-embrace — Colibri-Collections frontend)
 - `VITE_API_BASE_URL=https://crm-nkuvo-production.up.railway.app`
-- `VITE_SUPABASE_URL` — proyecto Supabase compartido
+- `VITE_SUPABASE_URL` — `https://jklqukssyxbfzefwpgaw.supabase.co` (el de Kollybry, no el de Tappt)
 - `VITE_SUPABASE_ANON_KEY` — anon key del mismo proyecto
 
 ### Pendientes
+- **Subir el proyecto Supabase `jklqukssyxbfzefwpgaw` a Pro** antes de producción (el plan
+  gratuito se auto-pausa por inactividad)
+- Confirmar en Railway que `SUPABASE_URL` apunta a `jklqukssyxbfzefwpgaw` y no al proyecto de Tappt
 - Actualizar `SUPABASE_SERVICE_ROLE_KEY` en Railway backend con la nueva key rotada
 - Verificar `CRM_ALLOWED_EMAILS=asoria@tappt.lat` en Railway CRM NKUVO backend
 - Configurar vars Tappt cuando el equipo Tappt implemente su endpoint
