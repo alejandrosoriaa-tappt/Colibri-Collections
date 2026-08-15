@@ -352,6 +352,23 @@ export default function TenantsPage() {
   const [resendResult, setResendResult] = useState(null) // 'ok' | 'error'
   const [ligaReenviada, setLigaReenviada] = useState(null)
   const [phoneIdManual, setPhoneIdManual] = useState('')
+  const [registrando, setRegistrando] = useState(false)
+  const [pinRegistro, setPinRegistro] = useState(null)
+  const [errorRegistro, setErrorRegistro] = useState(null)
+
+  // Registra en Cloud API un número que ya está en la WABA. El PIN lo genera el
+  // servidor y se muestra una sola vez: no se guarda en ningún lado.
+  const handleRegistrarNumero = async () => {
+    setRegistrando(true); setErrorRegistro(null)
+    try {
+      const res = await adminAPI.numeros.registrar(tenant.waba_phone_id)
+      setPinRegistro(res.data.pin)
+    } catch (err) {
+      setErrorRegistro(err.response?.data?.error || err.message)
+    } finally {
+      setRegistrando(false)
+    }
+  }
 
   const loadTenants = () =>
     adminAPI.listTenants()
@@ -504,9 +521,45 @@ export default function TenantsPage() {
           {tenant.waba_phone_id ? (
             <>
               <p className="text-sm text-md-on-surface-variant mb-3">
-                Este colegio ya envía desde su propio número.
+                Este colegio tiene su propio número asignado.
               </p>
               <Row label="Phone number ID" value={tenant.waba_phone_id} mono />
+
+              {/* Un número puede estar en la WABA y aun así no poder enviar:
+                  falta registrarlo en Cloud API con un PIN. Es el paso que en
+                  el WhatsApp Manager deja el número en "Pendiente". */}
+              <div className="mt-4 pt-4 border-t border-md-outline-variant space-y-2">
+                {pinRegistro ? (
+                  <div className="p-3 rounded-2xl border border-amber-300 bg-amber-50 space-y-2">
+                    <p className="text-xs font-semibold text-amber-900">
+                      Guarda este PIN en tu gestor de contraseñas — solo se muestra una vez
+                    </p>
+                    <div className="flex gap-2">
+                      <input readOnly className="input flex-1 font-mono tracking-widest text-sm" value={pinRegistro} />
+                      <button type="button" onClick={() => navigator.clipboard.writeText(pinRegistro)}
+                        className="btn-tonal text-xs px-3">Copiar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      disabled={registrando}
+                      onClick={handleRegistrarNumero}
+                      className="btn-tonal text-sm disabled:opacity-50"
+                    >
+                      {registrando ? 'Registrando…' : 'Registrar en Cloud API'}
+                    </button>
+                    <p className="text-xs text-md-on-surface-variant">
+                      Solo hace falta si en el WhatsApp Manager el número aparece como
+                      «Pendiente». Si ya dice «Conectado», ignóralo.
+                    </p>
+                  </>
+                )}
+                {errorRegistro && (
+                  <p className="text-xs text-md-error">{errorRegistro}</p>
+                )}
+              </div>
             </>
           ) : (
             <>
