@@ -350,6 +350,7 @@ export default function TenantsPage() {
   const [msgSent, setMsgSent] = useState(false)
   const [resending, setResending] = useState(false)
   const [resendResult, setResendResult] = useState(null) // 'ok' | 'error'
+  const [ligaReenviada, setLigaReenviada] = useState(null)
 
   const loadTenants = () =>
     adminAPI.listTenants()
@@ -378,11 +379,17 @@ export default function TenantsPage() {
     } finally { setIsSaving(false) }
   }
 
+  // Reenvía la LIGA DE ACTIVACIÓN, no la bienvenida vieja: esa mandaba
+  // credenciales que ya no existen —la contraseña la define el director—.
+  // Genera una liga nueva y la anterior deja de servir.
   const handleResendWelcome = async () => {
-    setResending(true); setResendResult(null)
+    setResending(true); setResendResult(null); setLigaReenviada(null)
     try {
-      const res = await adminAPI.resendWelcome(id)
-      setResendResult(res.data.success ? 'ok' : 'error')
+      const res = await adminAPI.reenviarActivacion(id)
+      setResendResult(res.data.enviada ? 'ok' : 'error')
+      // Si el WhatsApp no salió —hoy, sin plantilla aprobada, es lo normal—
+      // se muestra la liga para copiarla en vez de dejar al admin sin salida.
+      if (!res.data.enviada) setLigaReenviada(res.data.liga)
     } catch {
       setResendResult('error')
     } finally {
@@ -436,28 +443,48 @@ export default function TenantsPage() {
           </span>
         </div>
 
-        {/* Resend welcome WhatsApp */}
+        {/* Reenviar la liga de activación */}
         {tenant.admin_phone && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleResendWelcome}
-              disabled={resending}
-              className="btn-outline text-sm flex items-center gap-2"
-            >
-              {resending
-                ? <Loader2 size={13} className="animate-spin" />
-                : <MessageSquare size={13} />}
-              {resending ? 'Enviando...' : 'Reenviar WhatsApp de bienvenida'}
-            </button>
-            {resendResult === 'ok' && (
-              <span className="text-xs text-green-700 flex items-center gap-1">
-                <CheckCircle2 size={13} /> Enviado ✓
-              </span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleResendWelcome}
+                disabled={resending}
+                className="btn-outline text-sm flex items-center gap-2"
+              >
+                {resending
+                  ? <Loader2 size={13} className="animate-spin" />
+                  : <MessageSquare size={13} />}
+                {resending ? 'Generando...' : 'Reenviar liga de activación'}
+              </button>
+              {resendResult === 'ok' && (
+                <span className="text-xs text-green-700 flex items-center gap-1">
+                  <CheckCircle2 size={13} /> Enviada por WhatsApp ✓
+                </span>
+              )}
+              {resendResult === 'error' && !ligaReenviada && (
+                <span className="text-xs text-red-600 flex items-center gap-1">
+                  <AlertCircle size={13} /> No se pudo generar
+                </span>
+              )}
+            </div>
+
+            {ligaReenviada && (
+              <div className="flex items-center gap-2 max-w-xl">
+                <input readOnly className="input flex-1 text-xs font-mono" value={ligaReenviada} />
+                <button
+                  type="button"
+                  onClick={() => navigator.clipboard.writeText(ligaReenviada)}
+                  className="btn-tonal text-xs px-3"
+                >
+                  Copiar
+                </button>
+              </div>
             )}
-            {resendResult === 'error' && (
-              <span className="text-xs text-red-600 flex items-center gap-1">
-                <AlertCircle size={13} /> Error al enviar
-              </span>
+            {ligaReenviada && (
+              <p className="text-xs text-md-on-surface-variant">
+                No salió por WhatsApp, mándasela tú. La liga anterior ya no sirve.
+              </p>
             )}
           </div>
         )}
@@ -465,6 +492,33 @@ export default function TenantsPage() {
         <div className="card">
           <h2 className="text-base font-semibold text-md-on-surface mb-4">Editar organización</h2>
           <TenantForm initial={tenant} onSave={handleUpdate} isSaving={isSaving} error={formError} />
+        </div>
+
+        {/* Número propio del colegio.
+            El asistente vivía solo en el alta, así que un colegio creado sin
+            número se quedaba sin forma de conseguirlo desde el panel. Casi
+            siempre el chip llega después del alta, no antes. */}
+        <div className="card">
+          <h2 className="text-base font-semibold text-md-on-surface mb-1">Número de WhatsApp</h2>
+          {tenant.waba_phone_id ? (
+            <>
+              <p className="text-sm text-md-on-surface-variant mb-3">
+                Este colegio ya envía desde su propio número.
+              </p>
+              <Row label="Phone number ID" value={tenant.waba_phone_id} mono />
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-md-on-surface-variant mb-4">
+                Hoy envía desde el número compartido de Kollybry. Da de alta el suyo
+                cuando tengas el chip a la mano.
+              </p>
+              <AltaNumeroWhatsApp
+                nombreSugerido={tenant.display_name || tenant.name}
+                onListo={(phoneId) => handleUpdate({ ...tenant, waba_phone_id: phoneId })}
+              />
+            </>
+          )}
         </div>
 
         <div className="card">

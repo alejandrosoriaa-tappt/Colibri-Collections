@@ -3,10 +3,36 @@ import { Loader2, AlertCircle, CheckCircle2, Copy, Check, Phone, PhoneCall, KeyR
 import { adminAPI } from '../../lib/api.js'
 
 /**
+ * Un paso del asistente.
+ *
+ * VA AFUERA del componente a propósito. Definido adentro, cada tecleo creaba
+ * un tipo de componente nuevo: React desmontaba el bloque entero y lo volvía a
+ * montar, así que el campo perdía el foco letra por letra y había que volver a
+ * hacer click para escribir la siguiente.
+ */
+function Paso({ n, titulo, children, activo, pasoActual }) {
+  return (
+    <div className={activo ? '' : 'opacity-40 pointer-events-none'}>
+      <div className="flex items-center gap-2 mb-2">
+        <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center ${
+          pasoActual > n ? 'bg-green-600 text-white'
+                         : activo ? 'bg-md-primary text-white'
+                                  : 'bg-md-outline-variant text-md-on-surface-variant'
+        }`}>
+          {pasoActual > n ? '✓' : n}
+        </span>
+        <p className="text-sm font-medium text-md-on-surface">{titulo}</p>
+      </div>
+      {activo && <div className="pl-7 space-y-2">{children}</div>}
+    </div>
+  )
+}
+
+/**
  * Da de alta el número de WhatsApp del colegio contra Meta, desde el panel.
  *
  * Son cuatro pasos y se muestran uno a la vez, porque entre el 2 y el 3 hay una
- * espera humana: el SMS llega al chip del colegio y el director lo dicta. Ese
+ * espera humana: el código llega al chip del colegio y el director lo dicta. Ese
  * es el único paso que no se automatiza.
  *
  * Al terminar avisa el phone_number_id hacia arriba, que es lo que se guarda en
@@ -72,22 +98,6 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
     onListo?.(phoneId)
   })
 
-  const Paso = ({ n, titulo, children, activo }) => (
-    <div className={activo ? '' : 'opacity-40 pointer-events-none'}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center ${
-          paso > n ? 'bg-green-600 text-white'
-                   : activo ? 'bg-md-primary text-white'
-                            : 'bg-md-outline-variant text-md-on-surface-variant'
-        }`}>
-          {paso > n ? '✓' : n}
-        </span>
-        <p className="text-sm font-medium text-md-on-surface">{titulo}</p>
-      </div>
-      {activo && <div className="pl-7 space-y-2">{children}</div>}
-    </div>
-  )
-
   return (
     <div className="rounded-2xl border border-md-outline-variant p-4 space-y-4">
       <div className="flex items-center gap-2">
@@ -102,7 +112,7 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
         </div>
       )}
 
-      <Paso n={1} titulo="Dar de alta el número en Meta" activo={paso === 1}>
+      <Paso n={1} titulo="Dar de alta el número en Meta" activo={paso === 1} pasoActual={paso}>
         <div className="flex gap-2">
           <input
             className="input w-16 text-center"
@@ -137,7 +147,7 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
         </button>
       </Paso>
 
-      <Paso n={2} titulo="Pedir el código de verificación" activo={paso === 2}>
+      <Paso n={2} titulo="Pedir el código de verificación" activo={paso === 2} pasoActual={paso}>
         <p className="text-xs text-md-on-surface-variant">
           El código llega al chip del colegio. Ten al director en la línea antes de pedirlo,
           con el chip en un teléfono y a la mano: el código caduca en unos minutos.
@@ -158,7 +168,7 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
         </p>
       </Paso>
 
-      <Paso n={3} titulo="Capturar el código que dicta el director" activo={paso === 3}>
+      <Paso n={3} titulo="Capturar el código que dicta el director" activo={paso === 3} pasoActual={paso}>
         <p className="text-xs text-md-on-surface-variant">
           {ultimoMetodo === 'VOICE'
             ? 'Meta va a marcar al número y dictar el código.'
@@ -192,7 +202,7 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
         </p>
       </Paso>
 
-      <Paso n={4} titulo="Dejarlo listo para enviar" activo={paso === 4}>
+      <Paso n={4} titulo="Dejarlo listo para enviar" activo={paso === 4} pasoActual={paso}>
         <p className="text-xs text-md-on-surface-variant">
           Se genera un PIN de seguridad del número. Te lo voy a mostrar una sola vez.
         </p>
