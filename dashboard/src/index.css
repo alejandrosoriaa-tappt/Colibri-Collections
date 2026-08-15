@@ -39,6 +39,19 @@
            disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
   }
 
+  /* Tonal — mismo peso que btn-secondary.
+     Existe porque medio proyecto lo llama "btn-tonal" (el nombre de Material 3)
+     y medio "btn-secondary". Sin esta regla, esos botones se veían como texto
+     plano y parecían no existir. */
+  .btn-tonal {
+    @apply inline-flex items-center justify-center gap-2
+           bg-md-secondary-container text-md-on-secondary-container
+           px-6 py-2.5 rounded-full font-medium text-sm
+           hover:shadow-md3-1 active:shadow-none
+           transition-all duration-150
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none;
+  }
+
   /* Outlined button */
   .btn-outline {
     @apply inline-flex items-center justify-center gap-2
