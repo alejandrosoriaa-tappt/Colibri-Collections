@@ -31,6 +31,14 @@ export function nuevoToken() {
 
 const hashDe = (t) => createHash('sha256').update(String(t || '')).digest('hex')
 
+/**
+ * La liga en claro, para copiarla desde el panel.
+ *
+ * OJO: el botón de la plantilla de WhatsApp lleva el dominio CONGELADO
+ * (https://app.kollybry.com/activar), porque así lo aprobó Meta. Si algún día
+ * FRONTEND_URL apunta a otro lado, esta liga y la del botón dejarían de
+ * coincidir y hay que volver a dar de alta la plantilla.
+ */
 export function ligaDeActivacion(tokenClaro) {
   const base = process.env.FRONTEND_URL || 'https://app.kollybry.com'
   return `${base.replace(/\/$/, '')}/activar?t=${tokenClaro}`
@@ -71,7 +79,9 @@ export async function crearActivacion({
       telefono,
       TEMPLATE_NAMES.ACTIVACION.name,
       TEMPLATE_NAMES.ACTIVACION.lang,
-      activacionComponents({ nombre: nombreDirector, orgName: nombreColegio, liga })
+      // Va el token, no la liga: el dominio vive fijo en el botón de la
+      // plantilla y WhatsApp le pega el token al final.
+      activacionComponents({ nombre: nombreDirector, orgName: nombreColegio, token: claro })
     )
     enviado = r.success
     motivo = r.success ? null : r.error
