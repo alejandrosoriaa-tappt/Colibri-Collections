@@ -261,8 +261,16 @@ router.post('/tenants/:id/send-message', authMiddleware, adminOnly, async (req, 
       return res.status(400).json({ error: 'Tenant has no admin_phone configured' })
     }
 
-    const result = await sendWhatsAppMessage(tenant.admin_phone, message)
-    return res.json({ success: result.success, wa_message_id: result.wa_message_id, error: result.error })
+    // Sale desde el número DEL COLEGIO cuando ya tiene uno. Es la única forma
+    // de probar ese número antes de que el director active su cuenta: el admin
+    // no puede entrar al panel del colegio sin ser miembro.
+    const result = await sendWhatsAppMessage(tenant.admin_phone, message, tenant.waba_phone_id)
+    return res.json({
+      success: result.success,
+      wa_message_id: result.wa_message_id,
+      error: result.error,
+      desde: tenant.waba_phone_id ? 'el número del colegio' : 'el número compartido de Kollybry'
+    })
   } catch (err) {
     console.error('POST /admin/tenants/:id/send-message error:', err)
     return res.status(500).json({ error: err.message })
