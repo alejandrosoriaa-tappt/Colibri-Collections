@@ -380,9 +380,15 @@ router.post('/numeros', authMiddleware, adminOnly, async (req, res) => {
 // POST /api/admin/numeros/:id/codigo — paso 2: pedir el SMS
 router.post('/numeros/:id/codigo', authMiddleware, adminOnly, async (req, res) => {
   if (exigirCredenciales(res)) return
+  const metodo = String(req.body?.metodo || 'SMS').toUpperCase()
+  // Meta solo conoce estos dos. Cualquier otra cosa la rechaza con un error
+  // genérico que no ayuda a nadie, así que se corta aquí.
+  if (!['SMS', 'VOICE'].includes(metodo)) {
+    return res.status(400).json({ error: 'El código solo se puede pedir por SMS o por llamada.' })
+  }
   try {
-    await pedirCodigo({ phoneNumberId: req.params.id, metodo: req.body?.metodo || 'SMS' })
-    return res.json({ enviado: true })
+    await pedirCodigo({ phoneNumberId: req.params.id, metodo })
+    return res.json({ enviado: true, metodo })
   } catch (err) {
     return res.status(err.status || 500).json({ error: err.message })
   }
