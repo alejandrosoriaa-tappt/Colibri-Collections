@@ -41,20 +41,25 @@ export function ligaDeActivacion(tokenClaro) {
  * Devuelve también la liga en claro para que el panel de Admin pueda
  * copiarla: si el WhatsApp falla, el alta no se queda sin salida.
  */
-export async function crearActivacion({ tenantId, nombreDirector, telefono, nombreColegio, yaRecordado = false }) {
+export async function crearActivacion({
+  tenantId, nombreDirector, telefono, nombreColegio,
+  rol = 'owner', invitadoPor = null, yaRecordado = false
+}) {
   const { claro, hash } = nuevoToken()
   const expira = new Date(Date.now() + HORAS_VIGENCIA * 3600 * 1000)
 
-  const { error } = await supabase.from('activaciones').insert({
+  const { data: fila, error } = await supabase.from('activaciones').insert({
     tenant_id: tenantId,
     token_hash: hash,
     nombre_director: nombreDirector,
     telefono,
+    rol,
+    invitado_por: invitadoPor,
     expira_en: expira.toISOString(),
     // Cuando la liga nace de un recordatorio, se marca de una vez para que el
     // barrido no la vuelva a tomar y termine recordando en cadena.
     recordatorio_en: yaRecordado ? new Date().toISOString() : null
-  })
+  }).select('id').single()
   if (error) throw new Error(`No se pudo crear la activación: ${error.message}`)
 
   const liga = ligaDeActivacion(claro)
@@ -74,7 +79,27 @@ export async function crearActivacion({ tenantId, nombreDirector, telefono, nomb
     motivo = 'la plantilla de activación aún no está configurada (KOLLYBRY_ACTIVACION_TEMPLATE)'
   }
 
-  return { liga, enviado, motivo, expira_en: expira.toISOString() }
+  return { id: fila.id, liga, enviado, motivo, expira_en: expira.toISOString() }
+}
+
+/**
+ * Invitaciones vivas de un colegio: ni usadas, ni canceladas, ni vencidas.
+ *
+ * Cuentan para el límite de 5 del equipo. Si no contaran, el director podría
+ * mandar veinte ligas y amanecer con veinte personas dentro.
+ */
+export async function invitacionesVivas(tenantId) {
+  const { data, error } = await supabase
+    .from('activaciones')
+    .select('id, nombre_director, telefono, rol, expira_en, created_at')
+    .eq('tenant_id', tenantId)
+    .is('usado_en', null)
+    .is('cancelada_en', null)
+    .gt('expira_en', new Date().toISOString())
+    .order('created_at', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data || []
 }
 
 // ── GET /api/activacion/:token — ¿la liga sirve? ────────────────────────────
@@ -83,19 +108,21 @@ router.get('/:token', limite, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('activaciones')
-      .select('id, tenant_id, nombre_director, usado_en, expira_en, tenants(display_name)')
+      .select('id, tenant_id, nombre_director, rol, usado_en, cancelada_en, expira_en, tenants(display_name)')
       .eq('token_hash', hashDe(req.params.token))
       .maybeSingle()
 
     if (error) throw error
     if (!data)                       return res.status(404).json({ error: 'Esta liga no es válida.' })
     if (data.usado_en)               return res.status(410).json({ error: 'Esta liga ya se usó. Pide una nueva.' })
+    if (data.cancelada_en)           return res.status(410).json({ error: 'Esta invitación fue cancelada.' })
     if (new Date(data.expira_en) < new Date())
       return res.status(410).json({ error: 'Esta liga venció. Pide una nueva.' })
 
     return res.json({
       nombre_director: data.nombre_director,
-      colegio: data.tenants?.display_name || ''
+      colegio: data.tenants?.display_name || '',
+      rol: data.rol || 'owner'
     })
   } catch (err) {
     console.error('GET /activacion error:', err)
@@ -118,7 +145,7 @@ router.post('/', limite, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('activaciones')
-      .select('id, tenant_id, nombre_director, usado_en, expira_en')
+      .select('id, tenant_id, nombre_director, rol, usado_en, cancelada_en, expira_en')
       .eq('token_hash', hashDe(token))
       .maybeSingle()
     if (error) throw error
@@ -130,6 +157,7 @@ router.post('/', limite, async (req, res) => {
 
   if (!activacion)         return res.status(404).json({ error: 'Esta liga no es válida.' })
   if (activacion.usado_en) return res.status(410).json({ error: 'Esta liga ya se usó.' })
+  if (activacion.cancelada_en) return res.status(410).json({ error: 'Esta invitación fue cancelada.' })
   if (new Date(activacion.expira_en) < new Date())
     return res.status(410).json({ error: 'Esta liga venció. Pide una nueva.' })
 
@@ -155,7 +183,9 @@ router.post('/', limite, async (req, res) => {
     const { error: eMiembro } = await supabase.from('tenant_users').insert({
       tenant_id: activacion.tenant_id,
       user_id: usuario.id,
-      role: 'owner',
+      // El rol viaja en la liga: 'owner' cuando es el alta del colegio, el que
+      // haya elegido el director cuando invita a alguien de su equipo.
+      role: activacion.rol || 'owner',
       name: activacion.nombre_director
     })
     if (eMiembro) throw eMiembro
@@ -167,6 +197,7 @@ router.post('/', limite, async (req, res) => {
       .update({ usado_en: new Date().toISOString() })
       .eq('id', activacion.id)
       .is('usado_en', null)
+      .is('cancelada_en', null)
       .select('id')
     if (eQuemar || !quemado?.length) throw new Error('Esta liga ya se había usado.')
 
