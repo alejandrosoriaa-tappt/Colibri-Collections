@@ -30,6 +30,17 @@ function auth() {
 function explicar(err) {
   const e = err.response?.data?.error
   if (!e) return err.message || 'Error desconocido'
+
+  // "(#200) Permissions error" es de los mensajes más inútiles de Meta: no dice
+  // qué permiso falta. En la práctica siempre es lo mismo — el token sirve para
+  // ENVIAR mensajes pero no para ADMINISTRAR la cuenta, que es otro permiso.
+  if (e.code === 200) {
+    return 'Meta rechazó la operación por permisos (#200). El WABA_ACCESS_TOKEN ' +
+           'probablemente solo tiene "whatsapp_business_messaging" (enviar mensajes) ' +
+           'y para dar de alta números hace falta también "whatsapp_business_management". ' +
+           'Genera un token con los dos permisos y reemplázalo en Railway.'
+  }
+
   return [e.error_user_title, e.error_user_msg, e.message].filter(Boolean).join(' — ')
 }
 
