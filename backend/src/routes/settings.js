@@ -6,6 +6,8 @@ import { Router } from 'express'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import supabase from '../services/supabase.js'
+import { normalizePhone } from '../utils/phone.js'
+import { crearActivacion, invitacionesVivas } from './activacion.js'
 
 const router = Router()
 
@@ -140,124 +142,178 @@ router.get('/users', authMiddleware, inferTenantGuard, async (req, res) => {
       })
     )
 
-    return res.json({ users, total: members.length, max: MAX_TEAM })
+    // Las invitaciones sin usar se muestran junto al equipo: si no se vieran,
+    // el director volvería a invitar a la misma persona creyendo que no salió.
+    const pendientes = (await invitacionesVivas(req.tenantId)).map(i => ({
+      id: i.id,
+      nombre: i.nombre_director,
+      telefono: i.telefono,
+      role: i.rol,
+      expira_en: i.expira_en,
+      pendiente: true
+    }))
+
+    return res.json({
+      users,
+      pendientes,
+      // El límite cuenta a los que ya entraron MÁS los invitados: si no, se
+      // pueden mandar veinte ligas y amanecer con veinte personas dentro.
+      total: members.length + pendientes.length,
+      max: MAX_TEAM
+    })
   } catch (err) {
     console.error('GET /settings/users error:', err)
     return res.status(500).json({ error: err.message })
   }
 })
 
-// POST /api/settings/users — invite team member
+// POST /api/settings/users — invitar por WhatsApp
+//
+// Antes esto mandaba un correo (inviteUserByEmail). Ahora manda la misma liga
+// de un solo uso que usa el director para activar su cuenta: un solo camino de
+// entrada, y por donde la gente del colegio sí ve los mensajes.
 router.post('/users', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     if (req.tenantRole !== 'owner' && !req.isAdmin) {
       return res.status(403).json({ error: 'Solo el administrador puede agregar usuarios' })
     }
 
-    const { email, role = 'comms', name = '' } = req.body
-    if (!email) return res.status(400).json({ error: 'El correo es requerido' })
+    const { telefono, role = 'comms', name = '' } = req.body
+    const tel = normalizePhone(telefono || '')
+
+    if (!tel)        return res.status(400).json({ error: 'El WhatsApp es requerido' })
+    if (!name.trim()) return res.status(400).json({ error: 'El nombre es requerido' })
 
     const ALLOWED_ROLES = ['owner', 'billing', 'comms']
     if (!ALLOWED_ROLES.includes(role)) return res.status(400).json({ error: 'Rol inválido' })
 
-    // Check team limit
-    const { count, error: countErr } = await supabase
-      .from('tenant_users')
-      .select('*', { count: 'exact', head: true })
-      .eq('tenant_id', req.tenantId)
+    const [{ count, error: countErr }, pendientes] = await Promise.all([
+      supabase.from('tenant_users').select('*', { count: 'exact', head: true }).eq('tenant_id', req.tenantId),
+      invitacionesVivas(req.tenantId)
+    ])
     if (countErr) throw countErr
-    if (count >= MAX_TEAM) {
-      return res.status(400).json({ error: `Límite de ${MAX_TEAM} usuarios alcanzado` })
+
+    if (count + pendientes.length >= MAX_TEAM) {
+      return res.status(400).json({
+        error: `Límite de ${MAX_TEAM} usuarios alcanzado (contando invitaciones sin usar)`
+      })
     }
 
-    // Invite user (creates if new, resends if existing)
-    let userId
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.kollybry.com'
-
-    const { data: invited, error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(email, {
-      redirectTo: `${frontendUrl}/reset-password`,
-      data: { full_name: name }
-    })
-
-    if (inviteErr) {
-      const msg = inviteErr.message?.toLowerCase() || ''
-      if (msg.includes('already been registered') || msg.includes('already registered')) {
-        // User exists — look up by email
-        const { data: { users: allUsers }, error: listErr } = await supabase.auth.admin.listUsers({ perPage: 1000 })
-        if (listErr) throw listErr
-        const found = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase())
-        if (!found) return res.status(400).json({ error: 'No se pudo encontrar el usuario' })
-        userId = found.id
-      } else {
-        throw inviteErr
-      }
-    } else {
-      userId = invited.user.id
+    // Dos ligas vivas al mismo teléfono solo confunden: la persona abre la
+    // vieja, le dice "ya se usó" y le habla al director.
+    if (pendientes.some(p => normalizePhone(p.telefono) === tel)) {
+      return res.status(400).json({ error: 'Ya hay una invitación pendiente para ese WhatsApp' })
     }
 
-    // Already a member?
-    const { data: existing } = await supabase
-      .from('tenant_users')
-      .select('user_id')
-      .eq('tenant_id', req.tenantId)
-      .eq('user_id', userId)
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('display_name, name')
+      .eq('id', req.tenantId)
       .maybeSingle()
 
-    if (existing) return res.status(400).json({ error: 'Este usuario ya es miembro del equipo' })
+    const inv = await crearActivacion({
+      tenantId: req.tenantId,
+      nombreDirector: name.trim(),
+      telefono: tel,
+      nombreColegio: tenant?.display_name || tenant?.name || '',
+      rol: role,
+      invitadoPor: req.user.id
+    })
 
-    // Add to tenant
-    const { data: member, error: memberErr } = await supabase
-      .from('tenant_users')
-      .insert({ tenant_id: req.tenantId, user_id: userId, role })
-      .select()
-      .single()
-
-    if (memberErr) throw memberErr
-
-    return res.status(201).json({ user: { ...member, email, name } })
+    return res.status(201).json({
+      invitacion: {
+        id: inv.id,
+        nombre: name.trim(),
+        telefono: tel,
+        role,
+        expira_en: inv.expira_en,
+        pendiente: true
+      },
+      // La liga se devuelve siempre para que el director la pueda pasar a mano
+      // si el WhatsApp no salió. Es la misma salida que tiene el alta.
+      liga: inv.liga,
+      enviada: inv.enviado,
+      aviso: inv.motivo
+    })
   } catch (err) {
     console.error('POST /settings/users error:', err)
     return res.status(500).json({ error: err.message })
   }
 })
 
-// POST /api/settings/users/:userId/resend-invite — resend invitation email
-router.post('/users/:userId/resend-invite', authMiddleware, inferTenantGuard, async (req, res) => {
+// POST /api/settings/invitaciones/:id/reenviar — nueva liga, mismo destinatario
+router.post('/invitaciones/:id/reenviar', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
     if (req.tenantRole !== 'owner' && !req.isAdmin) {
       return res.status(403).json({ error: 'Solo el administrador puede reenviar invitaciones' })
     }
 
-    // Verify member belongs to this tenant
-    const { data: member } = await supabase
-      .from('tenant_users')
-      .select('user_id')
-      .eq('tenant_id', req.tenantId)
-      .eq('user_id', req.params.userId)
+    const { data: previa } = await supabase
+      .from('activaciones')
+      .select('id, nombre_director, telefono, rol, usado_en')
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.tenantId)      // no se tocan invitaciones de otro colegio
       .maybeSingle()
 
-    if (!member) return res.status(404).json({ error: 'Usuario no encontrado en este equipo' })
+    if (!previa)          return res.status(404).json({ error: 'Invitación no encontrada' })
+    if (previa.usado_en)  return res.status(400).json({ error: 'Esa persona ya activó su cuenta' })
 
-    // Get user email
-    const { data: { user } } = await supabase.auth.admin.getUserById(req.params.userId)
-    if (!user?.email) return res.status(400).json({ error: 'No se pudo obtener el correo del usuario' })
+    const { data: tenant } = await supabase
+      .from('tenants').select('display_name, name').eq('id', req.tenantId).maybeSingle()
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.kollybry.com'
-    const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(user.email, {
-      redirectTo: `${frontendUrl}/reset-password`
+    // La liga vieja se cancela: si siguiera viva habría dos válidas al mismo
+    // teléfono y la persona podría abrir la que ya no corresponde.
+    await supabase.from('activaciones')
+      .update({ cancelada_en: new Date().toISOString() })
+      .eq('id', previa.id)
+      .is('usado_en', null)
+
+    const inv = await crearActivacion({
+      tenantId: req.tenantId,
+      nombreDirector: previa.nombre_director,
+      telefono: previa.telefono,
+      nombreColegio: tenant?.display_name || tenant?.name || '',
+      rol: previa.rol,
+      invitadoPor: req.user.id
     })
 
-    // "already registered" is fine — still resends the invite
-    if (inviteErr && !inviteErr.message?.toLowerCase().includes('already')) {
-      throw inviteErr
-    }
-
-    return res.json({ success: true, email: user.email })
+    return res.json({ id: inv.id, liga: inv.liga, enviada: inv.enviado, aviso: inv.motivo, expira_en: inv.expira_en })
   } catch (err) {
-    console.error('POST /settings/users/:userId/resend-invite error:', err)
+    console.error('POST /settings/invitaciones/:id/reenviar error:', err)
     return res.status(500).json({ error: err.message })
   }
 })
+
+// DELETE /api/settings/invitaciones/:id — cancelar antes de que la usen
+router.delete('/invitaciones/:id', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    if (req.tenantRole !== 'owner' && !req.isAdmin) {
+      return res.status(403).json({ error: 'Solo el administrador puede cancelar invitaciones' })
+    }
+
+    // Se marca, no se borra: queda el rastro de que existió y de quién la mandó.
+    const { data, error } = await supabase
+      .from('activaciones')
+      .update({ cancelada_en: new Date().toISOString() })
+      .eq('id', req.params.id)
+      .eq('tenant_id', req.tenantId)
+      .is('usado_en', null)
+      .select('id')
+
+    if (error) throw error
+    if (!data?.length) return res.status(404).json({ error: 'Invitación no encontrada o ya usada' })
+
+    return res.json({ cancelada: true })
+  } catch (err) {
+    console.error('DELETE /settings/invitaciones/:id error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// El reenvío de invitación por correo (inviteUserByEmail) se eliminó: ya no hay
+// invitaciones por correo, y para quien ya activó su cuenta no tenía sentido
+// —esa persona ya tiene contraseña—. El reenvío vive ahora en
+// POST /invitaciones/:id/reenviar, que solo aplica a ligas sin usar.
 
 // DELETE /api/settings/users/:userId — remove team member
 router.delete('/users/:userId', authMiddleware, inferTenantGuard, async (req, res) => {

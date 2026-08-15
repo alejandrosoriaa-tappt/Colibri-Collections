@@ -138,10 +138,13 @@ export const settingsAPI = {
 // TEAM (settings/users)
 // ================================================================
 export const teamAPI = {
-  list:         ()         => api.get('/api/settings/users'),
-  invite:       (data)     => api.post('/api/settings/users', data),
-  remove:       (userId)   => api.delete(`/api/settings/users/${userId}`),
-  resendInvite: (userId)   => api.post(`/api/settings/users/${userId}/resend-invite`)
+  list:         ()   => api.get('/api/settings/users'),
+  invite:       (data) => api.post('/api/settings/users', data),
+  remove:       (userId) => api.delete(`/api/settings/users/${userId}`),
+  // Invitaciones sin usar: viven aparte de los miembros porque todavía no hay
+  // usuario que borrar ni al que reenviarle nada por correo.
+  reenviarInvitacion: (id) => api.post(`/api/settings/invitaciones/${id}/reenviar`),
+  cancelarInvitacion: (id) => api.delete(`/api/settings/invitaciones/${id}`)
 }
 
 // ================================================================

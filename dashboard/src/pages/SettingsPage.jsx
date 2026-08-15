@@ -565,25 +565,60 @@ function UserAvatar({ name, email }) {
 
 // ── Invite Modal ───────────────────────────────────────────────
 function InviteModal({ onClose, onInvited }) {
-  const [email, setEmail] = useState('')
+  const [telefono, setTelefono] = useState('')
   const [name, setName]   = useState('')
   const [role, setRole]   = useState('comms')
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState(null)
+  // Si el WhatsApp no salió, la liga se muestra aquí para pasarla a mano en vez
+  // de dejar al director sin saber qué pasó.
+  const [liga, setLiga] = useState(null)
+  const [copiado, setCopiado] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     try {
-      const res = await teamAPI.invite({ email: email.trim(), name: name.trim(), role })
-      onInvited(res.data.user)
-      onClose()
+      const res = await teamAPI.invite({ telefono: telefono.trim(), name: name.trim(), role })
+      onInvited(res.data.invitacion)
+      if (res.data.enviada) {
+        onClose()
+      } else {
+        setLiga(res.data.liga)
+        setError(res.data.aviso ? `No se pudo enviar por WhatsApp: ${res.data.aviso}` : null)
+      }
     } catch (err) {
       setError(err.response?.data?.error || err.message)
     } finally {
       setLoading(false)
     }
+  }
+
+  if (liga) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="bg-md-surface rounded-3xl shadow-md3-3 w-full max-w-sm p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-md-on-surface">Pásale esta liga</h2>
+          {error && <p className="text-sm text-md-on-surface-variant">{error}</p>}
+          <p className="text-sm text-md-on-surface-variant">
+            La invitación se creó, pero no salió por WhatsApp. Mándasela tú: vence en 48 horas
+            y solo sirve una vez.
+          </p>
+          <div className="flex gap-2">
+            <input readOnly className="input flex-1 text-xs font-mono" value={liga} />
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(liga); setCopiado(true) }}
+              className="btn-tonal text-xs px-3"
+            >
+              {copiado ? 'Copiado' : 'Copiar'}
+            </button>
+          </div>
+          <button onClick={onClose} className="btn-primary w-full">Listo</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -605,30 +640,32 @@ function InviteModal({ onClose, onInvited }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">Correo electrónico</label>
-            <input
-              type="email"
-              className="input"
-              placeholder="usuario@empresa.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              autoFocus
-            />
-            <p className="text-xs text-md-on-surface-variant mt-1.5">
-              Recibirá un correo para crear su contraseña
-            </p>
-          </div>
-
-          <div>
-            <label className="label">Nombre (opcional)</label>
+            <label className="label">Nombre</label>
             <input
               type="text"
               className="input"
               placeholder="Ej. María García"
               value={name}
               onChange={e => setName(e.target.value)}
+              required
+              autoFocus
             />
+          </div>
+
+          <div>
+            <label className="label">WhatsApp</label>
+            <input
+              type="tel"
+              className="input"
+              placeholder="521XXXXXXXXXX"
+              value={telefono}
+              onChange={e => setTelefono(e.target.value)}
+              required
+            />
+            <p className="text-xs text-md-on-surface-variant mt-1.5">
+              Le llega una liga por WhatsApp. Ella define su propio correo y su contraseña;
+              tú nunca la ves.
+            </p>
           </div>
 
           <div>
@@ -660,7 +697,7 @@ function InviteModal({ onClose, onInvited }) {
 
           <button type="submit" className="btn-primary w-full" disabled={loading}>
             {loading ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
-            {loading ? 'Enviando invitación...' : 'Enviar invitación'}
+            {loading ? 'Enviando invitación...' : 'Enviar invitación por WhatsApp'}
           </button>
         </form>
       </div>
@@ -671,6 +708,7 @@ function InviteModal({ onClose, onInvited }) {
 // ── Team Section ───────────────────────────────────────────────
 function TeamSection({ tenantRole, currentUserId }) {
   const [users, setUsers]       = useState([])
+  const [pendientes, setPendientes] = useState([])
   const [total, setTotal]       = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -690,6 +728,7 @@ function TeamSection({ tenantRole, currentUserId }) {
     try {
       const res = await teamAPI.list()
       setUsers(res.data.users)
+      setPendientes(res.data.pendientes || [])
       setTotal(res.data.total)
     } catch (err) {
       console.error('TeamSection load error:', err)
@@ -714,20 +753,36 @@ function TeamSection({ tenantRole, currentUserId }) {
     }
   }
 
-  const handleInvited = (user) => {
-    setUsers(u => [...u, user])
+  const handleInvited = (invitacion) => {
+    setPendientes(p => [...p, invitacion])
     setTotal(t => t + 1)
   }
 
-  const handleResend = async (userId) => {
-    setResending(userId)
+  const handleResend = async (id) => {
+    setResending(id)
     try {
-      await teamAPI.resendInvite(userId)
-      showToast('Invitación reenviada')
+      const res = await teamAPI.reenviarInvitacion(id)
+      // El reenvío cancela la liga vieja y crea otra, así que cambia el id.
+      setPendientes(p => p.map(i => i.id === id ? { ...i, id: res.data.id, expira_en: res.data.expira_en } : i))
+      showToast(res.data.enviada ? 'Invitación reenviada por WhatsApp' : (res.data.aviso || 'No se pudo enviar'), !res.data.enviada)
     } catch (err) {
       showToast(err.response?.data?.error || err.message, true)
     } finally {
       setResending(null)
+    }
+  }
+
+  const handleCancelInvite = async (id) => {
+    setRemoving(id)
+    try {
+      await teamAPI.cancelarInvitacion(id)
+      setPendientes(p => p.filter(i => i.id !== id))
+      setTotal(t => t - 1)
+      showToast('Invitación cancelada')
+    } catch (err) {
+      showToast(err.response?.data?.error || err.message, true)
+    } finally {
+      setRemoving(null)
     }
   }
 
@@ -785,25 +840,55 @@ function TeamSection({ tenantRole, currentUserId }) {
                 </div>
                 <RoleBadge role={u.role} />
                 {isOwner && !u.is_self && (
+                  <button
+                    onClick={() => handleRemove(u.user_id)}
+                    disabled={removing === u.user_id}
+                    className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
+                    title="Eliminar del equipo"
+                  >
+                    {removing === u.user_id
+                      ? <Loader2 size={14} className="animate-spin" />
+                      : <Trash2 size={14} />
+                    }
+                  </button>
+                )}
+              </div>
+            ))}
+
+            {/* Invitaciones sin usar. Se ven aparte porque todavía no son
+                usuarios: no tienen correo ni han elegido contraseña. */}
+            {pendientes.map(i => (
+              <div key={i.id} className="flex items-center gap-3 p-3 rounded-2xl bg-md-surface-container border border-dashed border-md-outline-variant">
+                <div className="w-9 h-9 rounded-full bg-md-surface-container-high flex items-center justify-center flex-shrink-0">
+                  <Send size={14} className="text-md-on-surface-variant" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-md-on-surface truncate">{i.nombre}</p>
+                  <p className="text-xs text-md-on-surface-variant truncate">
+                    {i.telefono} · invitación pendiente
+                  </p>
+                </div>
+                <RoleBadge role={i.role} />
+                {isOwner && (
                   <>
                     <button
-                      onClick={() => handleResend(u.user_id)}
-                      disabled={resending === u.user_id}
+                      onClick={() => handleResend(i.id)}
+                      disabled={resending === i.id}
                       className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-primary hover:bg-md-primary-container transition-colors"
-                      title="Reenviar invitación"
+                      title="Reenviar por WhatsApp"
                     >
-                      {resending === u.user_id
+                      {resending === i.id
                         ? <Loader2 size={14} className="animate-spin" />
                         : <Send size={14} />
                       }
                     </button>
                     <button
-                      onClick={() => handleRemove(u.user_id)}
-                      disabled={removing === u.user_id}
+                      onClick={() => handleCancelInvite(i.id)}
+                      disabled={removing === i.id}
                       className="p-1.5 rounded-full text-md-on-surface-variant hover:text-md-error hover:bg-md-error-container transition-colors"
-                      title="Eliminar del equipo"
+                      title="Cancelar invitación"
                     >
-                      {removing === u.user_id
+                      {removing === i.id
                         ? <Loader2 size={14} className="animate-spin" />
                         : <Trash2 size={14} />
                       }
