@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2, AlertCircle, CheckCircle2, Copy, Check, Phone, KeyRound } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle2, Copy, Check, Phone, PhoneCall, KeyRound } from 'lucide-react'
 import { adminAPI } from '../../lib/api.js'
 
 /**
@@ -24,6 +24,7 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
   const [codigo, setCodigo] = useState('')
   const [pin, setPin] = useState('')
   const [pinCopiado, setPinCopiado] = useState(false)
+  const [ultimoMetodo, setUltimoMetodo] = useState('SMS')
 
   // Cada paso pide algo distinto a Meta, pero todos fallan igual: se muestra el
   // mensaje de Meta tal cual, que suele decir exactamente qué está mal.
@@ -51,8 +52,11 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
     setPaso(2)
   })
 
-  const pedirCodigo = () => correr(async () => {
-    await adminAPI.numeros.codigo(phoneId, 'SMS')
+  // Meta manda el código por SMS o dictándolo en una llamada. La llamada es la
+  // salida cuando el SMS no llega —pasa seguido con chips recién activados—.
+  const pedirCodigo = (metodo = 'SMS') => correr(async () => {
+    await adminAPI.numeros.codigo(phoneId, metodo)
+    setUltimoMetodo(metodo)
     setPaso(3)
   })
 
@@ -135,16 +139,31 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
 
       <Paso n={2} titulo="Pedir el código de verificación" activo={paso === 2}>
         <p className="text-xs text-md-on-surface-variant">
-          El SMS llega al chip del colegio. Ten al director en la línea antes de pedirlo:
-          el código caduca.
+          El código llega al chip del colegio. Ten al director en la línea antes de pedirlo,
+          con el chip en un teléfono y a la mano: el código caduca en unos minutos.
         </p>
-        <button type="button" onClick={pedirCodigo} disabled={cargando}
-          className="btn-tonal text-sm disabled:opacity-50 flex items-center gap-2">
-          {cargando && <Loader2 size={13} className="animate-spin" />} Enviar SMS
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => pedirCodigo('SMS')} disabled={cargando}
+            className="btn-tonal text-sm disabled:opacity-50 flex items-center gap-2">
+            {cargando && <Loader2 size={13} className="animate-spin" />} Enviar SMS
+          </button>
+          <button type="button" onClick={() => pedirCodigo('VOICE')} disabled={cargando}
+            className="btn-outline text-sm disabled:opacity-50 flex items-center gap-2">
+            <PhoneCall size={13} /> Por llamada
+          </button>
+        </div>
+        <p className="text-xs text-md-on-surface-variant">
+          Si el chip es nuevo, el SMS a veces no llega. La llamada sirve igual: Meta marca
+          y dicta el código.
+        </p>
       </Paso>
 
       <Paso n={3} titulo="Capturar el código que dicta el director" activo={paso === 3}>
+        <p className="text-xs text-md-on-surface-variant">
+          {ultimoMetodo === 'VOICE'
+            ? 'Meta va a marcar al número y dictar el código.'
+            : 'El código llegó por SMS al chip del colegio.'}
+        </p>
         <div className="flex gap-2">
           <input
             className="input flex-1 font-mono tracking-widest"
@@ -157,10 +176,20 @@ export default function AltaNumeroWhatsApp({ nombreSugerido = '', onListo }) {
             {cargando && <Loader2 size={13} className="animate-spin" />} Verificar
           </button>
         </div>
-        <button type="button" onClick={pedirCodigo} disabled={cargando}
-          className="text-xs text-md-primary underline">
-          No llegó — reenviar
-        </button>
+        <div className="flex gap-3">
+          <button type="button" onClick={() => pedirCodigo('SMS')} disabled={cargando}
+            className="text-xs text-md-primary underline">
+            No llegó — reenviar SMS
+          </button>
+          <button type="button" onClick={() => pedirCodigo('VOICE')} disabled={cargando}
+            className="text-xs text-md-primary underline">
+            Mejor por llamada
+          </button>
+        </div>
+        <p className="text-xs text-md-on-surface-variant">
+          Espera un minuto entre intentos: pedirlo muchas veces seguidas hace que Meta
+          bloquee el número un rato.
+        </p>
       </Paso>
 
       <Paso n={4} titulo="Dejarlo listo para enviar" activo={paso === 4}>
