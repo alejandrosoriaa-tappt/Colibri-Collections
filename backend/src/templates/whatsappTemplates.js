@@ -159,13 +159,27 @@ export function comunicadoImagenComponents({ titulo, orgName, cuerpo, imageUrl }
 
 /**
  * Activación de cuenta  (ACTIVACION)
- * {{1}} nombre del director  {{2}} nombre del colegio  {{3}} liga
+ * BODY: {{1}} nombre de quien recibe  ·  {{2}} nombre del colegio
+ * BOTÓN URL: {{1}} el token, que se le pega a https://app.kollybry.com/activar?t=
  *
- * Meta no permite que el cuerpo empiece ni termine con variable, así que la
- * plantilla debe llevar texto antes de {{1}} y después de {{3}}.
+ * La liga NO va en el texto. El primer intento la mandó como variable dentro
+ * del cuerpo y Meta la rechazó al instante: su revisión automática castiga las
+ * plantillas que arman ligas con variables en el texto, porque es el patrón
+ * del phishing. La forma sancionada es un botón de URL con parte dinámica,
+ * donde el dominio es fijo en la plantilla y lo único variable es el token.
+ *
+ * Por eso aquí se manda el TOKEN pelón, no la liga completa.
  */
-export function activacionComponents({ nombre, orgName, liga }) {
-  return bodyOnly(nombre, orgName, liga)
+export function activacionComponents({ nombre, orgName, token }) {
+  return [
+    { type: 'body', parameters: [nombre, orgName].map(textParam) },
+    {
+      type: 'button',
+      sub_type: 'url',
+      index: '0',
+      parameters: [textParam(token)]
+    }
+  ]
 }
 
 /**
