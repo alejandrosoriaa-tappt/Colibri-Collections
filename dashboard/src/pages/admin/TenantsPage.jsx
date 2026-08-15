@@ -351,6 +351,7 @@ export default function TenantsPage() {
   const [resending, setResending] = useState(false)
   const [resendResult, setResendResult] = useState(null) // 'ok' | 'error'
   const [ligaReenviada, setLigaReenviada] = useState(null)
+  const [phoneIdManual, setPhoneIdManual] = useState('')
 
   const loadTenants = () =>
     adminAPI.listTenants()
@@ -517,6 +518,32 @@ export default function TenantsPage() {
                 nombreSugerido={tenant.display_name || tenant.name}
                 onListo={(phoneId) => handleUpdate({ ...tenant, waba_phone_id: phoneId })}
               />
+
+              {/* Si el número se dio de alta a mano en el WhatsApp Manager
+                  —o si el token todavía no tiene permiso de administración—,
+                  basta con pegar el ID que Meta ya asignó. */}
+              <div className="mt-4 pt-4 border-t border-md-outline-variant">
+                <label className="label">¿Ya lo diste de alta en el WhatsApp Manager?</label>
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 font-mono"
+                    value={phoneIdManual}
+                    onChange={e => setPhoneIdManual(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Pega aquí el Phone number ID"
+                  />
+                  <button
+                    type="button"
+                    disabled={!phoneIdManual || isSaving}
+                    onClick={() => handleUpdate({ ...tenant, waba_phone_id: phoneIdManual })}
+                    className="btn-tonal text-sm disabled:opacity-50"
+                  >
+                    Asignar
+                  </button>
+                </div>
+                <p className="text-xs text-md-on-surface-variant mt-1">
+                  Meta lo muestra en Cuentas de WhatsApp → Números de teléfono, debajo del número.
+                </p>
+              </div>
             </>
           )}
         </div>
