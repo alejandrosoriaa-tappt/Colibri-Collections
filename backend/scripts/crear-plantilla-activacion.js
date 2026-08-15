@@ -25,7 +25,15 @@ const TOKEN = process.env.WABA_ACCESS_TOKEN
 // nombres porque los scripts del repo no se pusieron de acuerdo.
 const WABA = process.env.WABA_BUSINESS_ID || process.env.WABA_BUSINESS_ACCOUNT_ID
 
-const NOMBRE = 'kollybry_activacion'
+// El nombre se puede cambiar con --nombre. Sirve para esquivar el limbo de
+// Meta: cuando se borra una plantilla, su nombre queda ocupado un rato y no
+// deja crear otra igual ("se está eliminando el idioma de la plantilla").
+// Con un nombre nuevo se evita la espera por completo.
+const opt = (n) => {
+  const i = process.argv.indexOf(`--${n}`)
+  return i === -1 ? null : process.argv[i + 1]
+}
+const NOMBRE = opt('nombre') || 'kollybry_acceso'
 const IDIOMA = 'es_MX'
 
 // La liga va en un BOTÓN, no en el texto.
@@ -103,6 +111,35 @@ async function estado() {
   console.log('')
 }
 
+const dormir = (ms) => new Promise(r => setTimeout(r, ms))
+
+/**
+ * Crea la plantilla, aguantando el limbo del borrado.
+ *
+ * Al borrar una plantilla, Meta tarda en soltar el nombre y mientras tanto
+ * contesta "se está eliminando el idioma de la plantilla". Su mensaje dice
+ * "menos de un minuto", pero en la práctica tarda más, así que se reintenta
+ * en lugar de obligar a correr el comando a ciegas una y otra vez.
+ */
+async function crearConEspera() {
+  const ESPERAS = [0, 60, 90, 120]   // segundos antes de cada intento
+
+  for (let i = 0; i < ESPERAS.length; i++) {
+    if (ESPERAS[i]) {
+      console.log(`   Meta sigue liberando el nombre. Reintento en ${ESPERAS[i]}s…`)
+      await dormir(ESPERAS[i] * 1000)
+    }
+    try {
+      const { data } = await axios.post(`${GRAPH}/${WABA}/message_templates`, PLANTILLA, auth)
+      return data
+    } catch (err) {
+      const msg = explicar(err)
+      const enLimbo = /eliminando el idioma|being deleted|deletion/i.test(msg)
+      if (!enLimbo || i === ESPERAS.length - 1) throw err
+    }
+  }
+}
+
 async function crear() {
   // Una plantilla rechazada ocupa el nombre. Se borra antes de recrear, si no
   // Meta responde "already exists" y no hay forma de reintentar.
@@ -124,7 +161,7 @@ async function crear() {
     }
   }
 
-  const { data } = await axios.post(`${GRAPH}/${WABA}/message_templates`, PLANTILLA, auth)
+  const data = await crearConEspera()
 
   // Meta puede rechazarla en el mismo instante de crearla. Antes este script
   // imprimía "enviada a revisión" solo porque le devolvieron un id, y eso es
