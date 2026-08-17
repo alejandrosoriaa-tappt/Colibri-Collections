@@ -1,5 +1,6 @@
 import axios from 'axios'
 import supabase from './supabase.js'
+import { getTenantOverride } from './tenantOverride.js'
 
 const env = window.__env__ || {}
 const api = axios.create({
@@ -17,6 +18,18 @@ api.interceptors.request.use(
     if (session?.access_token) {
       config.headers.Authorization = `Bearer ${session.access_token}`
     }
+
+    // Colegio que eligió el admin en el selector. El backend solo le hace caso
+    // si quien pregunta es admin; para cualquier otro usuario lo ignora, así
+    // que mandarlo siempre no abre ninguna puerta.
+    //
+    // Las rutas /api/admin/* ya llevan el colegio en la URL y no deben quedar
+    // amarradas al selector: desde ahí se administran todos.
+    const override = getTenantOverride()
+    if (override && !String(config.url || '').startsWith('/api/admin')) {
+      config.params = { ...(config.params || {}), tenant_id: override }
+    }
+
     return config
   },
   (error) => Promise.reject(error)

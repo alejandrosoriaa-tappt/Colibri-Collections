@@ -1,8 +1,51 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Bell, BellDot, Menu } from 'lucide-react'
+import { Bell, BellDot, Menu, Eye } from 'lucide-react'
 import useAuthStore from '../../store/authStore.js'
-import { notificationsAPI } from '../../lib/api.js'
+import { notificationsAPI, adminAPI } from '../../lib/api.js'
+import { getTenantOverride } from '../../lib/tenantOverride.js'
+
+/**
+ * Selector de colegio, solo para admin.
+ *
+ * Sirve para dar soporte sin pedirle la contraseña a nadie: el admin elige un
+ * colegio y ve exactamente el panel que ve su directora.
+ */
+function SelectorColegio() {
+  const { isAdmin, cambiarTenant, viendoOtroColegio } = useAuthStore()
+  const [colegios, setColegios] = useState([])
+  const actual = getTenantOverride() || ''
+
+  useEffect(() => {
+    if (!isAdmin) return
+    adminAPI.listTenants()
+      .then(res => setColegios(res.data.tenants || []))
+      .catch(() => setColegios([]))
+  }, [isAdmin])
+
+  if (!isAdmin || colegios.length === 0) return null
+
+  return (
+    <div className="hidden sm:flex items-center gap-2">
+      {viendoOtroColegio && (
+        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
+          <Eye size={12} /> Viendo otro colegio
+        </span>
+      )}
+      <select
+        value={actual}
+        onChange={e => cambiarTenant(e.target.value || null)}
+        className="text-xs rounded-full border border-md-outline px-3 py-1.5 bg-md-surface text-md-on-surface max-w-[180px]"
+        title="Ver el panel de otro colegio"
+      >
+        <option value="">Mi colegio</option>
+        {colegios.map(t => (
+          <option key={t.id} value={t.id}>{t.display_name || t.name}</option>
+        ))}
+      </select>
+    </div>
+  )
+}
 
 const ROUTE_TITLES = {
   '/': 'Inicio',
@@ -73,6 +116,7 @@ export default function Header({ onMenuClick }) {
       </div>
 
       <div className="flex items-center gap-2">
+        <SelectorColegio />
         {tenant && (
           <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-md-primary-container text-md-on-primary-container text-xs font-medium">
             {tenant.display_name || tenant.name}
