@@ -84,7 +84,10 @@ export const contactsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: 120000
   }),
-  aiCommit: (contacts) => api.post('/api/contacts/ai-import/commit', { contacts }, { timeout: 120000 })
+  aiCommit: (contacts, padronCompleto = false) =>
+    api.post('/api/contacts/ai-import/commit', { contacts, padron_completo: padronCompleto }, { timeout: 120000 }),
+  // Las bajas se aplican aparte, ya que el colegio vio la lista y confirmó
+  aiBajas: (ids) => api.post('/api/contacts/ai-import/bajas', { ids }, { timeout: 60000 })
 }
 
 // ================================================================

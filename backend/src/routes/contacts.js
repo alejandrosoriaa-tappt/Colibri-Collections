@@ -214,7 +214,7 @@ router.post('/ai-import/analyze', authMiddleware, inferTenantGuard, upload.singl
 // ============================================================
 router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, res) => {
   try {
-    const { contacts } = req.body
+    const { contacts, padron_completo } = req.body
     if (!Array.isArray(contacts) || contacts.length === 0) {
       return res.status(400).json({ error: 'No hay contactos para importar' })
     }
@@ -300,10 +300,28 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
         JSON.stringify(fallidos.slice(0, 20), null, 2))
     }
 
+    // Padrón completo del ciclo: los alumnos que YA NO vienen en el archivo se
+    // fueron del colegio. No se dan de baja aquí — se devuelven con nombre y
+    // grupo para que el colegio los vea y confirme. Dar de baja a alguien por
+    // una columna mal escrita es de los errores más caros que hay: esa familia
+    // deja de recibir avisos y nadie se entera hasta que reclama.
+    let bajas = []
+    if (padron_completo) {
+      const enArchivo = new Set(rows.filter(r => r.relationship_type === 'student').map(claveAlumno))
+      bajas = (yaExisten || [])
+        .filter(c => !enArchivo.has(claveAlumno(c)))
+        .map(c => ({
+          id: c.id,
+          nombre: c.nombre_alumno || `${c.nombre || ''} ${c.apellido || ''}`.trim(),
+          familia: c.nombre_familia || null
+        }))
+    }
+
     return res.json({
       inserted,
       actualizados,
       duplicados,
+      bajas,
       fallidos: fallidos.length,
       // Muestra acotada para que el dashboard pueda explicar qué pasó
       detalle_fallidos: fallidos.slice(0, 20),
@@ -313,6 +331,34 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
     })
   } catch (err) {
     console.error('POST /contacts/ai-import/commit error:', err)
+    return res.status(500).json({ error: err.message })
+  }
+})
+
+// ============================================================
+// POST /api/contacts/ai-import/bajas
+// Aplica las bajas que el colegio confirmó tras un import de padrón
+// completo. Se marcan inactivos, NO se borran: el periodo de gracia
+// permite recuperarlos si el archivo venía mal.
+// ============================================================
+router.post('/ai-import/bajas', authMiddleware, inferTenantGuard, async (req, res) => {
+  try {
+    const { ids } = req.body
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No hay contactos para dar de baja' })
+    }
+
+    const { data, error } = await supabase
+      .from('contacts')
+      .update({ status: 'inactive', inactive_since: new Date().toISOString() })
+      .in('id', ids)
+      .eq('tenant_id', req.tenantId)     // nunca fuera del propio colegio
+      .select('id')
+
+    if (error) throw error
+    return res.json({ dados_de_baja: data?.length || 0 })
+  } catch (err) {
+    console.error('POST /contacts/ai-import/bajas error:', err)
     return res.status(500).json({ error: err.message })
   }
 })

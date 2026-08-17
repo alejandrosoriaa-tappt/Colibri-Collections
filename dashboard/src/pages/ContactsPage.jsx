@@ -932,6 +932,12 @@ function AiImportModal({ onClose, onDone }) {
   const [stage, setStage] = useState('upload')   // upload | analyzing | preview | committing
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)     // { mapping, summary, contacts }
+  // Solo se palomea cuando el archivo ES el padrón completo del ciclo. Apagada
+  // por default a propósito: palomearla con un archivo parcial daría de baja a
+  // medio colegio, y ese es el error caro.
+  const [padronCompleto, setPadronCompleto] = useState(false)
+  const [bajas, setBajas] = useState(null)       // alumnos que ya no vienen en el archivo
+  const [importado, setImportado] = useState(null)
   const fileRef = useRef(null)
 
   const handleFile = async (file) => {
@@ -952,11 +958,31 @@ function AiImportModal({ onClose, onDone }) {
   const handleCommit = async () => {
     setStage('committing'); setError(null)
     try {
-      const res = await contactsAPI.aiCommit(result.contacts)
+      const res = await contactsAPI.aiCommit(result.contacts, padronCompleto)
+      // Las altas y actualizaciones ya se aplicaron. Las bajas NO: se muestran
+      // primero con nombre y apellido para que el colegio confirme una por una
+      // lo que va a dejar de recibir avisos.
+      if (res.data.bajas?.length) {
+        setImportado(res.data)
+        setBajas(res.data.bajas)
+        setStage('bajas')
+        return
+      }
       onDone(res.data)
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo importar')
       setStage('preview')
+    }
+  }
+
+  const aplicarBajas = async () => {
+    setStage('committing'); setError(null)
+    try {
+      const res = await contactsAPI.aiBajas(bajas.map(b => b.id))
+      onDone({ ...importado, dados_de_baja: res.data.dados_de_baja })
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudieron aplicar las bajas')
+      setStage('bajas')
     }
   }
 
@@ -1076,10 +1102,63 @@ function AiImportModal({ onClose, onDone }) {
                 </div>
               )}
 
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-md-outline-variant cursor-pointer hover:bg-md-surface-container">
+                <input
+                  type="checkbox"
+                  checked={padronCompleto}
+                  onChange={e => setPadronCompleto(e.target.checked)}
+                  className="mt-0.5 rounded accent-md-primary"
+                />
+                <div>
+                  <p className="text-sm font-medium text-md-on-surface">
+                    Este archivo es el padrón completo del ciclo
+                  </p>
+                  <p className="text-xs text-md-on-surface-variant mt-0.5">
+                    Al terminar te muestro qué alumnos ya no aparecen, para darlos de baja.
+                    Déjalo sin palomear si solo estás agregando alumnos nuevos.
+                  </p>
+                </div>
+              </label>
+
               <div className="flex gap-3 pt-1">
                 <button onClick={() => setStage('upload')} className="flex-1 btn-tonal text-sm">Otro archivo</button>
                 <button onClick={handleCommit} className="flex-1 btn-primary text-sm flex items-center justify-center gap-2">
                   <CheckCircle2 size={14} /> Importar {s?.total_contactos} contactos
+                </button>
+              </div>
+            </div>
+          )}
+
+          {stage === 'bajas' && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <AlertTriangle size={15} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-800 leading-relaxed">
+                  <p className="font-semibold">
+                    Ya se importó. Faltan las bajas: {bajas.length} alumnos no vienen en este archivo.
+                  </p>
+                  <p className="mt-1">
+                    Si los das de baja, sus familias dejan de recibir avisos. Se pueden
+                    recuperar después desde la pestaña Inactivos.
+                  </p>
+                </div>
+              </div>
+
+              <div className="max-h-56 overflow-y-auto rounded-xl border border-md-outline-variant divide-y divide-md-outline-variant">
+                {bajas.map(b => (
+                  <div key={b.id} className="px-3 py-2 text-sm text-md-on-surface flex justify-between gap-3">
+                    <span className="truncate">{b.nombre}</span>
+                    {b.familia && <span className="text-xs text-md-on-surface-variant flex-shrink-0">{b.familia}</span>}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => onDone(importado)} className="flex-1 btn-tonal text-sm">
+                  No dar de baja a nadie
+                </button>
+                <button onClick={aplicarBajas} className="flex-1 btn-danger text-sm flex items-center justify-center gap-2">
+                  <AlertTriangle size={14} /> Dar de baja a los {bajas.length}
                 </button>
               </div>
             </div>
@@ -1550,6 +1629,7 @@ export default function ContactsPage() {
             // grado o salón); antes se duplicaban al resubir el archivo.
             if (r.actualizados) partes.push(`${r.actualizados} alumnos actualizados`)
             if (r.duplicados) partes.push(`${r.duplicados} ya existían`)
+            if (r.dados_de_baja) partes.push(`${r.dados_de_baja} dados de baja`)
             if (r.fallidos) partes.push(`⚠️ ${r.fallidos} no se pudieron guardar`)
             showToast(partes.join(' · '))
             if (r.detalle_fallidos?.length) {
