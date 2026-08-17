@@ -1801,6 +1801,8 @@ export default function ContactsPage() {
                     <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Mamá</th>
                     <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Papá</th>
                     <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Alumnos</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Grado</th>
+                    <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Grupo</th>
                     <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Email</th>
                     <th className="border border-md-primary/60 py-2 px-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap">Acciones</th>
                   </tr>
@@ -1855,18 +1857,39 @@ export default function ContactsPage() {
                             </div>
                           ) : <span className="text-md-outline">—</span>}
                         </td>
+                        {/* Alumno, grado y grupo en columnas separadas. Antes iban
+                            los tres apretados en una etiqueta y no se podían leer de
+                            corrido. Una familia puede tener varios hijos, así que cada
+                            columna apila un renglón por alumno y quedan alineados. */}
                         <td className="border border-md-outline-variant/60 py-1.5 px-3">
                           {alumnos.length > 0 ? (
-                            <div className="flex flex-wrap gap-1">
+                            <div className="space-y-0.5">
                               {alumnos.map(a => (
-                                <span key={a.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-md-primary-container/50 text-md-on-primary-container rounded text-[11px] font-medium whitespace-nowrap">
+                                <div key={a.id} className="text-xs text-md-on-surface whitespace-nowrap leading-5">
                                   {toTitleCase(a.nombre_alumno || `${a.nombre} ${a.apellido || ''}`.trim())}
-                                  {(a.grupo || a.grado || a.salon) && (
-                                    <span className="px-1 py-px bg-md-primary/15 rounded text-[10px]">
-                                      {[a.grado, a.salon].filter(Boolean).join(' ')}
-                                    </span>
-                                  )}
-                                </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : <span className="text-md-outline">—</span>}
+                        </td>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3">
+                          {alumnos.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {alumnos.map(a => (
+                                <div key={a.id} className="text-xs text-md-on-surface-variant whitespace-nowrap leading-5">
+                                  {a.grado || <span className="text-md-outline">—</span>}
+                                </div>
+                              ))}
+                            </div>
+                          ) : <span className="text-md-outline">—</span>}
+                        </td>
+                        <td className="border border-md-outline-variant/60 py-1.5 px-3">
+                          {alumnos.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {alumnos.map(a => (
+                                <div key={a.id} className="text-xs text-md-on-surface-variant whitespace-nowrap leading-5">
+                                  {a.salon || a.grupo || <span className="text-md-outline">—</span>}
+                                </div>
                               ))}
                             </div>
                           ) : <span className="text-md-outline">—</span>}
