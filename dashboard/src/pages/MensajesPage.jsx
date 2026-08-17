@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   Plus, MessageSquare, Radio,
   ChevronRight, Loader2, X, Send, CheckCheck, Eye, MousePointerClick,
-  Users, Calendar, FileText, ArrowRight
+  Users, Calendar, FileText, ArrowRight, Megaphone
 } from 'lucide-react'
 import { broadcastsAPI, contactsAPI } from '../lib/api.js'
 import CompositorMensaje from '../components/mensajes/CompositorMensaje.jsx'
@@ -305,6 +305,32 @@ const MODOS = {
   },
 }
 
+/**
+ * Aviso de arranque de ciclo.
+ *
+ * Es el primer WhatsApp que reciben las familias desde el número del colegio, y
+ * de ese mensaje depende que no lo reporten como spam: un número desconocido
+ * escribiendo a 283 familias el mismo día es exactamente lo que Meta castiga.
+ * Por eso dice quién es, pide que lo guarden —guardar el contacto mejora la
+ * entrega— y aclara que no se responde por ahí, para que nadie escriba una
+ * urgencia a un buzón que nadie lee.
+ */
+function borradorInicioCiclo(colegio) {
+  const nombre = colegio || 'el colegio'
+  return {
+    title: 'Bienvenida — inicio de ciclo',
+    message:
+      `¡Bienvenidos al nuevo ciclo escolar!\n\n` +
+      `A partir de hoy, este número es el canal oficial de comunicación de ${nombre} ` +
+      `con las familias. Por aquí van a recibir avisos, comunicados y recordatorios importantes.\n\n` +
+      `Por favor guarden este número en sus contactos como "${nombre}" para que ` +
+      `los mensajes les lleguen sin problema.\n\n` +
+      `Este canal es solo de envío: los mensajes que se escriban aquí no se leen. ` +
+      `Para cualquier duda o trámite, contáctennos por los medios de siempre.\n\n` +
+      `Gracias, y les deseamos un excelente ciclo escolar.`
+  }
+}
+
 export default function MensajesPage({ modo = 'grupos' }) {
   const navigate = useNavigate()
   const { tenant } = useAuthStore()
@@ -316,6 +342,7 @@ export default function MensajesPage({ modo = 'grupos' }) {
   const [showCompositor, setShowCompositor] = useState(false)
   const [aviso, setAviso] = useState(null)
   const [gruposPre, setGruposPre] = useState([])
+  const [borrador, setBorrador] = useState(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   // Contactos manda aquí con los salones ya filtrados: ?nuevo=1&grupos=A,B
@@ -354,9 +381,25 @@ export default function MensajesPage({ modo = 'grupos' }) {
     <div className="space-y-5 relative min-h-full pb-24">
 
       {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-semibold text-md-on-surface">{copy.titulo}</h1>
-        <p className="text-sm text-md-on-surface-variant mt-0.5">{copy.subtitulo}</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-semibold text-md-on-surface">{copy.titulo}</h1>
+          <p className="text-sm text-md-on-surface-variant mt-0.5">{copy.subtitulo}</p>
+        </div>
+
+        {/* Solo en Comunicados: el aviso de arranque va a TODA la comunidad,
+            no a un salón. Abre el compositor con el texto ya escrito y editable. */}
+        {modo === 'general' && (
+          <button
+            onClick={() => {
+              setBorrador(borradorInicioCiclo(tenant?.display_name || tenant?.name))
+              setShowCompositor(true)
+            }}
+            className="btn-outline text-sm flex items-center gap-2"
+          >
+            <Megaphone size={15} /> Aviso de inicio de ciclo
+          </button>
+        )}
       </div>
 
       {aviso && (
@@ -399,10 +442,12 @@ export default function MensajesPage({ modo = 'grupos' }) {
         <CompositorMensaje
           modo={modo}
           gruposIniciales={gruposPre}
-          onClose={() => { setShowCompositor(false); setGruposPre([]) }}
+          borrador={borrador}
+          onClose={() => { setShowCompositor(false); setGruposPre([]); setBorrador(null) }}
           onSent={(msg) => {
             setShowCompositor(false)
             setGruposPre([])
+            setBorrador(null)
             setAviso(msg)
             setTimeout(() => setAviso(null), 5000)
             setIsLoading(true)
