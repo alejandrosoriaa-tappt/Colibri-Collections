@@ -226,7 +226,23 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
       return row
     })
 
-    let inserted = 0, duplicados = 0
+    // Los alumnos no tienen teléfono, así que el UNIQUE(tenant_id, telefono) no
+    // los protege: resubir el mismo archivo los duplicaba, y al colegio le
+    // aparecía cada niño dos veces. Se reconocen por familia + nombre.
+    const claveAlumno = (r) =>
+      `${(r.nombre_familia || '').toLowerCase().trim()}|${(r.nombre_alumno || `${r.nombre} ${r.apellido}`).toLowerCase().trim()}`
+
+    const { data: yaExisten } = await supabase
+      .from('contacts')
+      .select('id, nombre, apellido, nombre_alumno, nombre_familia, telefono, relationship_type')
+      .eq('tenant_id', req.tenantId)
+      .eq('relationship_type', 'student')
+
+    const alumnosPorClave = new Map(
+      (yaExisten || []).map((c) => [claveAlumno(c), c.id])
+    )
+
+    let inserted = 0, duplicados = 0, actualizados = 0
     const fallidos = []   // { nombre, familia, rol, motivo }
 
     const describe = (r) =>
@@ -238,8 +254,34 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
     // quedó fuera: antes todo error se contaba como "omitido" sin explicación
     // y el colegio veía desaparecer papás y alumnos sin ninguna pista.
     for (const row of rows) {
-      const { error } = await supabase.from('contacts').insert(row)
-      if (!error) { inserted++; continue }
+      // Alumno que ya estaba: se actualiza —pudo cambiar de grado o salón— en
+      // vez de crear un segundo registro del mismo niño.
+      if (row.relationship_type === 'student') {
+        const idPrevio = alumnosPorClave.get(claveAlumno(row))
+        if (idPrevio) {
+          const { error: eUpd } = await supabase
+            .from('contacts')
+            .update({ seccion: row.seccion, grado: row.grado, salon: row.salon, grupo: row.grupo, status: 'active' })
+            .eq('id', idPrevio)
+            .eq('tenant_id', req.tenantId)
+          if (eUpd) fallidos.push({ contacto: describe(row), grupo: row.grupo || null, motivo: eUpd.message })
+          else actualizados++
+          continue
+        }
+      }
+
+      // Se pide el id de vuelta para poder registrarlo en el mapa: si el MISMO
+      // archivo trae al niño repetido, la segunda vez debe actualizar, no
+      // insertar otra vez.
+      const { data: creado, error } = await supabase
+        .from('contacts').insert(row).select('id').single()
+      if (!error) {
+        inserted++
+        if (row.relationship_type === 'student' && creado?.id) {
+          alumnosPorClave.set(claveAlumno(row), creado.id)
+        }
+        continue
+      }
 
       if (error.code === '23505') {
         // Ya existe alguien con ese teléfono en este tenant
@@ -260,6 +302,7 @@ router.post('/ai-import/commit', authMiddleware, inferTenantGuard, async (req, r
 
     return res.json({
       inserted,
+      actualizados,
       duplicados,
       fallidos: fallidos.length,
       // Muestra acotada para que el dashboard pueda explicar qué pasó
@@ -712,6 +755,21 @@ router.post(
         if (c.status === 'active' && !incomingPhones.has(c.telefono)) {
           toDeactivate.push(c.id)
         }
+      }
+
+      // Este endpoint DESACTIVA a quien no venga en el archivo. Si alguien sube
+      // por error un Excel de un solo salón, se lleva por delante al resto del
+      // colegio. Por eso la primera llamada solo devuelve el diagnóstico y no
+      // toca nada: aplicar exige una segunda llamada con confirmar=true.
+      const confirmado = String(req.body?.confirmar || '') === 'true'
+      if (!confirmado) {
+        return res.json({
+          preview: true,
+          nuevos: toCreate.length,
+          actualizados: toUpdate.length,
+          desactivados: toDeactivate.length,
+          en_archivo: rows.length
+        })
       }
 
       const now = new Date().toISOString()
