@@ -11,7 +11,7 @@ import { crearActivacion, invitacionesVivas } from './activacion.js'
 
 const router = Router()
 
-const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,sheets_url,spei_addon_enabled,payout_clabe,created_at'
+const TENANT_SELECT = 'id,name,display_name,slug,plan,status,admin_phone,payment_link_general,subscription_amount,logo_url,waba_phone_id,waba_business_id,org_type,email,website,address,razon_social,rfc,regimen_fiscal,uso_cfdi,fiscal_street,fiscal_colony,fiscal_city,fiscal_state,fiscal_zip,email_facturacion,contact_grace_period_days,auto_respuesta_activa,auto_respuesta,sheets_url,spei_addon_enabled,payout_clabe,created_at'
 
 // GET /api/settings — return current tenant settings
 router.get('/', authMiddleware, inferTenantGuard, async (req, res) => {
@@ -65,6 +65,11 @@ router.patch('/', authMiddleware, inferTenantGuard, async (req, res) => {
       'email',
       'website',
       'address',
+      // Respuesta automática a quien escriba al número del colegio. Sí la
+      // maneja el colegio: es SU voz la que contesta y él sabe a dónde mandar
+      // a los papás.
+      'auto_respuesta_activa',
+      'auto_respuesta',
       // OJO: waba_phone_id / waba_token / waba_business_id NO van aquí.
       // Ahora el envío usa el número del colegio, así que dejar que el propio
       // colegio los edite le permitiría poner el número de OTRO y mandar

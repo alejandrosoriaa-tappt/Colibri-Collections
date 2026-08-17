@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import supabase from '../services/supabase.js'
-import { sendWhatsAppTemplate } from '../services/whatsapp.js'
+import { sendWhatsAppTemplate, sendWhatsAppMessage } from '../services/whatsapp.js'
 import { confirmacionPagoComponents, TEMPLATE_NAMES } from '../templates/whatsappTemplates.js'
 
 const router = Router()
@@ -51,7 +51,7 @@ router.post('/whatsapp', async (req, res) => {
         // Process incoming messages (customer replies)
         const messages = value.messages || []
         for (const incomingMsg of messages) {
-          await handleIncomingMessage(incomingMsg, value.contacts)
+          await handleIncomingMessage(incomingMsg, value.contacts, value.metadata)
         }
       }
     }
@@ -123,7 +123,7 @@ async function handleStatusUpdate(statusUpdate) {
   )
 }
 
-async function handleIncomingMessage(message, contacts) {
+async function handleIncomingMessage(message, contacts, metadata) {
   const from = message.from // E.164 digits without +, e.g. "5215512345678"
   const text = (message.text?.body || message.button?.text || '').trim().toLowerCase()
 
@@ -132,6 +132,72 @@ async function handleIncomingMessage(message, contacts) {
   // Detect "Recibido" quick-reply — marks tenant onboarding as confirmed
   if (text.includes('recibido')) {
     await handleOnboardingConfirmation(from)
+    return   // ya se le respondió con la confirmación; no sumar la automática
+  }
+
+  await responderAutomatico(message, from, metadata)
+}
+
+// Una respuesta por persona cada 24 h. Sin esto, alguien que manda cinco
+// mensajes seguidos recibe cinco respuestas iguales y el colegio parece un bot
+// enloquecido. En memoria a propósito: si el servidor reinicia y alguien recibe
+// una respuesta de más, no pasa nada.
+const ultimaRespuesta = new Map()   // "phoneId|from" → timestamp
+const ESPERA_MS = 24 * 60 * 60 * 1000
+
+function textoPorDefecto(colegio) {
+  const nombre = colegio || 'el colegio'
+  return `Hola, gracias por escribir. Este número de ${nombre} es solo para enviar ` +
+         `avisos y comunicados, y no se leen los mensajes que llegan aquí.\n\n` +
+         `Para cualquier duda o trámite, comunícate con el colegio por los medios de siempre. ` +
+         `¡Gracias!`
+}
+
+/**
+ * Contesta a quien escribe al número de un colegio.
+ *
+ * Un número de WhatsApp no se puede cerrar a recibir, así que el papá va a
+ * escribir de todos modos. Sin respuesta, su mensaje cae en un buzón que nadie
+ * lee y él cree que lo ignoraron.
+ *
+ * Va como texto libre, que aquí sí está permitido: el mensaje del papá abre la
+ * ventana de 24 horas de atención al cliente.
+ */
+async function responderAutomatico(message, from, metadata) {
+  try {
+    // Las reacciones (👍) no son una pregunta; responderlas es ruido.
+    if (message.type === 'reaction') return
+
+    const phoneId = metadata?.phone_number_id
+    if (!phoneId) return
+
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('id, name, display_name, auto_respuesta_activa, auto_respuesta')
+      .eq('waba_phone_id', phoneId)
+      .maybeSingle()
+
+    // Sin colegio dueño de ese número —o con la respuesta apagada— no se
+    // contesta. El número de Kollybry entra aquí: sus conversaciones son de
+    // onboarding y sí las atiende una persona.
+    if (!tenant || tenant.auto_respuesta_activa === false) return
+
+    const llave = `${phoneId}|${from}`
+    const previa = ultimaRespuesta.get(llave)
+    if (previa && Date.now() - previa < ESPERA_MS) return
+    ultimaRespuesta.set(llave, Date.now())
+
+    const texto = tenant.auto_respuesta?.trim() ||
+      textoPorDefecto(tenant.display_name || tenant.name)
+
+    const r = await sendWhatsAppMessage(from, texto, phoneId)
+    if (!r.success) {
+      // Se registra el motivo: si Meta lo rechaza, el colegio queda callado
+      // frente a sus papás y nadie se enteraría.
+      console.error(`Webhook: no se pudo responder a ${from.slice(-4)} desde ${phoneId}: ${r.error}`)
+    }
+  } catch (err) {
+    console.error('Webhook: error en responderAutomatico:', err.message)
   }
 }
 

@@ -3,7 +3,7 @@ import {
   Settings, Save, Loader2, CheckCircle2, AlertCircle,
   Building2, Eye, EyeOff, Globe, Mail, MapPin, Lock,
   Receipt, Info, Users, UserPlus, Trash2, X, Crown,
-  CreditCard, Megaphone, Send
+  CreditCard, Megaphone, Send, MessageSquare
 } from 'lucide-react'
 import useAuthStore from '../store/authStore.js'
 import { settingsAPI, teamAPI } from '../lib/api.js'
@@ -113,7 +113,9 @@ export default function SettingsPage() {
     fiscal_city: '',
     fiscal_state: '',
     fiscal_zip: '',
-    email_facturacion: ''
+    email_facturacion: '',
+    auto_respuesta_activa: true,
+    auto_respuesta: ''
   })
 
   const [isSaving, setIsSaving] = useState(false)
@@ -147,7 +149,12 @@ export default function SettingsPage() {
         fiscal_city: t.fiscal_city || '',
         fiscal_state: t.fiscal_state || '',
         fiscal_zip: t.fiscal_zip || '',
-        email_facturacion: t.email_facturacion || ''
+        email_facturacion: t.email_facturacion || '',
+        // Respuesta automática. Encendida por default si el campo viene nulo:
+        // el silencio frente a un papá que escribe es peor que una respuesta
+        // genérica.
+        auto_respuesta_activa: t.auto_respuesta_activa !== false,
+        auto_respuesta: t.auto_respuesta || ''
       })
     }).catch(console.error)
       .finally(() => setIsLoading(false))
@@ -168,6 +175,8 @@ export default function SettingsPage() {
         website: form.website.trim(),
         address: form.address.trim(),
         contact_grace_period_days: Number(form.contact_grace_period_days) || 30,
+        auto_respuesta_activa: !!form.auto_respuesta_activa,
+        auto_respuesta: form.auto_respuesta.trim(),
         // Datos fiscales
         razon_social: form.razon_social.trim(),
         rfc: form.rfc.trim().toUpperCase(),
@@ -312,6 +321,42 @@ export default function SettingsPage() {
         </SectionCard>
 
         {/* ── Gestión de contactos ── */}
+        {/* Un número de WhatsApp no se puede cerrar a recibir: el papá siempre
+            va a poder escribir. Lo único que se decide es si se le contesta. */}
+        <SectionCard icon={MessageSquare} title="Si un papá responde">
+          <label className="flex items-center gap-3 p-3 rounded-2xl bg-md-surface-container cursor-pointer">
+            <input
+              type="checkbox"
+              checked={!!form.auto_respuesta_activa}
+              onChange={e => setForm(f => ({ ...f, auto_respuesta_activa: e.target.checked }))}
+              className="rounded accent-md-primary"
+            />
+            <div>
+              <p className="text-sm font-medium text-md-on-surface">Contestar automáticamente</p>
+              <p className="text-xs text-md-on-surface-variant">
+                Este número no se puede cerrar a recibir mensajes. Si alguien escribe y
+                nadie contesta, se queda pensando que lo ignoraron.
+              </p>
+            </div>
+          </label>
+
+          {form.auto_respuesta_activa && (
+            <div>
+              <label className="label">Qué se le responde</label>
+              <textarea
+                className="input min-h-[120px]"
+                value={form.auto_respuesta}
+                onChange={set('auto_respuesta')}
+                placeholder={'Déjalo vacío para usar el texto por defecto:\n\n"Hola, gracias por escribir. Este número es solo para enviar avisos y comunicados, y no se leen los mensajes que llegan aquí. Para cualquier duda o trámite, comunícate con el colegio por los medios de siempre."'}
+              />
+              <p className="text-xs text-md-on-surface-variant mt-1">
+                Se responde una sola vez por persona cada 24 horas. Aquí conviene decir
+                a dónde sí dirigirse: un teléfono, un correo, un horario.
+              </p>
+            </div>
+          )}
+        </SectionCard>
+
         <SectionCard icon={Users} title="Gestión de contactos">
           <div>
             <label className="label">Periodo de gracia para contactos inactivos</label>
