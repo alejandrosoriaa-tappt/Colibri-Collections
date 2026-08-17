@@ -2,7 +2,6 @@ import { Router } from 'express'
 import multer from 'multer'
 import path from 'path'
 import * as XLSX from 'xlsx'
-import { parse as csvParse } from 'csv-parse/sync'
 import { authMiddleware } from '../middleware/auth.js'
 import { inferTenantGuard } from '../middleware/tenantGuard.js'
 import { createConektaCustomer, isConektaConfigured } from '../services/conekta.js'
@@ -49,52 +48,6 @@ function normalizePhone(raw) {
   return null
 }
 
-// ── Parse uploaded file and return rows ──────────────────────────────────────
-function parseContactFile(buffer, fileType) {
-  const PHONE_ALIASES  = ['teléfono','telefono','phone','celular','tel','movil','whatsapp']
-  const NAME_ALIASES   = ['nombre','name','first_name','primer_nombre','familia']
-  const LAST_ALIASES   = ['apellido','apellidos','last_name','surname']
-  const GROUP_ALIASES  = ['grupo','group','seccion','salon','grado','seccion o salon']
-  const ALUMNO_ALIASES = ['nombre_alumno','alumno','nombre alumno','estudiante','nombre del alumno']
-
-  let rows = []
-
-  if (fileType === 'csv') {
-    rows = csvParse(buffer, { columns: true, skip_empty_lines: true, trim: true })
-  } else {
-    const wb = XLSX.read(buffer, { type: 'buffer' })
-    const ws = wb.Sheets[wb.SheetNames[0]]
-    rows = XLSX.utils.sheet_to_json(ws, { defval: '' })
-  }
-
-  if (!rows.length) return []
-
-  // Detect columns from first row keys
-  const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim())
-  const findCol = (aliases) => {
-    for (const alias of aliases) {
-      const idx = headers.indexOf(alias)
-      if (idx !== -1) return Object.keys(rows[0])[idx]
-    }
-    return null
-  }
-
-  const colPhone  = findCol(PHONE_ALIASES)
-  const colName   = findCol(NAME_ALIASES)
-  const colLast   = findCol(LAST_ALIASES)
-  const colGroup  = findCol(GROUP_ALIASES)
-  const colAlumno = findCol(ALUMNO_ALIASES)
-
-  if (!colPhone) return []
-
-  return rows.map(row => ({
-    telefono:      normalizePhone(row[colPhone]),
-    nombre:        colName   ? String(row[colName] || '').trim()   : '',
-    apellido:      colLast   ? String(row[colLast] || '').trim()   : '',
-    grupo:         colGroup  ? String(row[colGroup] || '').trim()  : '',
-    nombre_alumno: colAlumno ? String(row[colAlumno] || '').trim() : ''
-  })).filter(r => r.telefono)
-}
 
 // ── Cleanup: delete contacts past grace period ────────────────────────────────
 async function runGracePeriodCleanup(tenantId) {
@@ -735,141 +688,16 @@ router.delete('/bulk-delete', authMiddleware, inferTenantGuard, async (req, res)
   }
 })
 
-// ============================================================
-// POST /api/contacts/sync  — multipart, file upload (padron sync)
-// Returns diff and applies changes in one step
-// ============================================================
-router.post(
-  '/sync',
-  authMiddleware,
-  inferTenantGuard,
-  upload.single('file'),
-  async (req, res) => {
-    try {
-      if (!req.file) return res.status(400).json({ error: 'No se recibió ningún archivo' })
+// El endpoint POST /contacts/sync se eliminó.
+//
+// Reemplazaba el padrón: desactivaba a todo contacto que no viniera en el
+// archivo. Leía una sola hoja y una sola columna de teléfono, así que con la
+// plantilla real de un colegio —una hoja por salón, celular de mamá y de papá—
+// habría desactivado a papás y alumnos por no venir en la lista de mamás.
+//
+// Las bajas viven ahora en POST /contacts/ai-import/commit con padron_completo,
+// que sí entiende el archivo y pide confirmación mostrando los nombres.
 
-      const ext = path.extname(req.file.originalname).toLowerCase()
-      const fileType = ext === '.csv' ? 'csv' : 'xlsx'
-
-      // Parse the uploaded file
-      const rows = parseContactFile(req.file.buffer, fileType)
-      if (!rows.length) {
-        return res.status(400).json({ error: 'El archivo no contiene contactos válidos o falta la columna de teléfono' })
-      }
-
-      // Build set of phones in the file
-      const incomingPhones = new Set(rows.map(r => r.telefono))
-
-      // Get all existing contacts for this tenant (active + inactive)
-      const { data: existingContacts } = await supabase
-        .from('contacts')
-        .select('id, telefono, nombre, apellido, grupo, status')
-        .eq('tenant_id', req.tenantId)
-
-      const existingByPhone = new Map()
-      for (const c of (existingContacts || [])) {
-        existingByPhone.set(c.telefono, c)
-      }
-
-      // Compute diff
-      const toCreate = []
-      const toUpdate = []
-      const toDeactivate = []
-
-      // New or update
-      for (const row of rows) {
-        const existing = existingByPhone.get(row.telefono)
-        if (!existing) {
-          toCreate.push(row)
-        } else if (existing.status === 'inactive') {
-          // Re-activate contact that appears again in the padron
-          toUpdate.push({ id: existing.id, reactivate: true, ...row })
-        } else {
-          // Active contact — update name/group/alumno if changed
-          const changed = (
-            (row.nombre && row.nombre !== existing.nombre) ||
-            (row.apellido && row.apellido !== existing.apellido) ||
-            (row.grupo && row.grupo !== existing.grupo) ||
-            (row.nombre_alumno && row.nombre_alumno !== existing.nombre_alumno)
-          )
-          if (changed) toUpdate.push({ id: existing.id, reactivate: false, ...row })
-        }
-      }
-
-      // Deactivate: active contacts NOT in the incoming file
-      for (const c of (existingContacts || [])) {
-        if (c.status === 'active' && !incomingPhones.has(c.telefono)) {
-          toDeactivate.push(c.id)
-        }
-      }
-
-      // Este endpoint DESACTIVA a quien no venga en el archivo. Si alguien sube
-      // por error un Excel de un solo salón, se lleva por delante al resto del
-      // colegio. Por eso la primera llamada solo devuelve el diagnóstico y no
-      // toca nada: aplicar exige una segunda llamada con confirmar=true.
-      const confirmado = String(req.body?.confirmar || '') === 'true'
-      if (!confirmado) {
-        return res.json({
-          preview: true,
-          nuevos: toCreate.length,
-          actualizados: toUpdate.length,
-          desactivados: toDeactivate.length,
-          en_archivo: rows.length
-        })
-      }
-
-      const now = new Date().toISOString()
-
-      // Apply: create new contacts
-      if (toCreate.length) {
-        await supabase.from('contacts').insert(
-          toCreate.map(r => ({
-            tenant_id: req.tenantId,
-            nombre: r.nombre || 'Sin nombre',
-            apellido: r.apellido || null,
-            telefono: r.telefono,
-            grupo: r.grupo || null,
-            nombre_alumno: r.nombre_alumno || null,
-            status: 'active'
-          }))
-        )
-      }
-
-      // Apply: update existing contacts
-      for (const r of toUpdate) {
-        const patch = { updated_at: now }
-        if (r.reactivate) { patch.status = 'active'; patch.inactive_since = null }
-        if (r.nombre) patch.nombre = r.nombre
-        if (r.apellido) patch.apellido = r.apellido
-        if (r.grupo) patch.grupo = r.grupo
-        if (r.nombre_alumno) patch.nombre_alumno = r.nombre_alumno
-        await supabase.from('contacts').update(patch).eq('id', r.id)
-      }
-
-      // Apply: deactivate missing contacts
-      if (toDeactivate.length) {
-        await supabase
-          .from('contacts')
-          .update({ status: 'inactive', inactive_since: now, updated_at: now })
-          .in('id', toDeactivate)
-      }
-
-      // Auto-cleanup: delete contacts past grace period
-      const cleaned = await runGracePeriodCleanup(req.tenantId)
-
-      return res.json({
-        created:     toCreate.length,
-        updated:     toUpdate.filter(r => !r.reactivate).length,
-        reactivated: toUpdate.filter(r => r.reactivate).length,
-        deactivated: toDeactivate.length,
-        deleted:     cleaned
-      })
-    } catch (err) {
-      console.error('POST /contacts/sync error:', err)
-      return res.status(500).json({ error: err.message })
-    }
-  }
-)
 
 // ============================================================
 // POST /api/contacts/cleanup  — manual grace-period cleanup

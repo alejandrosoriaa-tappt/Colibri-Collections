@@ -74,10 +74,6 @@ export const contactsAPI = {
   bulkReactivate: (ids) => api.post('/api/contacts/bulk-reactivate', { ids }),
   bulkDelete: (ids) => api.delete('/api/contacts/bulk-delete', { data: { ids } }),
   deleteAll: () => api.delete('/api/contacts/all'),
-  sync: (formData) => api.post('/api/contacts/sync', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    timeout: 60000
-  }),
   cleanup: () => api.post('/api/contacts/cleanup'),
   getFamilies: (query) => api.get('/api/contacts/families/search', { params: { q: query } }),
   aiAnalyze: (formData) => api.post('/api/contacts/ai-import/analyze', formData, {
