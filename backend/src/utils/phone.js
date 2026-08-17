@@ -17,8 +17,14 @@
 export function normalizePhone(raw) {
   if (!raw) return null
 
+  const crudo = String(raw).trim()
+  // Si quien capturó escribió el "+", ya dijo de qué país es. Antes se ignoraba
+  // y cualquier número que no fuera mexicano se descartaba en silencio: un papá
+  // con +1 quedaba fuera del padrón sin que nadie se enterara.
+  const traeLada = crudo.startsWith('+')
+
   // Strip formatting characters but keep digits only
-  let digits = String(raw).trim().replace(/[\s\-\(\)\.\+]/g, '')
+  let digits = crudo.replace(/[\s\-\(\)\.\+]/g, '')
 
   // Remove leading zeros (sometimes pasted from Excel)
   digits = digits.replace(/^0+/, '')
@@ -36,9 +42,18 @@ export function normalizePhone(raw) {
     return `+${digits}`
   }
 
-  // TODO: Add other country codes here when expanding internationally
-  // if (digits.startsWith('1') && digits.length === 11) return `+${digits}` // US/Canada
-  // if (digits.startsWith('34') && digits.length === 11) return `+${digits}` // Spain
+  // Estados Unidos y Canadá: 1 + 10 dígitos. Se acepta aunque no traiga "+",
+  // porque en los padrones escolares aparece seguido escrito así.
+  if (digits.length === 11 && digits.startsWith('1')) {
+    return `+${digits}`
+  }
+
+  // Cualquier otro país, siempre que hayan escrito el "+". E.164 permite de 8 a
+  // 15 dígitos contando la lada. No se adivina: sin "+" no hay forma de saber
+  // si 4421234567 es de Querétaro o de otro lado.
+  if (traeLada && digits.length >= 8 && digits.length <= 15) {
+    return `+${digits}`
+  }
 
   // Unknown format — return null so the caller can decide (skip or flag)
   return null

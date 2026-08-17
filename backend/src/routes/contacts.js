@@ -165,18 +165,25 @@ router.get('/catalog', authMiddleware, inferTenantGuard, async (req, res) => {
       return false
     }
 
-    // Distinct {seccion, grado, salon} combos (any field may be null)
-    const seen = new Set()
-    const combos = []
+    // Distinct {seccion, grado, salon} combos (any field may be null).
+    // Se cuenta cuántos alumnos hay en cada combinación: sin ese número, el
+    // director no tiene forma de saber si su padrón se cargó completo. Es lo
+    // primero que pidió al cargar el suyo.
+    const porCombo = new Map()
     for (const r of data) {
       if (!r.seccion && !r.grado && !r.salon) continue
       if (!isValidGrado(r.grado)) continue
       const key = `${r.seccion || ''}|${r.grado || ''}|${r.salon || ''}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      combos.push({ seccion: r.seccion || null, grado: r.grado || null, salon: r.salon || null })
+      const previo = porCombo.get(key)
+      if (previo) { previo.alumnos++; continue }
+      porCombo.set(key, {
+        seccion: r.seccion || null,
+        grado: r.grado || null,
+        salon: r.salon || null,
+        alumnos: 1
+      })
     }
-    return res.json({ combos })
+    return res.json({ combos: [...porCombo.values()] })
   } catch (err) {
     return res.status(500).json({ error: err.message })
   }
