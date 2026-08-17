@@ -178,7 +178,10 @@ router.post('/', limite, async (req, res) => {
     const { data, error } = await supabase.auth.admin.createUser({
       email: String(email).trim().toLowerCase(),
       password,
-      email_confirm: true            // ya se verificó por WhatsApp
+      email_confirm: true,           // ya se verificó por WhatsApp
+      // El nombre vive aquí y no en tenant_users, que no tiene esa columna.
+      // Es además de donde lo lee la pantalla de Equipo.
+      user_metadata: { full_name: activacion.nombre_director }
     })
     if (error) throw error
     usuario = data.user
@@ -195,8 +198,7 @@ router.post('/', limite, async (req, res) => {
       user_id: usuario.id,
       // El rol viaja en la liga: 'owner' cuando es el alta del colegio, el que
       // haya elegido el director cuando invita a alguien de su equipo.
-      role: activacion.rol || 'owner',
-      name: activacion.nombre_director
+      role: activacion.rol || 'owner'
     })
     if (eMiembro) throw eMiembro
 
