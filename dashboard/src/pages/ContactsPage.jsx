@@ -1316,16 +1316,29 @@ export default function ContactsPage() {
   }, [isColegio])
 
   // Opciones en cascada: grado depende de sección, salón de ambos.
-  const uniq = (arr) => [...new Set(arr.filter(Boolean))]
-  const seccionOptions = uniq(catalog.map(c => c.seccion)).sort()
-  const gradoOptions = uniq(
-    catalog.filter(c => !filtroSeccion || c.seccion === filtroSeccion).map(c => c.grado)
-  ).sort()
-  const salonOptions = uniq(
-    catalog
-      .filter(c => (!filtroSeccion || c.seccion === filtroSeccion) && (!filtroGrado || c.grado === filtroGrado))
-      .map(c => c.salon)
-  ).sort()
+  //
+  // Cada opción trae cuántos alumnos hay. Sin ese número el director no puede
+  // verificar que su padrón se cargó completo, que es lo primero que revisa.
+  const conConteo = (filas, campo) => {
+    const cuenta = new Map()
+    for (const c of filas) {
+      if (!c[campo]) continue
+      cuenta.set(c[campo], (cuenta.get(c[campo]) || 0) + (c.alumnos || 0))
+    }
+    return [...cuenta.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0], 'es'))
+      .map(([valor, alumnos]) => ({ valor, alumnos }))
+  }
+
+  const seccionOptions = conConteo(catalog, 'seccion')
+  const gradoOptions = conConteo(
+    catalog.filter(c => !filtroSeccion || c.seccion === filtroSeccion), 'grado'
+  )
+  const salonOptions = conConteo(
+    catalog.filter(c => (!filtroSeccion || c.seccion === filtroSeccion) && (!filtroGrado || c.grado === filtroGrado)),
+    'salon'
+  )
+  const totalAlumnos = catalog.reduce((n, c) => n + (c.alumnos || 0), 0)
 
   const alumnoMatchesFilter = (a) =>
     (!filtroSeccion || a.seccion === filtroSeccion) &&
@@ -1618,8 +1631,8 @@ export default function ContactsPage() {
             value={filtroSeccion}
             onChange={e => { setFiltroSeccion(e.target.value); setFiltroGrado(''); setFiltroSalon('') }}
           >
-            <option value="">Sección: todas</option>
-            {seccionOptions.map(s => <option key={s} value={s}>{s}</option>)}
+            <option value="">Sección: todas ({totalAlumnos})</option>
+            {seccionOptions.map(s => <option key={s.valor} value={s.valor}>{s.valor} ({s.alumnos})</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
@@ -1627,7 +1640,7 @@ export default function ContactsPage() {
             onChange={e => { setFiltroGrado(e.target.value); setFiltroSalon('') }}
           >
             <option value="">Grado: todos</option>
-            {gradoOptions.map(g => <option key={g} value={g}>{g}</option>)}
+            {gradoOptions.map(g => <option key={g.valor} value={g.valor}>{g.valor} ({g.alumnos})</option>)}
           </select>
           <select
             className="input !w-auto text-sm"
@@ -1635,7 +1648,7 @@ export default function ContactsPage() {
             onChange={e => setFiltroSalon(e.target.value)}
           >
             <option value="">Salón: todos</option>
-            {salonOptions.map(s => <option key={s} value={s}>{s}</option>)}
+            {salonOptions.map(s => <option key={s.valor} value={s.valor}>{s.valor} ({s.alumnos})</option>)}
           </select>
 
           {hasSchoolFilter && (

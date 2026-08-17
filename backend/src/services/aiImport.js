@@ -193,6 +193,23 @@ function inferSeccion(sheetName) {
 // El nombre de la hoja de Casa de Niños suele traer a la guía pegada
 // ("CASA DE NIÑOS A - LAURA"), y eso terminaba como nombre del grupo.
 // El salón debe quedar solo como CNA / CNB / CNC.
+/**
+ * Unifica cómo se escribe un grado.
+ *
+ * En los padrones reales el mismo grado viene escrito de varias formas —"K1",
+ * "k1", "1°", "1 °"—, y al agruparlos tal cual salían tres opciones distintas
+ * en el filtro para el mismo grupo de alumnos. Peor que feo: el director filtra
+ * por "K1", ve la mitad de sus niños y cree que la carga falló.
+ *
+ * Se conserva la forma legible; lo que se unifica es mayúsculas y espacios.
+ */
+function normalizeGrado(valor) {
+  const limpio = tidy(valor).replace(/\s+/g, ' ').trim()
+  if (!limpio) return null
+  // K1, k1, PRE2 → mayúsculas. "1°", "3 °" → sin espacio antes del símbolo.
+  return limpio.toUpperCase().replace(/\s+([°º])/, '$1')
+}
+
 function normalizeSalonHoja(sheetName, seccion) {
   const limpio = tidy(sheetName)
   if (seccion !== 'Casa de Niños') return limpio
@@ -345,7 +362,7 @@ export function applyMapping(sheets, mapping) {
         }
 
         const { nombres } = splitSurnameName(alumnoFull)
-        const grado  = limpioODefault(get(cols.grado)) || null
+        const grado  = normalizeGrado(limpioODefault(get(cols.grado)))
         // salon: por fila (GRUPO col) > por hoja
         const salon  = (cols.salonCol != null ? limpioODefault(get(cols.salonCol)) : null) || sheetSalon
         alumnos++
@@ -419,7 +436,7 @@ export function applyMapping(sheets, mapping) {
           nombre: titleCase(nombres) || titleCase(nomFull),
           apellido: titleCase(apellidos),
           nombre_familia: titleCase(apellidos),
-          grupo: get(cols.grado) || salon || null,
+          grupo: normalizeGrado(get(cols.grado)) || salon || null,
           salon, seccion,
           telefono: tel,
           email: get(cols.email) || null
