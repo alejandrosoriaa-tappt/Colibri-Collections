@@ -52,8 +52,21 @@ export function docTemplateActiva() {
 // ================================================================
 // HELPERS
 // ================================================================
+/**
+ * Un parámetro de plantilla.
+ *
+ * Meta rechaza tabulaciones y rachas de más de 4 espacios dentro de un
+ * parámetro, y un comunicado pegado desde Word los trae casi siempre. Se
+ * limpian aquí para que el envío no se caiga por un espaciado invisible.
+ *
+ * Los saltos de línea SÍ se respetan: son lo que separa los párrafos de un
+ * comunicado y quitarlos dejaría un ladrillo de texto ilegible.
+ */
 function textParam(value) {
-  return { type: 'text', text: String(value ?? '') }
+  const texto = String(value ?? '')
+    .replace(/\t/g, ' ')
+    .replace(/ {5,}/g, '    ')
+  return { type: 'text', text: texto }
 }
 
 function bodyOnly(...values) {
