@@ -51,7 +51,7 @@ const EMPTY_FORM = { title: '', message: '', group_filters: [], contactos: [], m
  * modo: 'grupos'  → Mensajes    (por grupo | por familia o alumno)
  *       'general' → Comunicados (toda la comunidad | por grupo)
  */
-export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [], onClose, onSent }) {
+export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [], borrador = null, onClose, onSent }) {
   const { tenant } = useAuthStore()
   const esGeneral = modo === 'general'
   const copy = esGeneral
@@ -61,7 +61,10 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
   const destinosDisponibles = esGeneral ? ['todos', 'grupos'] : ['grupos', 'individual']
 
   const [destino, setDestino] = useState(destinosDisponibles[0])
-  const [form, setForm] = useState({ ...EMPTY_FORM, group_filters: gruposIniciales })
+  // `borrador` precarga título y texto (p. ej. el aviso de inicio de ciclo).
+  // Se deja editable a propósito: cada colegio querrá cambiarle algo, y un
+  // texto que no se puede tocar termina en que lo escriben aparte.
+  const [form, setForm] = useState({ ...EMPTY_FORM, ...(borrador || {}), group_filters: gruposIniciales })
   const [groups, setGroups] = useState([])
   const [groupsOpen, setGroupsOpen] = useState(false)
   const groupsRef = useRef(null)
