@@ -520,20 +520,79 @@ function SyncModal({ onClose, onSynced, orgType = 'general' }) {
     }
   }
 
-  const handleSync = async () => {
+  const [preview, setPreview] = useState(null)
+
+  // Dos pasos a propósito. La primera llamada solo diagnostica; el servidor no
+  // toca nada hasta que se manda confirmar=true. Este botón DESACTIVA a quien no
+  // venga en el archivo, así que subir por error el Excel de un salón se llevaría
+  // al resto del colegio.
+  const handleSync = async (confirmar = false) => {
     if (!file) return
     setSyncing(true)
     setError(null)
     try {
       const fd = new FormData()
       fd.append('file', file)
+      if (confirmar) fd.append('confirmar', 'true')
       const res = await contactsAPI.sync(fd)
-      setResult(res.data)
+      if (res.data.preview) setPreview(res.data)
+      else { setPreview(null); setResult(res.data) }
     } catch (err) {
       setError(err.response?.data?.error || err.message)
     } finally {
       setSyncing(false)
     }
+  }
+
+  if (preview) {
+    const grave = preview.desactivados > 0
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+          <div className="text-center">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${grave ? 'bg-orange-100' : 'bg-md-primary-container'}`}>
+              <AlertTriangle size={22} className={grave ? 'text-orange-600' : 'text-md-on-primary-container'} />
+            </div>
+            <h3 className="text-lg font-semibold text-md-on-surface">Revisa antes de aplicar</h3>
+            <p className="text-sm text-md-on-surface-variant mt-1">
+              El archivo trae {preview.en_archivo} contactos. Todavía no se ha cambiado nada.
+            </p>
+          </div>
+
+          <div className="bg-md-surface-container rounded-2xl p-4 space-y-2 text-sm">
+            <div className="flex justify-between"><span className="text-md-on-surface-variant">Se agregan</span><span className="font-medium">{preview.nuevos}</span></div>
+            <div className="flex justify-between"><span className="text-md-on-surface-variant">Se actualizan</span><span className="font-medium">{preview.actualizados}</span></div>
+            <div className="flex justify-between">
+              <span className={grave ? 'text-orange-700 font-medium' : 'text-md-on-surface-variant'}>Se desactivan</span>
+              <span className={grave ? 'text-orange-700 font-bold' : 'font-medium'}>{preview.desactivados}</span>
+            </div>
+          </div>
+
+          {grave && (
+            <div className="flex items-start gap-2.5 p-3 bg-orange-50 rounded-2xl text-xs text-orange-800 leading-relaxed">
+              <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" />
+              <p>
+                Se van a desactivar <strong>{preview.desactivados} contactos</strong> porque no aparecen
+                en este archivo. Si subiste solo un salón, cancela: para agregar gente usa
+                <strong> Importar con IA</strong>, que nunca desactiva a nadie.
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-3">
+            <button onClick={() => setPreview(null)} className="flex-1 btn-outline text-sm">Cancelar</button>
+            <button
+              onClick={() => handleSync(true)}
+              disabled={syncing}
+              className={`flex-1 text-sm flex items-center justify-center gap-2 ${grave ? 'btn-danger' : 'btn-primary'}`}
+            >
+              {syncing ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+              {syncing ? 'Aplicando...' : 'Sí, aplicar'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (result) {
@@ -657,7 +716,7 @@ function SyncModal({ onClose, onSynced, orgType = 'general' }) {
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 btn-outline text-sm">Cancelar</button>
             <button
-              onClick={handleSync}
+              onClick={() => handleSync(false)}
               disabled={!file || syncing}
               className="flex-1 btn-primary text-sm flex items-center justify-center gap-2"
             >
@@ -1487,6 +1546,9 @@ export default function ContactsPage() {
             // normal al reimportar, un rechazo significa que ese contacto NO
             // quedó guardado y hay que verlo.
             const partes = [`Importados ${r.inserted} contactos`]
+            // Los alumnos que ya existían se actualizan (pudieron cambiar de
+            // grado o salón); antes se duplicaban al resubir el archivo.
+            if (r.actualizados) partes.push(`${r.actualizados} alumnos actualizados`)
             if (r.duplicados) partes.push(`${r.duplicados} ya existían`)
             if (r.fallidos) partes.push(`⚠️ ${r.fallidos} no se pudieron guardar`)
             showToast(partes.join(' · '))
