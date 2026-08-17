@@ -26,16 +26,20 @@ function SelectorColegio() {
   if (!isAdmin || colegios.length === 0) return null
 
   return (
-    <div className="hidden sm:flex items-center gap-2">
+    // Visible también en móvil: el soporte se da desde donde uno esté, y
+    // esconderlo en pantalla chica era dejarlo inservible justo cuando te
+    // habla una directora y andas fuera de la oficina.
+    <div className="flex items-center gap-2">
       {viendoOtroColegio && (
         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
-          <Eye size={12} /> Viendo otro colegio
+          <Eye size={12} />
+          <span className="hidden sm:inline">Viendo otro colegio</span>
         </span>
       )}
       <select
         value={actual}
         onChange={e => cambiarTenant(e.target.value || null)}
-        className="text-xs rounded-full border border-md-outline px-3 py-1.5 bg-md-surface text-md-on-surface max-w-[180px]"
+        className="text-xs rounded-full border border-md-outline px-2 sm:px-3 py-1.5 bg-md-surface text-md-on-surface max-w-[120px] sm:max-w-[180px]"
         title="Ver el panel de otro colegio"
       >
         <option value="">Mi colegio</option>
