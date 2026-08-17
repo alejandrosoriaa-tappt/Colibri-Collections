@@ -1836,10 +1836,13 @@ export default function ContactsPage() {
                           />
                         </td>
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 font-bold text-md-on-surface whitespace-nowrap">{toTitleCase(familia)}</td>
+                        {/* Solo el nombre de pila: el apellido familiar ya está en la
+                            primera columna y repetirlo tres veces por renglón hace
+                            ilegible la tabla. El apellido sigue guardado en el contacto. */}
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {mama ? (
                             <div className="leading-tight">
-                              <div className="font-medium text-md-on-surface">{toTitleCase(`${mama.nombre} ${mama.apellido || ''}`.trim())}</div>
+                              <div className="font-medium text-md-on-surface">{toTitleCase(mama.nombre)}</div>
                               {mama.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{mama.telefono}</div>}
                             </div>
                           ) : <span className="text-md-outline">—</span>}
@@ -1847,7 +1850,7 @@ export default function ContactsPage() {
                         <td className="border border-md-outline-variant/60 py-1.5 px-3 text-md-on-surface-variant">
                           {papa ? (
                             <div className="leading-tight">
-                              <div className="font-medium text-md-on-surface">{toTitleCase(`${papa.nombre} ${papa.apellido || ''}`.trim())}</div>
+                              <div className="font-medium text-md-on-surface">{toTitleCase(papa.nombre)}</div>
                               {papa.telefono && <div className="text-xs font-mono text-md-on-surface-variant">{papa.telefono}</div>}
                             </div>
                           ) : <span className="text-md-outline">—</span>}
