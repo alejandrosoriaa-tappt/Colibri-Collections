@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import supabase from '../lib/supabase.js'
+import { setTenantOverride } from '../lib/tenantOverride.js'
 
 const useAuthStore = create((set, get) => ({
   user: null,
@@ -9,6 +10,20 @@ const useAuthStore = create((set, get) => ({
   isAdmin: false,
   isLoading: true,
   error: null,
+  // Un admin viendo el panel de otro colegio para dar soporte. Se marca para
+  // poder avisarlo en pantalla: nada peor que creer que estás en tu colegio y
+  // mandarle un comunicado a la comunidad equivocada.
+  viendoOtroColegio: false,
+
+  /**
+   * Cambia el colegio que ve el admin. Recarga la página a propósito: media
+   * app ya trae datos del colegio anterior en memoria y filtrarlos uno por uno
+   * es la clase de cosa donde siempre se olvida uno.
+   */
+  cambiarTenant: (tenantId) => {
+    setTenantOverride(tenantId)
+    window.location.reload()
+  },
 
   login: async (email, password) => {
     set({ isLoading: true, error: null })
@@ -24,6 +39,7 @@ const useAuthStore = create((set, get) => ({
       let tenant = null
       let tenantRole = null
       let isAdmin = false
+      let viendoOtro = false
 
       try {
         const { authAPI } = await import('../lib/api.js')
@@ -31,6 +47,7 @@ const useAuthStore = create((set, get) => ({
         tenant = meResponse.data.tenant
         tenantRole = meResponse.data.tenantRole
         isAdmin = meResponse.data.isAdmin
+        viendoOtro = !!meResponse.data.viendoOtroColegio
       } catch (apiErr) {
         console.warn('Could not fetch user info from API:', apiErr.message)
       }
@@ -41,6 +58,7 @@ const useAuthStore = create((set, get) => ({
         tenant,
         tenantRole,
         isAdmin,
+        viendoOtroColegio: viendoOtro,
         isLoading: false,
         error: null
       })
@@ -83,6 +101,7 @@ const useAuthStore = create((set, get) => ({
       let tenant = null
       let tenantRole = null
       let isAdmin = false
+      let viendoOtro = false
 
       try {
         const { authAPI } = await import('../lib/api.js')
@@ -90,6 +109,7 @@ const useAuthStore = create((set, get) => ({
         tenant = meResponse.data.tenant
         tenantRole = meResponse.data.tenantRole
         isAdmin = meResponse.data.isAdmin
+        viendoOtro = !!meResponse.data.viendoOtroColegio
       } catch (apiErr) {
         console.warn('Could not fetch user info from API:', apiErr.message)
       }
@@ -100,6 +120,7 @@ const useAuthStore = create((set, get) => ({
         tenant,
         tenantRole,
         isAdmin,
+        viendoOtroColegio: viendoOtro,
         isLoading: false
       })
     } catch (err) {

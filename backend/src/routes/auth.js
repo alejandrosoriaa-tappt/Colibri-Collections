@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { createClient } from '@supabase/supabase-js'
-import supabase, { getTenantByUser, isAdminUser } from '../services/supabase.js'
+import supabase, { getTenantByUser, isAdminUser, getTenant } from '../services/supabase.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -86,10 +86,27 @@ router.get('/me', authMiddleware, async (req, res) => {
       admin = await isAdminUser(req.user.id)
     } catch (adminErr) {}
 
+    // Selector de colegio del admin: cuando trae tenant_id, /me responde con
+    // ESE colegio. Sin esto el panel mostraría los datos del colegio elegido
+    // pero su nombre en el encabezado seguiría siendo el propio del admin, que
+    // es la peor combinación posible — creer que ves un colegio y estar viendo
+    // otro. Se ignora para quien no es admin.
+    let tenantElegido = null
+    if (admin && req.query.tenant_id) {
+      try {
+        tenantElegido = await getTenant(req.query.tenant_id)
+      } catch (e) {
+        console.warn('/me: no se pudo cargar el colegio elegido:', e.message)
+      }
+    }
+
     return res.json({
       user: req.user,
-      tenant: tenantInfo?.tenants || null,
-      tenantRole: tenantInfo?.role || null,
+      tenant: tenantElegido || tenantInfo?.tenants || null,
+      // Viendo otro colegio, el admin manda: si no, el panel le escondería
+      // pantallas por un rol que en ese colegio ni siquiera tiene.
+      tenantRole: tenantElegido ? 'owner' : (tenantInfo?.role || null),
+      viendoOtroColegio: !!tenantElegido,
       isAdmin: admin
     })
   } catch (err) {
