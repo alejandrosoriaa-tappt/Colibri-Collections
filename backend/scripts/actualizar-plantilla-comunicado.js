@@ -55,8 +55,8 @@ const COMPONENTES = [
     text:
       'Buen día, *{{1}}* te informa:\n\n' +
       '{{2}}\n\n' +
-      'Para cualquier aclaración o comentario favor de comunicarse a oficinas. ' +
-      'Este chat no es atendido: los mensajes que llegan aquí no se leen.',
+      'Este mensaje ha sido enviado desde un servidor automático, por lo que no admite respuestas. ' +
+      'Para cualquier consulta o aclaración, favor de comunicarse directamente con las oficinas del colegio.',
     // Meta exige ejemplos cuando el cuerpo lleva parámetros
     example: {
       body_text: [['Puerto Alto Montessori', 'La junta de padres es el viernes a las 7pm']]
