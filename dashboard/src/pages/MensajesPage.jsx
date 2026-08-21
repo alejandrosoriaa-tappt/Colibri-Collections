@@ -318,6 +318,7 @@ const MODOS = {
 function borradorInicioCiclo(colegio) {
   const nombre = colegio || 'el colegio'
   return {
+    tipo: 'bienvenida',
     title: 'Bienvenida — inicio de ciclo',
     message:
       `¡Bienvenidos al nuevo ciclo escolar!\n\n` +
@@ -443,6 +444,7 @@ export default function MensajesPage({ modo = 'grupos' }) {
           modo={modo}
           gruposIniciales={gruposPre}
           borrador={borrador}
+          tipo={borrador?.tipo || null}
           onClose={() => { setShowCompositor(false); setGruposPre([]); setBorrador(null) }}
           onSent={(msg) => {
             setShowCompositor(false)

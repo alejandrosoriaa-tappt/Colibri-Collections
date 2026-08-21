@@ -17,6 +17,8 @@ import { sendWhatsAppTemplate } from '../services/whatsapp.js'
 import {
   TEMPLATE_NAMES,
   comunicadoComponents,
+  bienvenidaCicloComponents,
+  bienvenidaCicloActiva,
   comunicadoImagenComponents,
   comunicadoDocComponents,
   docTemplateActiva
@@ -148,7 +150,7 @@ router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
 
 // POST /api/broadcasts — create and send
 router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
-  const { title, message, group_filter, group_filters, contact_ids, media_url, media_type, media_filename } = req.body
+  const { title, message, group_filter, group_filters, contact_ids, media_url, media_type, media_filename, tipo } = req.body
 
   if (!title || !message) {
     return res.status(400).json({ error: 'title and message are required' })
@@ -258,7 +260,17 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
   // sigue pegando al cuerpo (comportamiento actual, no se rompe nada).
   const useDoc = !!(media_url && !useImage && docTemplateActiva())
 
-  const tpl = useImage
+  // Bienvenida de inicio de ciclo: plantilla propia, con el texto cerrado y
+  // aprobado en Meta. No lleva cuerpo editable, así que dice lo mismo para
+  // todos y no hay forma de romperlo desde el compositor.
+  //
+  // Si todavía no está aprobada se cae al comunicado normal en vez de fallar:
+  // el colegio necesita mandar su bienvenida hoy, no cuando Meta responda.
+  const useBienvenida = tipo === 'bienvenida' && bienvenidaCicloActiva()
+
+  const tpl = useBienvenida
+    ? TEMPLATE_NAMES.BIENVENIDA_CICLO
+    : useImage
     ? TEMPLATE_NAMES.COMUNICADO_IMAGEN
     : useDoc
     ? TEMPLATE_NAMES.COMUNICADO_DOC
@@ -288,7 +300,9 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
         personalizedMessage = `${personalizedMessage} 📎 Documento: ${media_url}`
       }
 
-      const components = useImage
+      const components = useBienvenida
+        ? bienvenidaCicloComponents({ orgName })
+        : useImage
         ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: personalizedMessage, imageUrl: media_url })
         : useDoc
         ? comunicadoDocComponents({ orgName, cuerpo: personalizedMessage, docUrl: media_url, filename: media_filename })
