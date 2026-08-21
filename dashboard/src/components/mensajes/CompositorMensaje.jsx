@@ -19,27 +19,34 @@ const VARIABLES_HELP = [
   { var: '{grupo}',  desc: 'Grupo del contacto' },
 ]
 
-// Secciones en orden de despliegue; lo que no cae en ninguna va a "Otros grupos"
-const SECTION_ORDER = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria']
-
+/**
+ * Agrupa los salones por la sección REAL de cada colegio.
+ *
+ * Antes la lista de secciones estaba escrita a mano —Preescolar, Primaria,
+ * Secundaria, Preparatoria— y todo lo demás caía en "Otros grupos". En un
+ * Montessori eso significaba que CNA, CNB y los Talleres, o sea el colegio
+ * entero, aparecían como "otros". La directora no reconocía su propia escuela.
+ *
+ * Ahora la sección viene con cada grupo desde la base.
+ */
 function organizeGroups(groups) {
   const buckets = new Map()
   for (const g of groups) {
-    const first = g.split(' ')[0]
-    const key = SECTION_ORDER.includes(first) ? first : 'Otros grupos'
+    const key = g.seccion || 'Otros grupos'
     if (!buckets.has(key)) buckets.set(key, [])
     buckets.get(key).push(g)
   }
-  const byGrade = (a, b) => {
-    const na = parseInt(a.split(' ')[1]) || 0
-    const nb = parseInt(b.split(' ')[1]) || 0
-    return na - nb || a.localeCompare(b)
-  }
-  const out = []
-  for (const sec of [...SECTION_ORDER, 'Otros grupos']) {
-    if (buckets.has(sec)) out.push({ name: sec, groups: buckets.get(sec).sort(byGrade) })
-  }
-  return out
+
+  const porNombre = (a, b) => a.grupo.localeCompare(b.grupo, 'es', { numeric: true })
+
+  return [...buckets.entries()]
+    // "Otros grupos" hasta abajo: es el cajón de lo que no tiene sección.
+    .sort(([a], [b]) => {
+      if (a === 'Otros grupos') return 1
+      if (b === 'Otros grupos') return -1
+      return a.localeCompare(b, 'es')
+    })
+    .map(([name, gs]) => ({ name, groups: gs.sort(porNombre) }))
 }
 
 const EMPTY_FORM = { title: '', message: '', group_filters: [], contactos: [], media_url: '' }
@@ -394,7 +401,10 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
                 {groupsOpen && (
                   <div className="absolute z-20 mt-1 w-full bg-white border border-md-outline-variant rounded-2xl shadow-md3-2 max-h-72 overflow-y-auto py-1">
                     {organizeGroups(groups).map(sec => {
-                      const allSelected = sec.groups.every(g => form.group_filters.includes(g))
+                      // Los nombres son lo que viaja al backend; el objeto trae
+                      // además sección y conteo para pintarlos.
+                      const nombres = sec.groups.map(g => g.grupo)
+                      const allSelected = nombres.every(n => form.group_filters.includes(n))
                       return (
                         <div key={sec.name}>
                           <button
@@ -402,8 +412,8 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
                             onClick={() => setForm(f => ({
                               ...f,
                               group_filters: allSelected
-                                ? f.group_filters.filter(g => !sec.groups.includes(g))
-                                : [...new Set([...f.group_filters, ...sec.groups])]
+                                ? f.group_filters.filter(n => !nombres.includes(n))
+                                : [...new Set([...f.group_filters, ...nombres])]
                             }))}
                             className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-md-on-surface-variant uppercase tracking-wide hover:bg-md-surface-container"
                           >
@@ -413,15 +423,21 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
                             </span>
                           </button>
                           {sec.groups.map(g => {
-                            const sel = form.group_filters.includes(g)
+                            const sel = form.group_filters.includes(g.grupo)
                             return (
                               <button
-                                key={g}
+                                key={g.grupo}
                                 type="button"
-                                onClick={() => toggleGroup(g)}
+                                onClick={() => toggleGroup(g.grupo)}
                                 className="w-full flex items-center justify-between px-3 py-2 text-sm hover:bg-md-surface-container"
                               >
-                                <span className={sel ? 'text-md-primary font-medium' : 'text-md-on-surface'}>{g}</span>
+                                <span className={sel ? 'text-md-primary font-medium' : 'text-md-on-surface'}>
+                                  {g.grupo}
+                                  {/* El conteo delata los grupos fantasma: uno con
+                                      1 contacto que nadie reconoce es un registro
+                                      mal capturado. */}
+                                  <span className="ml-1.5 text-xs text-md-on-surface-variant">({g.contactos})</span>
+                                </span>
                                 {sel && <Check size={15} className="text-md-primary" />}
                               </button>
                             )
