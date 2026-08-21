@@ -4,8 +4,13 @@
  * Lo más simple es correrlo DESDE RAILWAY (servicio kollybry-api), donde
  * WABA_ACCESS_TOKEN ya está configurado y hay salida a graph.facebook.com:
  *
- *   node scripts/actualizar-plantilla-comunicado.js            # muestra qué haría
- *   node scripts/actualizar-plantilla-comunicado.js --aplicar  # la manda a Meta
+ *   node scripts/actualizar-plantilla-comunicado.js                     # simula (texto)
+ *   node scripts/actualizar-plantilla-comunicado.js --aplicar           # aplica (texto)
+ *   node scripts/actualizar-plantilla-comunicado.js --imagen --aplicar  # aplica (con imagen)
+ *
+ * Son DOS plantillas distintas en Meta y las dos tienen que llevar el mismo
+ * cierre: si solo se actualiza una, los comunicados con foto salen sin el aviso
+ * de que nadie lee las respuestas.
  *
  * Requiere en el entorno (NUNCA hardcodeadas):
  *   WABA_ACCESS_TOKEN  — token con permiso whatsapp_business_management
@@ -45,12 +50,47 @@ const WABA_CONOCIDA = '948092824711194'
 const argWaba = process.argv.find(a => a.startsWith('--waba='))?.split('=')[1]
 const businessId = process.env.WABA_BUSINESS_ID || argWaba || WABA_CONOCIDA
 
-// ── Lo que va a quedar registrado en Meta ────────────────────────────────────
-// {{1}} = nombre del colegio   {{2}} = cuerpo del mensaje
-// El orden importa: es el que manda comunicadoComponents() en el backend.
-const PLANTILLA = 'kollybry_comunicado_util'
+// ── El cierre, idéntico en todas las plantillas ──────────────────────────────
+//
+// No es cortesía: es lo que evita que un papá conteste una urgencia a un buzón
+// que nadie lee. Tiene que estar en TODOS los mensajes, no solo en el de
+// bienvenida, porque el papá que se equivoca es justamente el que no leyó el
+// primero. Se define una sola vez para que no se desincronicen entre plantillas.
+const CIERRE =
+  'Este mensaje ha sido enviado desde un servidor automático, por lo que no admite respuestas. ' +
+  'Para cualquier consulta o aclaración, favor de comunicarse directamente con las oficinas del colegio.'
 
-const COMPONENTES = [
+const PIE = { type: 'FOOTER', text: 'Mensaje enviado con la plataforma Kollybry' }
+
+// ── Lo que va a quedar registrado en Meta ────────────────────────────────────
+// El orden de los parámetros importa: es el que mandan comunicadoComponents()
+// y comunicadoImagenComponents() en el backend.
+const conImagen = process.argv.includes('--imagen')
+
+// Texto: {{1}} colegio · {{2}} cuerpo
+const PLANTILLA_TEXTO = 'kollybry_comunicado_util'
+// Imagen: {{1}} título · {{2}} colegio · {{3}} cuerpo  (encabezado de imagen)
+const PLANTILLA_IMAGEN = 'kollybry_comunicado_imagen'
+
+const PLANTILLA = conImagen ? PLANTILLA_IMAGEN : PLANTILLA_TEXTO
+
+const COMPONENTES_IMAGEN = [
+  { type: 'HEADER', format: 'IMAGE', example: { header_handle: ['https://app.kollybry.com/logo.png'] } },
+  {
+    type: 'BODY',
+    text:
+      '*{{1}}*\n\n' +
+      'Buen día, *{{2}}* te informa:\n\n' +
+      '{{3}}\n\n' +
+      CIERRE,
+    example: {
+      body_text: [['Junta de padres', 'Puerto Alto Montessori', 'La junta es el viernes a las 7pm']]
+    }
+  },
+  PIE
+]
+
+const COMPONENTES_TEXTO = [
   {
     type: 'BODY',
     // Meta rechaza cuerpos que empiecen o terminen con variable, por eso el
@@ -63,18 +103,16 @@ const COMPONENTES = [
     text:
       'Buen día, *{{1}}* te informa:\n\n' +
       '{{2}}\n\n' +
-      'Este mensaje ha sido enviado desde un servidor automático, por lo que no admite respuestas. ' +
-      'Para cualquier consulta o aclaración, favor de comunicarse directamente con las oficinas del colegio.',
+      CIERRE,
     // Meta exige ejemplos cuando el cuerpo lleva parámetros
     example: {
       body_text: [['Puerto Alto Montessori', 'La junta de padres es el viernes a las 7pm']]
     }
   },
-  {
-    type: 'FOOTER',
-    text: 'Mensaje enviado con la plataforma Kollybry'
-  }
+  PIE
 ]
+
+const COMPONENTES = conImagen ? COMPONENTES_IMAGEN : COMPONENTES_TEXTO
 
 function salirCon(msg) {
   console.error(`\n❌ ${msg}\n`)
@@ -96,9 +134,9 @@ async function main() {
   console.log(`\nPlantilla: ${PLANTILLA}`)
   console.log('\nCuerpo que va a quedar:')
   console.log('─'.repeat(60))
-  console.log(COMPONENTES[0].text.replace(/\\n/g, '\n'))
+  console.log((conImagen ? COMPONENTES[1] : COMPONENTES[0]).text)
   console.log('─'.repeat(60))
-  console.log(`Pie: ${COMPONENTES[1].text}\n`)
+  console.log(`Pie: ${COMPONENTES[COMPONENTES.length - 1].text}\n`)
 
   // 1. Buscar la plantilla por nombre para obtener su id
   let plantilla
