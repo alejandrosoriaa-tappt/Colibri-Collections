@@ -501,18 +501,32 @@ export async function updateBroadcast(id, updates) {
 }
 
 export async function getContactGroupsByTenant(tenantId) {
-  // grupo is now always built consistently ("Seccion Grado Salon") by the
-  // backend, so the dropdown can rely on it directly.
+  // Cada grupo viaja con SU sección real y cuántos contactos tiene.
+  //
+  // La sección viene de los datos, no de una lista fija: el compositor
+  // clasificaba con ['Preescolar','Primaria','Secundaria','Preparatoria']
+  // escritas a mano, así que en un Montessori TODO caía en "Otros grupos" —
+  // CNA, CNB, Taller I— y la directora no reconocía su propio colegio.
+  //
+  // El conteo sirve para detectar grupos fantasma: si aparece uno con 1
+  // contacto que nadie reconoce, es un registro mal capturado y se ve solo.
   const { data, error } = await supabase
     .from('contacts')
-    .select('grupo')
+    .select('grupo, seccion')
     .eq('tenant_id', tenantId)
     .neq('status', 'inactive')
     .not('grupo', 'is', null)
     .neq('grupo', '')
   if (error) throw error
-  const groups = [...new Set(data.map(c => c.grupo).filter(Boolean))].sort()
-  return groups
+
+  const porGrupo = new Map()
+  for (const c of data) {
+    const previo = porGrupo.get(c.grupo)
+    if (previo) { previo.contactos++; continue }
+    porGrupo.set(c.grupo, { grupo: c.grupo, seccion: c.seccion || null, contactos: 1 })
+  }
+
+  return [...porGrupo.values()].sort((a, b) => a.grupo.localeCompare(b.grupo, 'es'))
 }
 
 export async function getContactsForBroadcast(tenantId, groupFilter = null) {
