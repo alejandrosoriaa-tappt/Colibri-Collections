@@ -16,9 +16,17 @@
  * del script viejo (update-meta-templates.js), que ante una plantilla ya
  * existente terminaba pidiendo que la editaras a mano.
  *
- * La categoría NO se manda a propósito: editar sin tocarla la deja como está.
- * kollybry_comunicado_util debe seguir siendo UTILITY, porque MARKETING queda
- * sujeta al tope de frecuencia de Meta y algunos papás dejarían de recibirla.
+ * La categoría SÍ se manda, y es lo más importante de este script.
+ *
+ * Se creía que omitirla la dejaba como estaba. No es así: al editar, Meta
+ * vuelve a clasificar el contenido por su cuenta, y en una edición real pasó
+ * de UTILITY a MARKETING sin avisar. Eso no es cosmético — MARKETING queda
+ * sujeta al tope de frecuencia de Meta, así que algunos papás dejan de recibir
+ * los avisos del colegio y nadie se entera.
+ *
+ * Mandarla explícita no garantiza que Meta la respete —él tiene la última
+ * palabra—, pero al menos declara la intención. Hay que verificar el resultado
+ * SIEMPRE, y por eso el script lo consulta después de editar.
  */
 import axios from 'axios'
 import dotenv from 'dotenv'
@@ -119,12 +127,31 @@ async function main() {
   try {
     const { data } = await axios.post(
       `${GRAPH}/${plantilla.id}`,
-      { components: COMPONENTES },
+      { category: 'UTILITY', components: COMPONENTES },
       { params: { access_token: token }, headers: { 'Content-Type': 'application/json' } }
     )
     if (data?.success === false) throw new Error(JSON.stringify(data))
     console.log('\n✅ Enviada a Meta. Queda en revisión (de minutos a un par de horas).')
-    console.log('   Verifica en WhatsApp Manager que la categoría siga en UTILITY.\n')
+
+    // Se vuelve a consultar en vez de confiar: la vez que se dio por hecho que
+    // la categoría no cambiaba, cambió, y el colegio quedó en MARKETING días.
+    try {
+      const { data: despues } = await axios.get(`${GRAPH}/${businessId}/message_templates`, {
+        params: { name: PLANTILLA, access_token: token }
+      })
+      const actual = despues?.data?.[0]
+      if (actual) {
+        console.log(`   Categoría ahora: ${actual.category} · estado ${actual.status}`)
+        if (actual.category !== 'UTILITY') {
+          console.log('\n⚠️  QUEDÓ EN ' + actual.category + ', no en UTILITY.')
+          console.log('   Eso la sujeta al tope de frecuencia de Meta: algunos papás')
+          console.log('   dejarán de recibir los avisos. Pide la reclasificación desde')
+          console.log('   WhatsApp Manager → Plantillas → esa plantilla → categoría.\n')
+        }
+      }
+    } catch {
+      console.log('   (No se pudo confirmar la categoría; revísala en WhatsApp Manager.)')
+    }
   } catch (err) {
     const e = err.response?.data?.error
     salirCon(
