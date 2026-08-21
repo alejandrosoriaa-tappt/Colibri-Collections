@@ -21,17 +21,17 @@
  * del script viejo (update-meta-templates.js), que ante una plantilla ya
  * existente terminaba pidiendo que la editaras a mano.
  *
- * La categoría SÍ se manda, y es lo más importante de este script.
+ * La categoría NO se manda, y no es por descuido.
  *
- * Se creía que omitirla la dejaba como estaba. No es así: al editar, Meta
- * vuelve a clasificar el contenido por su cuenta, y en una edición real pasó
- * de UTILITY a MARKETING sin avisar. Eso no es cosmético — MARKETING queda
- * sujeta al tope de frecuencia de Meta, así que algunos papás dejan de recibir
- * los avisos del colegio y nadie se entera.
+ * Al editar, Meta reclasifica el contenido por su cuenta: en una edición real
+ * esta plantilla pasó de UTILITY a MARKETING sin avisar. El intento obvio fue
+ * mandar 'UTILITY' explícita para forzarla — y Meta rechaza la edición entera
+ * con "No puedes actualizar una categoría de plantilla aprobada". O sea que
+ * mandarla no solo no ayuda: impide corregir el texto.
  *
- * Mandarla explícita no garantiza que Meta la respete —él tiene la última
- * palabra—, pero al menos declara la intención. Hay que verificar el resultado
- * SIEMPRE, y por eso el script lo consulta después de editar.
+ * La categoría de una plantilla aprobada solo se cambia pidiendo revisión
+ * desde WhatsApp Manager. Por eso aquí únicamente se verifica cómo quedó
+ * después de editar, y se avisa fuerte si se movió.
  */
 import axios from 'axios'
 import dotenv from 'dotenv'
@@ -165,7 +165,7 @@ async function main() {
   try {
     const { data } = await axios.post(
       `${GRAPH}/${plantilla.id}`,
-      { category: 'UTILITY', components: COMPONENTES },
+      { components: COMPONENTES },
       { params: { access_token: token }, headers: { 'Content-Type': 'application/json' } }
     )
     if (data?.success === false) throw new Error(JSON.stringify(data))
