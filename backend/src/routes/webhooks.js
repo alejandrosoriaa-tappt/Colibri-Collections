@@ -145,12 +145,17 @@ async function handleIncomingMessage(message, contacts, metadata) {
 const ultimaRespuesta = new Map()   // "phoneId|from" → timestamp
 const ESPERA_MS = 24 * 60 * 60 * 1000
 
-function textoPorDefecto(colegio) {
-  const nombre = colegio || 'el colegio'
-  return `Hola, gracias por escribir. Este número de ${nombre} es solo para enviar ` +
-         `avisos y comunicados, y no se leen los mensajes que llegan aquí.\n\n` +
-         `Para cualquier duda o trámite, comunícate con el colegio por los medios de siempre. ` +
-         `¡Gracias!`
+// El mismo cierre que llevan los comunicados. Que la respuesta automática hable
+// distinto al mensaje que la provocó se lee como si fueran dos sistemas
+// distintos, y el papá ya está confundido de por sí.
+//
+// No lleva el nombre del colegio: el remitente ya es el número del colegio, con
+// su nombre visible arriba de la conversación.
+function textoPorDefecto() {
+  return 'Gracias por escribir. Este mensaje ha sido enviado desde un servidor automático, ' +
+         'por lo que no admite respuestas.\n\n' +
+         'Para cualquier consulta o aclaración, favor de comunicarse directamente con las ' +
+         'oficinas del colegio.'
 }
 
 /**
@@ -187,8 +192,7 @@ async function responderAutomatico(message, from, metadata) {
     if (previa && Date.now() - previa < ESPERA_MS) return
     ultimaRespuesta.set(llave, Date.now())
 
-    const texto = tenant.auto_respuesta?.trim() ||
-      textoPorDefecto(tenant.display_name || tenant.name)
+    const texto = tenant.auto_respuesta?.trim() || textoPorDefecto()
 
     const r = await sendWhatsAppMessage(from, texto, phoneId)
     if (!r.success) {
