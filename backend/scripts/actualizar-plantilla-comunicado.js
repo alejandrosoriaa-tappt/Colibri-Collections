@@ -46,11 +46,20 @@ const COMPONENTES = [
   {
     type: 'BODY',
     // Meta rechaza cuerpos que empiecen o terminen con variable, por eso el
-    // 'Hola,' al inicio y el cierre después de {{2}}.
-    text: 'Hola, *{{1}}* te envía un mensaje importante:\n\n{{2}}\n\nGracias por tu atención.',
+    // 'Buen día,' al inicio y el cierre después de {{2}}.
+    //
+    // El cierre no es cortesía: es lo que evita que un papá conteste una
+    // urgencia a un buzón que nadie lee. Va en TODOS los comunicados, no solo
+    // en el de bienvenida, porque el papá que se equivoca es justamente el que
+    // no leyó el primero.
+    text:
+      'Buen día, *{{1}}* te informa:\n\n' +
+      '{{2}}\n\n' +
+      'Para cualquier aclaración o comentario favor de comunicarse a oficinas. ' +
+      'Este chat no es atendido: los mensajes que llegan aquí no se leen.',
     // Meta exige ejemplos cuando el cuerpo lleva parámetros
     example: {
-      body_text: [['Colegio Las Américas', 'La junta de padres es el viernes a las 7pm']]
+      body_text: [['Puerto Alto Montessori', 'La junta de padres es el viernes a las 7pm']]
     }
   },
   {
