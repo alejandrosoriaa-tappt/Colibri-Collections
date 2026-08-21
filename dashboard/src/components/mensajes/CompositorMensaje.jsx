@@ -58,7 +58,7 @@ const EMPTY_FORM = { title: '', message: '', group_filters: [], contactos: [], m
  * modo: 'grupos'  → Mensajes    (por grupo | por familia o alumno)
  *       'general' → Comunicados (toda la comunidad | por grupo)
  */
-export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [], borrador = null, onClose, onSent }) {
+export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [], borrador = null, tipo = null, onClose, onSent }) {
   const { tenant } = useAuthStore()
   const esGeneral = modo === 'general'
   const copy = esGeneral
@@ -235,7 +235,10 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
         // link en el texto. Antes iba 'document' fijo y las imágenes nunca se
         // mandaban como tales.
         media_type: archivo?.type || (form.media_url ? 'application/octet-stream' : null),
-        media_filename: archivo?.filename || (form.media_url ? form.media_url.split('/').pop() : null)
+        media_filename: archivo?.filename || (form.media_url ? form.media_url.split('/').pop() : null),
+        // 'bienvenida' usa su propia plantilla, con el texto cerrado y aprobado
+        // en Meta. Si aún no está aprobada, el backend cae al comunicado normal.
+        tipo
       })
       onSent?.(`${esGeneral ? 'Comunicado' : 'Mensaje'} "${form.title.trim()}" enviado correctamente`)
     } catch (err) {

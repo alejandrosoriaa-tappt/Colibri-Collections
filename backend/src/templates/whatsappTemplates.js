@@ -38,10 +38,31 @@ export const TEMPLATE_NAMES = {
     name: process.env.KOLLYBRY_ACTIVACION_TEMPLATE || null,
     lang: process.env.KOLLYBRY_ACTIVACION_TEMPLATE_LANG || 'es_MX'
   },
+  // Bienvenida de inicio de ciclo. Texto CERRADO —solo cambia el nombre del
+  // colegio— porque un cuerpo libre es lo que sacó a la de comunicados de
+  // Utilidad. Se activa poniendo KOLLYBRY_BIENVENIDA_TEMPLATE una vez aprobada.
+  BIENVENIDA_CICLO:     {
+    name: process.env.KOLLYBRY_BIENVENIDA_TEMPLATE || null,
+    lang: process.env.KOLLYBRY_BIENVENIDA_TEMPLATE_LANG || 'es_MX'
+  },
   COMUNICADO_DOC:       {
     name: process.env.KOLLYBRY_DOC_TEMPLATE || 'kollybry_comunicado_doc',
     lang: process.env.KOLLYBRY_DOC_TEMPLATE_LANG || 'es_MX'
   },
+}
+
+/** ¿Ya está aprobada la plantilla de bienvenida de inicio de ciclo? */
+export function bienvenidaCicloActiva() {
+  return !!process.env.KOLLYBRY_BIENVENIDA_TEMPLATE
+}
+
+/**
+ * Bienvenida de inicio de ciclo (BIENVENIDA_CICLO)
+ * {{1}} nombre del colegio. No hay cuerpo editable: el texto vive aprobado en
+ * Meta, así que dice lo mismo para todos y nadie puede romperlo por accidente.
+ */
+export function bienvenidaCicloComponents({ orgName }) {
+  return bodyOnly(orgName)
 }
 
 /** ¿Ya está aprobada la plantilla con encabezado de documento? */
