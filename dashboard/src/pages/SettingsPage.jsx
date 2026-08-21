@@ -347,7 +347,7 @@ export default function SettingsPage() {
                 className="input min-h-[120px]"
                 value={form.auto_respuesta}
                 onChange={set('auto_respuesta')}
-                placeholder={'Déjalo vacío para usar el texto por defecto:\n\n"Hola, gracias por escribir. Este número es solo para enviar avisos y comunicados, y no se leen los mensajes que llegan aquí. Para cualquier duda o trámite, comunícate con el colegio por los medios de siempre."'}
+                placeholder={'Déjalo vacío para usar el texto por defecto:\n\n"Gracias por escribir. Este mensaje ha sido enviado desde un servidor automático, por lo que no admite respuestas.\n\nPara cualquier consulta o aclaración, favor de comunicarse directamente con las oficinas del colegio."'}
               />
               <p className="text-xs text-md-on-surface-variant mt-1">
                 Se responde una sola vez por persona cada 24 horas. Aquí conviene decir
