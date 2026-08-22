@@ -78,3 +78,42 @@ oficinas nacionales), en el sistema del **IMPI** (México) y del **INPI**
 (Brasil), clases 9 (software) y 42 (SaaS); y verificación de dominios
 `.com`, `.app`, `.mx`, `.com.br` por WHOIS. Eso es trabajo de despacho, no de
 buscador.
+
+---
+
+## Segunda ronda — familia fonética "WhereApp"
+
+Decisión del fundador: conservar la **asociación sonora** de "WhereApp".
+
+**Cómo se reparte el riesgo con Meta:** la pieza que choca es el sufijo
+**"-App"**, no el arranque "wher-". Whats-App / Where-App comparten sílabas,
+ritmo y terminación; el parecido fonético con un producto que además se integra
+a WhatsApp maximiza la probabilidad de confusión. La solución es conservar
+"wher-" y cambiar el final. Ningún candidato de esta familia lleva "-App".
+
+**Trampa fonética mexicana (hallazgo):** "wher-" seguido de `-o` o `-a` suena
+a **"güero" / "güera"**. Quitarle la `h` para resolver el problema de dictado
+lleva a `WERO`, que es exactamente como se escribe "güero" en mensajes. No hay
+salida por ahí: hay que conservar la `h` y asumir el costo de deletreo.
+**Conclusión: el sonido "wher-" solo funciona seguido de `-i`.**
+
+| Nombre | Veredicto | Colisión encontrada |
+|--------|-----------|---------------------|
+| **WHERIA** | ✅ Sin colisiones | Ningún resultado en tiendas ni registros públicos |
+| **WHERIS** | ✅ Viable | Sin colisiones encontradas. Costo: deletreo `wh` en español |
+| WHERO | ⚠️ Descartar | Solo una cerveza IPA neozelandesa (*whero* = "rojo" en maorí), pero cae en la trampa "güero" |
+| WHERIO | ❌ Muerto | App **wherio** en Google Play (`com.wherio`), "Live Friend Compass", ubicación efímera cifrada — **categoría idéntica** |
+
+Nota adicional: existe **Whering** (app de guardarropa, UK), que puebla el
+espacio fonético cercano sin chocar de categoría.
+
+### Recomendación de esta ronda
+
+**WHERIA.** Conserva el arranque "wher-", suelta el "-App" que choca con Meta,
+esquiva la trampa del güero, y no presentó colisiones.
+
+Alternativa: **WHERIS**, mejor para la etapa global por ser más explicativa en
+inglés, con el mismo costo de deletreo.
+
+Aplica igual la advertencia de la primera ronda: **no se verificaron dominios
+ni registros de marca**; falta búsqueda formal en TMview, IMPI e INPI.
