@@ -142,7 +142,7 @@ async function main() {
   let plantilla
   try {
     const { data } = await axios.get(`${GRAPH}/${businessId}/message_templates`, {
-      params: { name: PLANTILLA, access_token: token }
+      params: { name: PLANTILLA, fields: 'id,name,status,category,components', access_token: token }
     })
     plantilla = (data.data || [])[0]
   } catch (err) {
@@ -154,6 +154,24 @@ async function main() {
   }
 
   console.log(`Encontrada — id ${plantilla.id} · categoría ${plantilla.category} · estado ${plantilla.status}`)
+
+  // El texto que YA tiene Meta, no el que mandaría este script. Sin esto no hay
+  // forma de saber si hace falta editar, y cada edición vuelve a disparar la
+  // clasificación: se puede perder la categoría Utilidad por cambiar una coma.
+  const cuerpoVivo = (plantilla.components || []).find(c => c.type === 'BODY')?.text
+  if (cuerpoVivo) {
+    console.log('\nTexto que Meta tiene HOY:')
+    console.log('─'.repeat(60))
+    console.log(cuerpoVivo)
+    console.log('─'.repeat(60))
+    const nuevo = (conImagen ? COMPONENTES[1] : COMPONENTES[0]).text
+    if (cuerpoVivo.trim() === nuevo.trim()) {
+      console.log('✅ Ya es idéntico al de este script. NO hace falta editar.')
+      console.log('   Editar de más arriesga la categoría sin ganar nada.\n')
+    } else {
+      console.log('⚠️  Distinto al de este script. Compara arriba antes de aplicar.\n')
+    }
+  }
 
   if (!aplicar) {
     console.log('\n⏸  Simulación. Nada se mandó a Meta.')
