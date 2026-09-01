@@ -93,28 +93,53 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
   // porque devuelve HTML en vez del PDF.
   const archivoRef = useRef(null)
   const [subiendo, setSubiendo] = useState(false)
-  const [archivo, setArchivo] = useState(null)   // { url, type, filename }
+  // WhatsApp permite UN adjunto por mensaje, así que varios archivos significan
+  // varios mensajes seguidos. El primero lleva el texto del comunicado.
+  const MAX_ARCHIVOS = 5
+  const [archivos, setArchivos] = useState([])   // [{ url, type, filename }]
+  const archivo = archivos[0] || null
 
-  const subirArchivo = async (file) => {
-    if (!file) return
+  const subirArchivos = async (lista) => {
+    const nuevos = Array.from(lista || [])
+    if (!nuevos.length) return
+
+    const cupo = MAX_ARCHIVOS - archivos.length
+    if (cupo <= 0) {
+      setFormError(`Máximo ${MAX_ARCHIVOS} archivos por comunicado`)
+      return
+    }
+
     setSubiendo(true)
     setFormError(null)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      const { data } = await broadcastsAPI.uploadMedia(fd)
-      setArchivo(data)
-      setForm(f => ({ ...f, media_url: data.url }))
+      const subidos = []
+      // De uno en uno: si el tercero falla, los dos primeros ya están arriba y
+      // no se pierde el trabajo de volver a elegirlos.
+      for (const file of nuevos.slice(0, cupo)) {
+        const fd = new FormData()
+        fd.append('file', file)
+        const { data } = await broadcastsAPI.uploadMedia(fd)
+        subidos.push(data)
+      }
+      setArchivos(prev => {
+        const todos = [...prev, ...subidos]
+        setForm(f => ({ ...f, media_url: todos[0]?.url || '' }))
+        return todos
+      })
     } catch (err) {
       setFormError(err.response?.data?.error || 'No se pudo subir el archivo')
     } finally {
       setSubiendo(false)
+      if (archivoRef.current) archivoRef.current.value = ''
     }
   }
 
-  const quitarArchivo = () => {
-    setArchivo(null)
-    setForm(f => ({ ...f, media_url: '' }))
+  const quitarArchivo = (idx = 0) => {
+    setArchivos(prev => {
+      const quedan = prev.filter((_, i) => i !== idx)
+      setForm(f => ({ ...f, media_url: quedan[0]?.url || '' }))
+      return quedan
+    })
     if (archivoRef.current) archivoRef.current.value = ''
   }
 
@@ -236,6 +261,8 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
         // mandaban como tales.
         media_type: archivo?.type || (form.media_url ? 'application/octet-stream' : null),
         media_filename: archivo?.filename || (form.media_url ? form.media_url.split('/').pop() : null),
+        // Del segundo en adelante: cada uno viaja como su propio mensaje.
+        adjuntos: archivos.slice(1),
         // 'bienvenida' usa su propia plantilla, con el texto cerrado y aprobado
         // en Meta. Si aún no está aprobada, el backend cae al comunicado normal.
         tipo
@@ -568,17 +595,36 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
 
           {/* ── Adjunto opcional ── */}
           <div>
-            <label className="label">Archivo adjunto (opcional)</label>
+            <label className="label">Archivos adjuntos (opcional)</label>
 
             <input
               ref={archivoRef}
               type="file"
+              multiple
               accept=".pdf,.jpg,.jpeg,.png,.webp"
               className="hidden"
-              onChange={e => subirArchivo(e.target.files?.[0])}
+              onChange={e => subirArchivos(e.target.files)}
             />
 
-            {!archivo ? (
+            {archivos.length > 0 && (
+              <div className="space-y-2 mb-2">
+                {archivos.map((a, i) => (
+                  <div key={a.url} className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
+                    <FileText size={16} className="text-md-primary flex-shrink-0" />
+                    <span className="text-sm text-md-on-surface truncate flex-1">{a.filename}</span>
+                    {i === 0 && archivos.length > 1 && (
+                      <span className="text-[10px] text-md-on-surface-variant flex-shrink-0">va con el texto</span>
+                    )}
+                    <button type="button" onClick={() => quitarArchivo(i)}
+                      className="text-md-on-surface-variant hover:text-md-error">
+                      <X size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {archivos.length < MAX_ARCHIVOS && (
               <button
                 type="button"
                 onClick={() => archivoRef.current?.click()}
@@ -591,24 +637,27 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
                   </span>
                 ) : (
                   <span className="flex items-center justify-center gap-2 text-sm text-md-on-surface-variant">
-                    <Paperclip size={15} /> Elegir PDF o imagen
+                    <Paperclip size={15} />
+                    {archivos.length ? 'Agregar otro archivo' : 'Elegir PDF o imagen'}
                   </span>
                 )}
               </button>
-            ) : (
-              <div className="flex items-center gap-2 p-3 bg-md-surface-container rounded-2xl">
-                <FileText size={16} className="text-md-primary flex-shrink-0" />
-                <span className="text-sm text-md-on-surface truncate flex-1">{archivo.filename}</span>
-                <button type="button" onClick={quitarArchivo} className="text-md-on-surface-variant hover:text-md-error">
-                  <X size={15} />
-                </button>
-              </div>
             )}
 
             <p className="text-xs text-md-on-surface-variant mt-1">
               El archivo se sube a Kollybry y se envía por WhatsApp. No uses enlaces de
               Google Drive: WhatsApp no puede leerlos.
             </p>
+
+            {/* WhatsApp no permite dos adjuntos en un mensaje, así que cada
+                archivo extra es un mensaje más — y se cobra aparte. Decirlo aquí
+                evita la sorpresa en la factura. */}
+            {archivos.length > 1 && (
+              <p className="text-xs text-amber-700 mt-1">
+                Con {archivos.length} archivos, a cada familia le llegan {archivos.length} mensajes
+                seguidos: WhatsApp solo permite un adjunto por mensaje. El costo se multiplica igual.
+              </p>
+            )}
           </div>
 
           {/* ── Vista previa ── */}
