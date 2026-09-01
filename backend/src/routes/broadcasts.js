@@ -150,7 +150,17 @@ router.get('/preview', authMiddleware, inferTenantGuard, async (req, res) => {
 
 // POST /api/broadcasts — create and send
 router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
-  const { title, message, group_filter, group_filters, contact_ids, media_url, media_type, media_filename, tipo } = req.body
+  const { title, message, group_filter, group_filters, contact_ids, media_url, media_type, media_filename, tipo, adjuntos } = req.body
+
+  // WhatsApp permite UN adjunto por mensaje de plantilla. Para mandar varios hay
+  // que mandar varios mensajes seguidos — Meta lo acepta sin problema, pero cada
+  // uno se cobra aparte y el papá recibe una notificación por archivo.
+  //
+  // El primero lleva el texto del comunicado; los siguientes solo anuncian el
+  // archivo, para no repetirle la circular completa tres veces.
+  const extras = Array.isArray(adjuntos)
+    ? adjuntos.filter(a => a?.url).slice(0, 4)   // tope sano: 5 archivos en total
+    : []
 
   if (!title || !message) {
     return res.status(400).json({ error: 'title and message are required' })
@@ -310,6 +320,41 @@ router.post('/', authMiddleware, inferTenantGuard, async (req, res) => {
 
       // Each template carries its own Meta-registered language code (tpl.lang)
       const result = await sendWhatsAppTemplate(contact.telefono, tpl.name, tpl.lang, components, desdeNumero)
+
+      // Archivos adicionales, uno por mensaje. Van DESPUÉS del principal y en
+      // orden, para que al papá le lleguen como una secuencia y no revueltos.
+      //
+      // No se cuentan como enviados ni se registran en message_logs: son el
+      // mismo comunicado. Si se contaran, los KPIs dirían 1,290 enviados a 430
+      // familias y nadie entendería el número.
+      if (result.success && extras.length) {
+        for (const extra of extras) {
+          const esImagen = !!extra.type?.startsWith('image')
+          const puedeAdjuntar = esImagen || docTemplateActiva()
+          const pie = `Archivo adjunto: ${extra.filename || 'documento'}`
+
+          const compExtra = esImagen
+            ? comunicadoImagenComponents({ titulo: title, orgName, cuerpo: pie, imageUrl: extra.url })
+            : docTemplateActiva()
+            ? comunicadoDocComponents({ orgName, cuerpo: pie, docUrl: extra.url, filename: extra.filename })
+            // Sin plantilla de documento aprobada, el archivo viaja como liga
+            // dentro del texto. Peor, pero mejor que no mandarlo.
+            : comunicadoComponents({ titulo: title, orgName, cuerpo: `${pie} 📎 ${extra.url}` })
+
+          const tplExtra = esImagen
+            ? TEMPLATE_NAMES.COMUNICADO_IMAGEN
+            : puedeAdjuntar
+            ? TEMPLATE_NAMES.COMUNICADO_DOC
+            : TEMPLATE_NAMES.COMUNICADO_UTIL
+
+          const rExtra = await sendWhatsAppTemplate(
+            contact.telefono, tplExtra.name, tplExtra.lang, compExtra, desdeNumero
+          )
+          if (!rExtra.success) {
+            console.error(`Broadcast: adjunto "${extra.filename}" NO salió a ${telLog(contact.telefono)} — ${rExtra.error}`)
+          }
+        }
+      }
       if (result.success) {
         sentCount++
         console.log(`Broadcast: ✓ enviado a ${telLog(contact.telefono)}`)
