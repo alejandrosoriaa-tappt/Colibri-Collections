@@ -58,6 +58,28 @@ const EMPTY_FORM = { title: '', message: '', group_filters: [], contactos: [], m
  * modo: 'grupos'  → Mensajes    (por grupo | por familia o alumno)
  *       'general' → Comunicados (toda la comunidad | por grupo)
  */
+/**
+ * Pinta el formato de WhatsApp en la vista previa, para que el director vea lo
+ * que va a ver el papá y no un texto lleno de asteriscos.
+ */
+function conFormato(texto) {
+  const partes = []
+  const re = /(\*[^*\n]+\*|_[^_\n]+_|~[^~\n]+~)/g
+  let ultimo = 0
+  let m
+  while ((m = re.exec(texto)) !== null) {
+    if (m.index > ultimo) partes.push(texto.slice(ultimo, m.index))
+    const cuerpo = m[0].slice(1, -1)
+    const key = `${m.index}-${cuerpo}`
+    if (m[0][0] === '*') partes.push(<strong key={key}>{cuerpo}</strong>)
+    else if (m[0][0] === '_') partes.push(<em key={key}>{cuerpo}</em>)
+    else partes.push(<s key={key}>{cuerpo}</s>)
+    ultimo = re.lastIndex
+  }
+  partes.push(texto.slice(ultimo))
+  return partes
+}
+
 export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [], borrador = null, tipo = null, onClose, onSent }) {
   const { tenant } = useAuthStore()
   const esGeneral = modo === 'general'
@@ -275,6 +297,36 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
   }
 
   const insertVar = (v) => setForm(f => ({ ...f, message: f.message + v }))
+
+  /**
+   * Formato de WhatsApp: *negrita*, _cursiva_, ~tachado~.
+   *
+   * Se envuelve lo que el usuario tenga seleccionado. Si no seleccionó nada, se
+   * dejan los símbolos con el cursor en medio para que siga escribiendo — pedir
+   * que primero seleccione y luego formatee es al revés de como escribe la
+   * gente.
+   */
+  const mensajeRef = useRef(null)
+
+  const envolver = (simbolo) => {
+    const ta = mensajeRef.current
+    if (!ta) return
+    const ini = ta.selectionStart
+    const fin = ta.selectionEnd
+    const texto = form.message
+    const dentro = texto.slice(ini, fin)
+    const nuevo = texto.slice(0, ini) + simbolo + dentro + simbolo + texto.slice(fin)
+
+    setForm(f => ({ ...f, message: nuevo }))
+
+    // El cursor queda dentro de los símbolos, o después de lo que se envolvió.
+    const pos = dentro ? fin + simbolo.length * 2 : ini + simbolo.length
+    requestAnimationFrame(() => {
+      ta.focus()
+      ta.setSelectionRange(pos, pos)
+    })
+  }
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -568,7 +620,28 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
               </div>
             )}
 
+            {/* Formato de WhatsApp. Se ofrece como botones porque nadie que no
+                sea técnico va a adivinar que *así* pone negritas. */}
+            <div className="flex items-center gap-1 mb-1.5">
+              <button type="button" onClick={() => envolver('*')} title="Negrita"
+                className="w-8 h-8 rounded-lg border border-md-outline-variant text-sm font-bold text-md-on-surface hover:bg-md-surface-container">
+                B
+              </button>
+              <button type="button" onClick={() => envolver('_')} title="Cursiva"
+                className="w-8 h-8 rounded-lg border border-md-outline-variant text-sm italic text-md-on-surface hover:bg-md-surface-container">
+                I
+              </button>
+              <button type="button" onClick={() => envolver('~')} title="Tachado"
+                className="w-8 h-8 rounded-lg border border-md-outline-variant text-sm line-through text-md-on-surface hover:bg-md-surface-container">
+                S
+              </button>
+              <span className="text-xs text-md-on-surface-variant ml-1">
+                Selecciona el texto y dale al botón
+              </span>
+            </div>
+
             <textarea
+              ref={mensajeRef}
               className="input resize-none"
               rows={5}
               placeholder={`Hola {nombre}, te informamos que la asamblea ordinaria de ${tenant?.display_name || 'la organización'} se realizará el próximo viernes 14 de junio a las 7pm en el salón de usos múltiples. Tu asistencia es importante.`}
@@ -666,9 +739,11 @@ export default function CompositorMensaje({ modo = 'grupos', gruposIniciales = [
               <p className="text-xs text-md-on-surface-variant uppercase tracking-wide font-medium mb-2">Vista previa</p>
               <div className="bg-white rounded-2xl p-3 shadow-md3-1 max-w-xs">
                 <p className="text-sm text-md-on-surface whitespace-pre-wrap">
-                  {form.message
-                    .replace(/{nombre}/g, 'Roberto')
-                    .replace(/{grupo}/g, form.group_filters[0] || 'Grupo A')}
+                  {conFormato(
+                    form.message
+                      .replace(/{nombre}/g, 'Roberto')
+                      .replace(/{grupo}/g, form.group_filters[0] || 'Grupo A')
+                  )}
                 </p>
                 {form.media_url && (
                   <div className="flex items-center gap-2 mt-2 p-2 bg-md-primary-container/40 rounded-xl">
