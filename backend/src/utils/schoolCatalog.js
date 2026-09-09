@@ -49,24 +49,38 @@ export function normalizeSeccion(value) {
   const v = clean(value)
   if (!v) return null
   if (SECCIONES.includes(v)) return v
-  return SECCION_ALIASES[v.toLowerCase()] || null
+  // Si no es una variante conocida, se conserva: "Casa de Niños", "Taller I" y
+  // "Transitorio" son secciones reales, no errores de captura.
+  return SECCION_ALIASES[v.toLowerCase()] || v
 }
 
-/** Normaliza un grado a '1ro'..'6to', o null si no se reconoce. */
+/**
+ * Normaliza un grado a '1ro'..'6to' CUANDO lo reconoce; si no, conserva lo que
+ * escribió el colegio.
+ *
+ * Antes devolvía null para todo lo desconocido, y el llamador lo guardaba tal
+ * cual: un Montessori capturaba "Transitorio" o "K1" y el dato desaparecía sin
+ * error ni aviso. La normalización sirve para unificar variantes conocidas
+ * ("1", "1°", "primero"), no para decidir qué grados puede tener un colegio.
+ */
 export function normalizeGrado(value) {
   const v = clean(value)
   if (!v) return null
   if (GRADO_CANON.includes(v)) return v
   // quitar sufijos tipo "ro/do/to/°" y espacios para mapear por número
   const key = v.toLowerCase().replace(/\s+/g, '')
-  return GRADO_ALIASES[key] || null
+  return GRADO_ALIASES[key] || v
 }
 
-/** Normaliza un salón a 'A'..'E' (mayúscula), o null si no se reconoce. */
+/**
+ * Normaliza un salón a 'A'..'E' cuando viene así; si no, conserva el original.
+ * Los grupos reales incluyen cosas como 'CNA', 'TIB' o 'Transi A'.
+ */
 export function normalizeSalon(value) {
-  const v = clean(value).toUpperCase()
+  const v = clean(value)
   if (!v) return null
-  return SALONES.includes(v) ? v : null
+  const mayus = v.toUpperCase()
+  return SALONES.includes(mayus) ? mayus : v
 }
 
 /**
@@ -82,9 +96,13 @@ export function buildEscolarGrupo({ seccion, grado, salon }) {
   const g = normalizeGrado(grado)
   const a = normalizeSalon(salon)
 
-  // Validar que el grado pertenezca a la sección (si ambos existen)
+  // Solo se descarta el grado cuando AMBOS son del catálogo tradicional y no
+  // empatan (p. ej. "Preescolar 5to"). Si alguno es vocabulario propio del
+  // colegio, no hay nada contra qué validarlo: descartarlo era borrar el dato
+  // bueno de todos los colegios que no son Preescolar/Primaria/Secundaria.
   let gradoValido = g
-  if (s && g && !(GRADOS_POR_SECCION[s] || []).includes(g)) {
+  const ambosCanonicos = SECCIONES.includes(s) && GRADO_CANON.includes(g)
+  if (ambosCanonicos && !(GRADOS_POR_SECCION[s] || []).includes(g)) {
     gradoValido = null
   }
 
