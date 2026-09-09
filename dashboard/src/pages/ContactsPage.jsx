@@ -9,16 +9,64 @@ import { contactsAPI, uploadAPI, broadcastsAPI } from '../lib/api.js'
 import useAuthStore from '../store/authStore.js'
 import { getOrgConfig } from '../config/orgTypeConfig.js'
 
-// ── Catálogo escolar canónico (vocabulario controlado) ──────────────────────────
-// Estos valores deben coincidir EXACTO con backend/src/utils/schoolCatalog.js
-const SECCIONES = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria']
-const GRADOS = {
+// ── Vocabulario escolar ─────────────────────────────────────────────────────
+//
+// Estas listas son solo la SUGERENCIA para un colegio que empieza vacío. No son
+// el catálogo: cada colegio tiene el suyo y no cabe en una lista fija. Un
+// Montessori usa Casa de Niños, Taller I, Taller II y Transitorio; un Waldorf
+// otra cosa. Cuando estaban fijas, la directora no podía dar de alta a sus
+// propios alumnos porque su grado no existía en el menú.
+//
+// Lo que manda es lo que el colegio YA tiene cargado (ver catalogoEscolar).
+// Los campos aceptan escribir cualquier valor nuevo.
+const SECCIONES_SUGERIDAS = ['Preescolar', 'Primaria', 'Secundaria', 'Preparatoria']
+const GRADOS_SUGERIDOS = {
   'Preescolar':   ['1ro', '2do', '3ro'],
   'Primaria':     ['1ro', '2do', '3ro', '4to', '5to', '6to'],
   'Secundaria':   ['1ro', '2do', '3ro'],
   'Preparatoria': ['1ro', '2do', '3ro'],
 }
-const SALONES = ['A', 'B', 'C', 'D', 'E']
+const SALONES_SUGERIDOS = ['A', 'B', 'C', 'D', 'E']
+
+/**
+ * El vocabulario real del colegio, sacado de sus propios alumnos.
+ *
+ * Se consulta una vez y se comparte entre los formularios de alta y edición.
+ * Si el colegio aún no tiene nadie cargado, caen las sugerencias de arriba para
+ * no dejar los menús vacíos.
+ */
+function useCatalogoEscolar(activo = true) {
+  const [combos, setCombos] = useState([])
+
+  useEffect(() => {
+    if (!activo) return
+    contactsAPI.catalog()
+      .then(res => setCombos(res.data.combos || []))
+      .catch(() => setCombos([]))
+  }, [activo])
+
+  const unicos = (arr) => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+
+  const secciones = unicos(combos.map(c => c.seccion))
+  const gradosDe = (seccion) => {
+    const propios = unicos(combos.filter(c => !seccion || c.seccion === seccion).map(c => c.grado))
+    return propios.length ? propios : (GRADOS_SUGERIDOS[seccion] || [])
+  }
+  const salonesDe = (seccion, grado) => {
+    const propios = unicos(
+      combos
+        .filter(c => (!seccion || c.seccion === seccion) && (!grado || c.grado === grado))
+        .map(c => c.salon)
+    )
+    return propios.length ? propios : SALONES_SUGERIDOS
+  }
+
+  return {
+    secciones: secciones.length ? secciones : SECCIONES_SUGERIDAS,
+    gradosDe,
+    salonesDe
+  }
+}
 
 const PAGE_SIZE_OPTIONS = [25, 50, 100, 200]
 
@@ -31,6 +79,31 @@ function toTitleCase(str) {
 
 // Devuelve el catálogo incluyendo el valor actual si no es canónico, para que
 // un dato viejo (ej. grado "1°" importado de Excel) no se pierda al editar.
+/**
+ * Campo con sugerencias donde TAMBIÉN se puede escribir un valor nuevo.
+ *
+ * Un <select> obliga a que el valor exista en la lista, y la lista nunca va a
+ * contener el vocabulario de todos los colegios. Con datalist el colegio elige
+ * lo que ya usa o teclea lo suyo, sin que nadie tenga que tocar el código.
+ */
+function CampoConSugerencias({ id, value, onChange, placeholder, opciones, className = 'input text-sm' }) {
+  return (
+    <>
+      <input
+        list={id}
+        className={className}
+        value={value || ''}
+        onChange={onChange}
+        placeholder={placeholder}
+        autoComplete="off"
+      />
+      <datalist id={id}>
+        {opciones.filter(Boolean).map(o => <option key={o} value={o} />)}
+      </datalist>
+    </>
+  )
+}
+
 function withCurrent(options, current) {
   if (current && !options.includes(current)) return [current, ...options]
   return options
@@ -84,7 +157,9 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
   const setFamily = k => e => setFamilyForm(f => ({ ...f, [k]: e.target.value }))
 
-  const gradosDisponibles = GRADOS[form.seccion] || []
+  // El vocabulario real del colegio; las listas fijas son solo respaldo.
+  const catalogo = useCatalogoEscolar(isColegio)
+  const gradosDisponibles = catalogo.gradosDe(form.seccion)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -296,39 +371,36 @@ function AddContactModal({ onClose, onSaved, orgType = 'general' }) {
                         />
                       </div>
                       <div className="grid grid-cols-3 gap-2">
-                        <select
-                          className="input text-sm"
-                          value={alumno.seccion || ''}
+                        <CampoConSugerencias
+                          id={`sec-${idx}`}
+                          placeholder="Sección"
+                          value={alumno.seccion}
+                          opciones={catalogo.secciones}
                           onChange={e => setFamilyForm(f => ({
                             ...f,
                             estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, seccion: e.target.value } : a)
                           }))}
-                        >
-                          <option value="">Sección</option>
-                          {SECCIONES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <select
-                          className="input text-sm"
-                          value={alumno.grado || ''}
+                        />
+                        <CampoConSugerencias
+                          id={`gra-${idx}`}
+                          placeholder="Grado"
+                          value={alumno.grado}
+                          opciones={catalogo.gradosDe(alumno.seccion)}
                           onChange={e => setFamilyForm(f => ({
                             ...f,
                             estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, grado: e.target.value } : a)
                           }))}
-                        >
-                          <option value="">Grado</option>
-                          {(GRADOS[alumno.seccion] || []).map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                        <select
-                          className="input text-sm"
-                          value={alumno.salon || ''}
+                        />
+                        <CampoConSugerencias
+                          id={`sal-${idx}`}
+                          placeholder="Grupo"
+                          value={alumno.salon}
+                          opciones={catalogo.salonesDe(alumno.seccion, alumno.grado)}
                           onChange={e => setFamilyForm(f => ({
                             ...f,
                             estudiantes: f.estudiantes.map((a, i) => i === idx ? { ...a, salon: e.target.value } : a)
                           }))}
-                        >
-                          <option value="">Salón</option>
-                          {SALONES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        />
                       </div>
                       {familyForm.estudiantes.length > 1 && (
                         <button
@@ -936,6 +1008,7 @@ function AiImportModal({ onClose, onDone }) {
 
 // ── Edit Family Modal ─────────────────────────────────────────────────────────
 function EditFamilyModal({ familia, papas, alumnos, orgType = 'colegio', onClose, onSaved }) {
+  const catalogo = useCatalogoEscolar(true)
   const mama = papas.find(p => p.relationship_type === 'mama')
   const papa = papas.find(p => p.relationship_type === 'papa')
 
@@ -1097,38 +1170,40 @@ function EditFamilyModal({ familia, papas, alumnos, orgType = 'colegio', onClose
                   <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="label">Sección</label>
-                      <select
+                      <CampoConSugerencias
+                        id={`e-sec-${idx}`}
                         className="input"
+                        placeholder="Sección"
                         value={a.seccion}
-                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx
-                          ? { ...x, seccion: e.target.value, grado: '' }   // cambiar sección resetea el grado
-                          : x))}
-                      >
-                        <option value="">Sección</option>
-                        {withCurrent(SECCIONES, a.seccion).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                        opciones={withCurrent(catalogo.secciones, a.seccion)}
+                        // Al cambiar de sección NO se borra el grado: en un
+                        // colegio con vocabulario propio el grado puede ser
+                        // válido en varias secciones, y borrarlo obligaba a
+                        // recapturarlo por gusto.
+                        onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, seccion: e.target.value } : x))}
+                      />
                     </div>
                     <div>
                       <label className="label">Grado</label>
-                      <select
+                      <CampoConSugerencias
+                        id={`e-gra-${idx}`}
                         className="input"
+                        placeholder="Grado"
                         value={a.grado}
+                        opciones={withCurrent(catalogo.gradosDe(a.seccion), a.grado)}
                         onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, grado: e.target.value } : x))}
-                      >
-                        <option value="">Grado</option>
-                        {withCurrent(GRADOS[a.seccion] || [], a.grado).map(g => <option key={g} value={g}>{g}</option>)}
-                      </select>
+                      />
                     </div>
                     <div>
-                      <label className="label">Salón</label>
-                      <select
+                      <label className="label">Grupo</label>
+                      <CampoConSugerencias
+                        id={`e-sal-${idx}`}
                         className="input"
+                        placeholder="Grupo"
                         value={a.salon}
+                        opciones={withCurrent(catalogo.salonesDe(a.seccion, a.grado), a.salon)}
                         onChange={e => setAlumnosForm(prev => prev.map((x, i) => i === idx ? { ...x, salon: e.target.value } : x))}
-                      >
-                        <option value="">Salón</option>
-                        {withCurrent(SALONES, a.salon).map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
+                      />
                     </div>
                   </div>
                 </div>
