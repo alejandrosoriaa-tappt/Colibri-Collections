@@ -58,7 +58,13 @@
       top: 0;
       z-index: 100;
     }
-    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+    /* Los dos botones viven en un contenedor flex propio. Sin esto, en un
+       Android angosto "Iniciar sesión" se salía de su caja y se encimaba con
+       "Ver demo" y con el nombre Kollybry. */
+    .nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .nav-demo, .nav-cta { white-space: nowrap; }
+    .nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; min-width: 0; }
+    .nav-logo span { white-space: nowrap; }
     .nav-logo-circle {
       width: 40px; height: 40px;
       background: var(--md-primary);
@@ -641,7 +647,8 @@
       .steps { grid-template-columns: 1fr; }
     }
     @media (max-width: 768px) {
-      nav { padding: 12px 20px; }
+      nav { padding: 12px 16px; }
+      .nav-cta { padding: 9px 16px; font-size: 13px; }
       .hero { padding: 40px 16px 48px; }
       .hero-glass { padding: 36px 24px 32px; border-radius: 24px; }
       .hero h1 { font-size: 32px; }
@@ -662,7 +669,7 @@
     ══════════════════════════════════════════════ */
     .nav-demo {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 9px 18px; margin-right: 10px;
+      padding: 9px 18px;
       border-radius: 999px; border: 1.5px solid var(--md-primary);
       color: var(--md-primary); font-size: 14px; font-weight: 600;
       text-decoration: none; cursor: pointer; background: transparent;
@@ -774,6 +781,17 @@
       .demo-caption p { font-size: 13px; }
       .nav-demo { padding: 8px 13px; font-size: 13px; }
     }
+
+    /* Teléfonos angostos (Motorola, iPhone SE): el botón de demo se queda con
+       el ícono. Perder la palabra es mejor que perder el nombre de la marca,
+       que es lo que pasaba cuando los tres elementos peleaban por el espacio. */
+    @media (max-width: 400px) {
+      nav { padding: 10px 12px; }
+      .nav-logo span { font-size: 15px; }
+      .nav-demo { padding: 8px 11px; }
+      .nav-demo-txt { display: none; }
+      .nav-cta { padding: 8px 14px; font-size: 13px; }
+    }
   </style>
 </head>
 <body>
@@ -786,8 +804,8 @@
     </div>
     <span>Kollybry</span>
   </a>
-  <div>
-    <button class="nav-demo" onclick="openDemo()">▶ Ver demo</button>
+  <div class="nav-actions">
+    <button class="nav-demo" onclick="openDemo()">▶ <span class="nav-demo-txt">Ver demo</span></button>
     <a href="https://app.kollybry.com/login" class="nav-cta">Iniciar sesión</a>
   </div>
 </nav>
